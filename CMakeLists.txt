@@ -14,6 +14,7 @@ SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # ------------------------------------------------------------------------------
 SET(ENABLE_UTILS  TRUE  CACHE BOOL "Build the ChronoParallel_Utils library") 
 SET(ENABLE_TESTS  FALSE CACHE BOOL "Build test programs")
+SET(ENABLE_DEMOS  FALSE CACHE BOOL "Build demo programs")
 
 # ------------------------------------------------------------------------------
 # Required Chrono library and headers
@@ -286,6 +287,14 @@ IF(ENABLE_TESTS)
     MESSAGE(STATUS "The test programs require building the ChronoParallel_Utils library.")
   ELSE()
     ADD_SUBDIRECTORY(tests)
+  ENDIF()
+ENDIF()
+
+IF(ENABLE_DEMOS)
+  IF(NOT ENABLE_UTILS)
+    MESSAGE(STATUS "The demo programs require building the ChronoParallel_Utils library.")
+  ELSE()
+    ADD_SUBDIRECTORY(demos)
   ENDIF()
 ENDIF()
 
