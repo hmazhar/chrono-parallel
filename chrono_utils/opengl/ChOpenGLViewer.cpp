@@ -12,13 +12,16 @@
 // OpenGL viewer, this class draws the system to the screen and handles input
 // Authors: Hammad Mazhar
 // =============================================================================
-
+#include <omp.h>
 #include "ChOpenGLViewer.h"
 #include "FontData.h"
 #include "text_frag.h"
 #include "text_vert.h"
 #include "phong_frag.h"
 #include "phong_vert.h"
+
+#include "cloud_frag.h"
+#include "cloud_vert.h"
 
 //using namespace std;
 using namespace chrono;
@@ -38,7 +41,7 @@ ChOpenGLViewer::ChOpenGLViewer(
    simulation_time = 0;
    pause_sim = 0;
    pause_vis = 0;
-   render_mode = WIREFRAME;
+   render_mode = POINTS;
    old_time = current_time = 0;
    time_total = time_text = time_geometry = 0;
 
@@ -64,9 +67,13 @@ bool ChOpenGLViewer::Initialize() {
       return 0;
    }
 
-   ChOpenGLMaterial white(glm::vec3(.1, .1, .1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-   ChOpenGLMaterial red(glm::vec3(.1, 0, 0), glm::vec3(1, 0, 0), glm::vec3(1, 1, 1));
+   ChOpenGLMaterial white(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+   ChOpenGLMaterial red(glm::vec3(0, 0, 0), glm::vec3(1, 0, 0), glm::vec3(1, 1, 1));
    if (!main_shader.InitializeStrings("phong", phong_vert, phong_frag)) {
+      return 0;
+   }
+
+   if (!cloud_shader.InitializeStrings("cloud", cloud_vert, cloud_frag)) {
       return 0;
    }
 
@@ -88,13 +95,26 @@ bool ChOpenGLViewer::Initialize() {
    //get the uniform location for the texture from shader
    texture_handle = font_shader.GetUniformLocation("tex");
 
+   cloud_data.resize(physics_system->Get_bodylist()->size());
+   for (int i = 0; i < physics_system->Get_bodylist()->size(); i++) {
+      ChBody* abody = (ChBody*) physics_system->Get_bodylist()->at(i);
+
+      ChVector<> pos = abody->GetPos();
+      cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
+   }
+   cloud.Initialize(cloud_data);
+   cloud.AttachShader(&cloud_shader);
+
+   glPointSize(10);
+   GenerateFontIndex();
+
 }
-void ChOpenGLViewer::Update() {
+bool ChOpenGLViewer::Update() {
    if (pause_sim == true) {
-      return;
+      return false;
    }
    physics_system->DoStepDynamics(physics_system->GetStep());
-
+   return true;
 }
 void ChOpenGLViewer::Render() {
    render_timer.start();
@@ -113,9 +133,41 @@ void ChOpenGLViewer::Render() {
          glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       }
 
-      for (int i = 0; i < physics_system->Get_bodylist()->size(); i++) {
-         ChBody* abody = (ChBody*) physics_system->Get_bodylist()->at(i);
-         DrawObject(abody);
+      if (render_mode != POINTS) {
+         model_box.clear();
+         model_sphere.clear();
+         model_cone.clear();
+         model_cylinder.clear();
+         for (int i = 0; i < physics_system->Get_bodylist()->size(); i++) {
+            ChBody* abody = (ChBody*) physics_system->Get_bodylist()->at(i);
+            DrawObject(abody);
+         }
+         box.Update(model_box);
+         box.Draw(projection, view);
+
+         sphere.Update(model_sphere);
+         sphere.Draw(projection, view);
+
+         cone.Update(model_cone);
+         cone.Draw(projection, view);
+
+         cylinder.Update(model_cylinder);
+         cylinder.Draw(projection, view);
+
+      } else {
+         cloud_data.resize(physics_system->Get_bodylist()->size());
+#pragma omp parallel for
+         for (int i = 0; i < physics_system->Get_bodylist()->size(); i++) {
+            ChBody* abody = (ChBody*) physics_system->Get_bodylist()->at(i);
+            ChVector<> pos = abody->GetPos();
+            cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
+         }
+      }
+
+      if (render_mode == POINTS) {
+         cloud.Update(cloud_data);
+         glm::mat4 model(1);
+         cloud.Draw(projection, view * model);
       }
       geometry_timer.stop();
       time_geometry = .5 * geometry_timer() + .5 * time_geometry;
@@ -168,7 +220,7 @@ void ChOpenGLViewer::DrawObject(
          model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
          model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
          model = glm::scale(model, glm::vec3(radius, radius, radius));
-         sphere.Draw(projection, view * model);
+         model_sphere.push_back(model);
 
       } else if (asset.IsType<ChEllipsoidShape>()) {
 
@@ -178,7 +230,7 @@ void ChOpenGLViewer::DrawObject(
          model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
          model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
          model = glm::scale(model, glm::vec3(radius.x, radius.y, radius.z));
-         sphere.Draw(projection, view * model);
+         model_sphere.push_back(model);
 
       } else if (asset.IsType<ChBoxShape>()) {
          ChBoxShape * box_shape = ((ChBoxShape *) (asset.get_ptr()));
@@ -188,15 +240,15 @@ void ChOpenGLViewer::DrawObject(
          model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
          model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
          model = glm::scale(model, glm::vec3(radius.x, radius.y, radius.z));
-         box.Draw(projection, view * model);
+         model_box.push_back(model);
 
       } else if (asset.IsType<ChCylinderShape>()) {
          ChCylinderShape * cylinder_shape = ((ChCylinderShape *) (asset.get_ptr()));
          double rad = cylinder_shape->GetCylinderGeometry().rad;
          double height = cylinder_shape->GetCylinderGeometry().p1.y - cylinder_shape->GetCylinderGeometry().p2.y;
-         Quaternion rott = chrono::Q_from_AngAxis(-CH_C_PI / 2, VECT_X);
+         //Quaternion rott(1,0,0,0);
          Quaternion lrot = visual_asset->Rot.Get_A_quaternion();
-         lrot = lrot % rott;
+         //lrot = lrot % rott;
          lrot = rot % lrot;
 
          lrot.Q_to_AngAxis(angle, axis);
@@ -204,7 +256,7 @@ void ChOpenGLViewer::DrawObject(
          model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
          model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
          model = glm::scale(model, glm::vec3(rad, height, rad));
-         cylinder.Draw(projection, view * model);
+         model_cylinder.push_back(model);
 
       } else if (asset.IsType<ChConeShape>()) {
          ChConeShape * cone_shape = ((ChConeShape *) (asset.get_ptr()));
@@ -213,7 +265,7 @@ void ChOpenGLViewer::DrawObject(
          model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
          model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
          model = glm::scale(model, glm::vec3(rad.x, rad.y, rad.z));
-         cylinder.Draw(projection, view * model);
+         model_cone.push_back(model);
 
       } else if (asset.IsType<ChTriangleMeshShape>()) {
          ChTriangleMeshShape * trimesh_shape = ((ChTriangleMeshShape *) (asset.get_ptr()));
@@ -241,7 +293,18 @@ void ChOpenGLViewer::DrawObject(
       }
    }
 }
+void ChOpenGLViewer::GenerateFontIndex() {
+   string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
+   for (int i = 0; i < chars.size(); i++) {
+      for (int j = 0; j < font_data.glyphs_count; ++j) {
+         if (font_data.glyphs[j].charcode == chars[i]) {
+            char_index[chars[i]] = j;
+            break;
+         }
+      }
+   }
+}
 void ChOpenGLViewer::RenderText(
       const std::string &str,
       float x,
@@ -251,12 +314,8 @@ void ChOpenGLViewer::RenderText(
    for (int i = 0; i < str.size(); i++) {
 
       texture_glyph_t *glyph = 0;
-      for (int j = 0; j < font_data.glyphs_count; ++j) {
-         if (font_data.glyphs[j].charcode == str[i]) {
-            glyph = &font_data.glyphs[j];
-            break;
-         }
-      }
+      glyph = &font_data.glyphs[char_index[str[i]]];
+
       if (!glyph) {
          continue;
       }
@@ -350,7 +409,7 @@ void ChOpenGLViewer::HandleInput(
       unsigned char key,
       int x,
       int y) {
-   //printf("%f,%f,%f\n", render_camera.camera_position.x, render_camera.camera_position.y, render_camera.camera_position.z);
+//printf("%f,%f,%f\n", render_camera.camera_position.x, render_camera.camera_position.y, render_camera.camera_position.z);
    switch (key) {
       case 'W':
          render_camera.Move(FORWARD);

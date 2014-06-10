@@ -50,10 +50,11 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    ~ChOpenGLViewer();
    void TakeDown();
    bool Initialize();
-   void Update();
+   bool Update();
    void Render();
    void DrawObject(
          ChBody * abody);
+   void GenerateFontIndex();
    void RenderText(
          const std::string &str,
          float x,
@@ -75,7 +76,10 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    ChSystem * physics_system;
 
    ChOpenGLShader main_shader;
+   ChOpenGLShader cloud_shader;
    ChOpenGLShader font_shader;
+
+   std::map<char, int> char_index;
 
    ChOpenGLOBJ sphere;
    ChOpenGLOBJ box;
@@ -83,7 +87,7 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    ChOpenGLOBJ cone;
 
    ChOpenGLCloud cloud;
-
+   vector<glm::vec3> cloud_data;
    int simulation_frame;  // The current frame number
    float simulation_h;  // The simulation step size
    float simulation_time;  // The current simulation time
@@ -99,6 +103,13 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    ChTimer<double> render_timer, text_timer, geometry_timer;
    float old_time, current_time;
    float time_geometry, time_text, time_total, fps;
+
+   vector<glm::mat4> model_box;
+   vector<glm::mat4> model_sphere;
+   vector<glm::mat4> model_cylinder;
+   vector<glm::mat4> model_cone;
+
+
 };
 }
 }

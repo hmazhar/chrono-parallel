@@ -44,7 +44,7 @@ class CH_UTILS_OPENGL_API ChOpenGLWindow {
 
    // Perform a dynamics step, the user needs to use this so that pausing the
    // simulation works correctly
-   void DoStepDynamics(
+   bool DoStepDynamics(
          double time_step  //The step size
          );
 
@@ -53,6 +53,9 @@ class CH_UTILS_OPENGL_API ChOpenGLWindow {
 
    //Check if the glfw context is still valid and the window has not been closed
    bool Active();
+
+   //Check if the simulation is running or paused
+   bool Running();
 
    //Set the camera position, look at and up vectors
    void SetCamera(

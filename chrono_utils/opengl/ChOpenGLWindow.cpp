@@ -86,10 +86,10 @@ void ChOpenGLWindow::StartDrawLoop() {
       Render();
    }
 }
-void ChOpenGLWindow::DoStepDynamics(
+bool ChOpenGLWindow::DoStepDynamics(
       double time_step) {
    ChOpenGLViewer* pointer = ((ChOpenGLViewer *) (glfwGetWindowUserPointer(window)));
-   pointer->Update();
+   return pointer->Update();
 }
 void ChOpenGLWindow::Render() {
 
@@ -113,6 +113,14 @@ void ChOpenGLWindow::Render() {
 
 bool ChOpenGLWindow::Active() {
    return !glfwWindowShouldClose(window);
+}
+
+bool ChOpenGLWindow::Running() {
+   ChOpenGLViewer* pointer = ((ChOpenGLViewer *) (glfwGetWindowUserPointer(window)));
+   if (pointer->pause_sim == true) {
+      return false;
+   }
+   return true;
 }
 
 bool ChOpenGLWindow::GLUGetError(

@@ -27,9 +27,9 @@ class CH_UTILS_OPENGL_API ChOpenGLCloud : public ChOpenGLObject {
          const std::vector<glm::vec3>& data);
    virtual void Draw(
          const glm::mat4 & projection,
-         const glm::mat4 & modelview);
+         const glm::mat4 & view);
    void TakeDown();
-
+   void Update( const std::vector<glm::vec3>& data);
  private:
    std::vector<glm::vec3> vertices;
    typedef ChOpenGLObject super;
