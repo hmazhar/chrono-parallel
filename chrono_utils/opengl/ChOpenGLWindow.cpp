@@ -43,6 +43,9 @@ void ChOpenGLWindow::Initialize(
    }
    glfwMakeContextCurrent(window);
 
+   //Disable vsync!!
+   glfwSwapInterval(0);
+
    GLUGetError("Initialize GLFW");
 
    glewExperimental = GL_TRUE;
@@ -99,7 +102,7 @@ void ChOpenGLWindow::Render() {
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_CULL_FACE);
-      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+      glClearColor(84.0f/255.0f, 36.0f/255.0f, 55.0f/255.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       GLUGetError("Before Render");
       pointer->Render();
@@ -192,6 +195,7 @@ void ChOpenGLWindow::CallbackKeyboard(
    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GL_TRUE);
    }
+
    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
       pointer->HandleInput(key, 0, 0);
    }

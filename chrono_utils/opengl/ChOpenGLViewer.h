@@ -62,6 +62,8 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
          float sx,
          float sy);
    void DisplayHUD();
+   void RenderContacts();
+
    void HandleInput(
          unsigned char key,
          int x,
@@ -86,19 +88,22 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    ChOpenGLOBJ cylinder;
    ChOpenGLOBJ cone;
 
-   ChOpenGLCloud cloud;
+   ChOpenGLCloud cloud, contacts;
    vector<glm::vec3> cloud_data;
+   vector<glm::vec3> contact_data;
    int simulation_frame;  // The current frame number
    float simulation_h;  // The simulation step size
    float simulation_time;  // The current simulation time
    bool pause_sim;
    bool pause_vis;
+   bool view_contacts, view_help;
+   bool use_vsync;
    RenderMode render_mode;
 
    glm::mat4 model, view, projection, modelview;
 
    GLuint vbo, vao;
-   GLuint texture_handle;
+   GLuint text_texture_handle, text_color_handle;
    GLuint texture, sampler;
    ChTimer<double> render_timer, text_timer, geometry_timer;
    float old_time, current_time;
@@ -108,6 +113,7 @@ class CH_UTILS_OPENGL_API ChOpenGLViewer : public ChOpenGLBase {
    vector<glm::mat4> model_sphere;
    vector<glm::mat4> model_cylinder;
    vector<glm::mat4> model_cone;
+   vector<glm::vec4> text_data;
 
 
 };
