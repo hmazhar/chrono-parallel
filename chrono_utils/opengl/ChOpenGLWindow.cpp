@@ -22,7 +22,7 @@ using namespace chrono::utils;
 void ChOpenGLWindow::Initialize(
       int size_x,
       int size_y,
-      char * title,
+      const char * title,
       ChSystem * msystem) {
 
    if (!glfwInit()) {
@@ -35,7 +35,7 @@ void ChOpenGLWindow::Initialize(
    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-   window = glfwCreateWindow(size_x, size_y, "window", NULL, NULL);
+   window = glfwCreateWindow(size_x, size_y, title, NULL, NULL);
    if (!window) {
       cout << "could not create window - exiting" << endl;
       glfwTerminate();
@@ -102,7 +102,7 @@ void ChOpenGLWindow::Render() {
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_CULL_FACE);
-      glClearColor(84.0f/255.0f, 36.0f/255.0f, 55.0f/255.0f, 1.0f);
+      glClearColor(84.0f / 255.0f, 36.0f / 255.0f, 55.0f / 255.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       GLUGetError("Before Render");
       pointer->Render();
@@ -124,6 +124,12 @@ bool ChOpenGLWindow::Running() {
       return false;
    }
    return true;
+}
+
+//Pause simulation
+void ChOpenGLWindow::Pause() {
+   ChOpenGLViewer* pointer = ((ChOpenGLViewer *) (glfwGetWindowUserPointer(window)));
+   pointer->pause_sim = true;
 }
 
 bool ChOpenGLWindow::GLUGetError(

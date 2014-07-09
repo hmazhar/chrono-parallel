@@ -74,11 +74,20 @@ __device__ __host__ real3 TransformSupportVert(
       case chrono::collision::CYLINDER:
          localSupport = GetSupportPoint_Cylinder(B, rotated_n);
          break;
-      case chrono::collision::RECT:
-         localSupport = GetSupportPoint_Plane(B, rotated_n);
-         break;
       case chrono::collision::CONE:
          localSupport = GetSupportPoint_Cone(B, rotated_n);
+         break;
+      case chrono::collision::CAPSULE:
+         localSupport = GetSupportPoint_Capsule(B, rotated_n);
+         break;
+      case chrono::collision::ROUNDEDBOX:
+         localSupport = GetSupportPoint_RoundedBox(B,C, rotated_n);
+         break;
+      case chrono::collision::ROUNDEDCYL:
+         localSupport = GetSupportPoint_RoundedCylinder(B, rotated_n);
+         break;
+      case chrono::collision::ROUNDEDCONE:
+         localSupport = GetSupportPoint_RoundedCone(B, rotated_n);
          break;
       case chrono::collision::TRIANGLEMESH:
          return GetSupportPoint_Triangle(A, B, C, n);
