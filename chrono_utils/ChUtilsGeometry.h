@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban
+// Authors: Radu Serban, Hammad Mazhar
 // =============================================================================
 //
 // Utility functions for various geometrical calculations.
@@ -72,6 +72,12 @@ double CalcCylinderBradius(double radius, double hlen)
 }
 
 inline
+double CalcConeBradius(double radius, double hlen)
+{
+  return sqrt(hlen * hlen + radius * radius);
+}
+
+inline
 double CalcRoundedCylinderBradius(double radius, double hlen, double srad)
 {
   return sqrt(hlen * hlen + radius * radius) + srad;
@@ -83,6 +89,11 @@ double CalcRoundedBoxBradius(const ChVector<>& hdims, double srad)
   return hdims.Length() + srad;
 }
 
+inline
+double CalcTorusBradius(double radius, double thickness)
+{
+  return radius + thickness;
+}
 
 // -----------------------------------------------------------------------------
 // These utility functions calculate the volume of the corresponding shape.
@@ -119,6 +130,12 @@ double CalcCylinderVolume(double radius, double hlen)
 }
 
 inline
+double CalcConeVolume(double radius, double hlen)
+{
+  return CH_C_PI * radius * radius * hlen / 3.0;
+}
+
+inline
 double CalcRoundedCylinderVolume(double radius, double hlen, double srad)
 {
   double tmp = (radius + srad) * (radius + srad) * hlen +
@@ -133,6 +150,12 @@ double CalcRoundedBoxVolume(const ChVector<>& hdims, double srad)
   return  8 * hdims.x * hdims.y * hdims.z +
           2 * srad * (hdims.x * hdims.y + hdims.y * hdims.z + hdims.z * hdims.x) +
           (4.0 * CH_C_PI / 3.0) * srad * srad * srad;
+}
+
+inline
+double CalcTorusVolume( double radius, double thickness)
+{
+  return  2 * CH_C_PI * CH_C_PI * thickness * thickness * radius;
 }
 
 // -----------------------------------------------------------------------------
@@ -246,6 +269,25 @@ ChMatrix33<> CalcCylinderGyration(
 }
 
 inline
+ChMatrix33<> CalcConeGyration(
+                 double                radius,
+                 double                hlen,
+                 const ChVector<>&     pos = ChVector<>(0,0,0),
+                 const ChQuaternion<>& rot = ChQuaternion<>(1,0,0,0))
+{
+  ChMatrix33<> J;
+
+  J.SetElement(0, 0, (3.0/5.0) * (hlen * hlen) + (3.0/20.0) * (radius * radius));
+  J.SetElement(1, 1, (3.0/10.0) * (radius * radius));
+  J.SetElement(2, 2, (3.0/5.0) * (hlen * hlen) + (3.0/20.0) * (radius * radius));
+
+  TransformGyration(J, pos, rot);
+
+  return J;
+}
+
+
+inline
 ChMatrix33<> CalcRoundedCylinderGyration(
                  double                radius,
                  double                hlen,
@@ -278,6 +320,24 @@ ChMatrix33<> CalcRoundedBoxGyration(
   J.SetElement(0, 0, (1.0/12.0) * (hdims.y * hdims.y + hdims.z * hdims.z));
   J.SetElement(1, 1, (1.0/12.0) * (hdims.z * hdims.z + hdims.x * hdims.x));
   J.SetElement(2, 2, (1.0/12.0) * (hdims.x * hdims.x + hdims.y * hdims.y));
+
+  TransformGyration(J, pos, rot);
+
+  return J;
+}
+
+inline
+ChMatrix33<> CalcTorusGyration(
+                 double                radius,
+                 double                thickness,
+                 const ChVector<>&     pos = ChVector<>(0,0,0),
+                 const ChQuaternion<>& rot = ChQuaternion<>(1,0,0,0))
+{
+  ChMatrix33<> J;
+
+  J.SetElement(0, 0, (5.0/8.0) * (thickness * thickness)  + (1.0/2.0) * (radius * radius));
+  J.SetElement(1, 1, (3.0/4.0) * (thickness * thickness)  + (radius * radius));
+  J.SetElement(2, 2, (5.0/8.0) * (thickness * thickness)  + (1.0/2.0) * (radius * radius));
 
   TransformGyration(J, pos, rot);
 

@@ -4,106 +4,97 @@
 using namespace chrono;
 using namespace chrono::collision;
 
-ChSystemParallel::ChSystemParallel(
-      unsigned int max_objects)
-      :
-        ChSystem(1000, 10000, false) {
-   counter = 0;
-   gpu_data_manager = new ChParallelDataManager();
+ChSystemParallel::ChSystemParallel(unsigned int max_objects)
+      : ChSystem(1000, 10000, false) {
+
+   data_manager = new ChParallelDataManager();
 
    contact_container = new ChContactContainerParallel();
    collision_system = new ChCollisionSystemParallel();
-   ((ChCollisionSystemParallel *) (collision_system))->data_container = gpu_data_manager;
-   ((ChContactContainerParallel*) contact_container)->data_container = gpu_data_manager;
+   ((ChCollisionSystemParallel *) (collision_system))->data_container = data_manager;
+   ((ChContactContainerParallel*) contact_container)->data_container = data_manager;
 
-   use_aabb_active = 0;
+   counter = 0;
    timer_accumulator.resize(10, 0);
    cd_accumulator.resize(10, 0);
    frame_threads = 0;
    frame_bins = 0;
    old_timer = 0;
    old_timer_cd = 0;
+   timer_collision = 0;
    detect_optimal_threads = false;
    detect_optimal_bins = false;
    current_threads = 2;
    perform_thread_tuning = true;
    perform_bin_tuning = true;
-
-   gpu_data_manager->system_timer.AddTimer("step");
-   gpu_data_manager->system_timer.AddTimer("update");
-   gpu_data_manager->system_timer.AddTimer("collision");
-   gpu_data_manager->system_timer.AddTimer("collision_broad");
-   gpu_data_manager->system_timer.AddTimer("collision_narrow");
-   gpu_data_manager->system_timer.AddTimer("lcp");
-
-   gpu_data_manager->system_timer.AddTimer("ChLcpSolverParallel_Solve");
-   gpu_data_manager->system_timer.AddTimer("ChLcpSolverParallel_Setup");
-   gpu_data_manager->system_timer.AddTimer("ChLcpSolverParallel_Stab");
-   gpu_data_manager->system_timer.AddTimer("ChLcpSolverParallel_Jacobians");
-   gpu_data_manager->system_timer.AddTimer("ChLcpSolverParallel_RHS");
-
-   gpu_data_manager->system_timer.AddTimer("ChConstraintBilateral_shurA_compute");
-   gpu_data_manager->system_timer.AddTimer("ChConstraintBilateral_shurA_reduce");
-   gpu_data_manager->system_timer.AddTimer("ChConstraintBilateral_shurB_compute");
-
-   gpu_data_manager->system_timer.AddTimer("ChSolverParallel_shurA");
-   gpu_data_manager->system_timer.AddTimer("ChSolverParallel_shurB");
    min_threads = 1;
+   max_threads = CHOMPfunctions::GetNumProcs();
+
+
+   data_manager->system_timer.AddTimer("step");
+   data_manager->system_timer.AddTimer("update");
+   data_manager->system_timer.AddTimer("collision");
+   data_manager->system_timer.AddTimer("collision_broad");
+   data_manager->system_timer.AddTimer("collision_narrow");
+   data_manager->system_timer.AddTimer("lcp");
+
+   data_manager->system_timer.AddTimer("ChLcpSolverParallel_Solve");
+   data_manager->system_timer.AddTimer("ChLcpSolverParallel_Setup");
+   data_manager->system_timer.AddTimer("ChLcpSolverParallel_Stab");
+   data_manager->system_timer.AddTimer("ChLcpSolverParallel_Jacobians");
+   data_manager->system_timer.AddTimer("ChLcpSolverParallel_RHS");
+
+   data_manager->system_timer.AddTimer("ChConstraintBilateral_shurA_compute");
+   data_manager->system_timer.AddTimer("ChConstraintBilateral_shurA_reduce");
+   data_manager->system_timer.AddTimer("ChConstraintBilateral_shurB_compute");
+
+   data_manager->system_timer.AddTimer("ChSolverParallel_shurA");
+   data_manager->system_timer.AddTimer("ChSolverParallel_shurB");
 
 }
 
+ChSystemParallel::~ChSystemParallel() {
+   delete data_manager;
+}
+
 int ChSystemParallel::Integrate_Y() {
-   max_threads = this->GetParallelThreadNumber();
-   gpu_data_manager->system_timer.Reset();
-   gpu_data_manager->system_timer.start("step");
+   data_manager->system_timer.Reset();
+   data_manager->system_timer.start("step");
    //=============================================================================================
-   gpu_data_manager->system_timer.start("update");
+   data_manager->system_timer.start("update");
    Setup();
    Update();
-   gpu_data_manager->system_timer.stop("update");
+   data_manager->system_timer.stop("update");
    //=============================================================================================
-   if (use_aabb_active) {
-      vector<bool> body_active(gpu_data_manager->num_bodies, false);
-      ((ChCollisionSystemParallel*) collision_system)->GetOverlappingAABB(body_active, aabb_min, aabb_max);
-      for (int i = 0; i < bodylist.size(); i++) {
-         if (bodylist[i]->IsActive() == true && bodylist[i]->GetCollide() == true) {
-            gpu_data_manager->host_data.active_data[i] = body_active[i];
-         }
-      }
-   }
-
-   //=============================================================================================
-   gpu_data_manager->system_timer.start("collision");
+   data_manager->system_timer.start("collision");
    collision_system->Run();
    collision_system->ReportContacts(this->contact_container);
-   gpu_data_manager->system_timer.stop("collision");
+   data_manager->system_timer.stop("collision");
    //=============================================================================================
-   gpu_data_manager->system_timer.start("lcp");
+   data_manager->system_timer.start("lcp");
    ((ChLcpSolverParallel *) (LCP_solver_speed))->RunTimeStep(GetStep());
-   gpu_data_manager->system_timer.stop("lcp");
+   data_manager->system_timer.stop("lcp");
    //=============================================================================================
-   gpu_data_manager->system_timer.start("update");
-   //gpu_data_manager->Copy(DEVICE_TO_HOST);
-   //std::vector<ChLcpVariables*> vvariables = LCP_descriptor->GetVariablesList();
+   data_manager->system_timer.start("update");
 
-   uint counter = 0;
+   uint cntr = 0;
    std::vector<ChLcpConstraint *> &mconstraints = (*this->LCP_descriptor).GetConstraintsList();
    for (uint ic = 0; ic < mconstraints.size(); ic++) {
       if (mconstraints[ic]->IsActive() == false) {
          continue;
       }
       ChLcpConstraintTwoBodies *mbilateral = (ChLcpConstraintTwoBodies *) (mconstraints[ic]);
-      mconstraints[ic]->Set_l_i(gpu_data_manager->host_data.gamma_bilateral[counter]);
-      counter++;
+      mconstraints[ic]->Set_l_i(data_manager->host_data.gamma_bilateral[cntr]);
+      cntr++;
    }
    // updates the reactions of the constraint
    LCPresult_Li_into_reactions(1.0 / this->GetStep());     // R = l/dt  , approximately
 
 #pragma omp parallel for
    for (int i = 0; i < bodylist.size(); i++) {
-      if (gpu_data_manager->host_data.active_data[i] == true) {
-         real3 vel = gpu_data_manager->host_data.vel_data[i];
-         real3 omg = gpu_data_manager->host_data.omg_data[i];
+      if (data_manager->host_data.active_data[i] == true) {
+         real3 vel = data_manager->host_data.vel_data[i];
+         real3 omg = data_manager->host_data.omg_data[i];
          bodylist[i]->Variables().Get_qb().SetElement(0, 0, vel.x);
          bodylist[i]->Variables().Get_qb().SetElement(1, 0, vel.y);
          bodylist[i]->Variables().Get_qb().SetElement(2, 0, vel.z);
@@ -116,56 +107,42 @@ int ChSystemParallel::Integrate_Y() {
          bodylist[i]->UpdateTime(ChTime);
          //TrySleeping();			// See if the body can fall asleep; if so, put it to sleeping
          bodylist[i]->ClampSpeed();     // Apply limits (if in speed clamping mode) to speeds.
-         //bodylist[i]->ComputeGyro();     // Set the gyroscopic momentum.
-         //bodylist[i]->UpdateForces(ChTime);
+         bodylist[i]->ComputeGyro();     // Set the gyroscopic momentum.
+         bodylist[i]->UpdateForces(ChTime);
+         bodylist[i]->UpdateMarkers(ChTime);
       }
-
-   }
-   for (int i = 0; i < bodylist.size(); i++) {
-      bodylist[i]->UpdateMarkers(ChTime);
    }
 
-   gpu_data_manager->system_timer.stop("update");
+   data_manager->system_timer.stop("update");
 
    //=============================================================================================
    ChTime += GetStep();
-   gpu_data_manager->system_timer.stop("step");
+   data_manager->system_timer.stop("step");
 
    if (ChCollisionSystemParallel* coll_sys = dynamic_cast<ChCollisionSystemParallel*>(collision_system)) {
-      timer_collision_broad = gpu_data_manager->system_timer.GetTime("collision_broad");
-      timer_collision_narrow = gpu_data_manager->system_timer.GetTime("collision_narrow");
+      timer_collision_broad = data_manager->system_timer.GetTime("collision_broad");
+      timer_collision_narrow = data_manager->system_timer.GetTime("collision_narrow");
    } else {
       timer_collision_broad = 0;
       timer_collision_narrow = 0;
    }
 
-   timer_update = gpu_data_manager->system_timer.GetTime("update");
-   timer_collision = gpu_data_manager->system_timer.GetTime("collision");
-   timer_lcp = gpu_data_manager->system_timer.GetTime("lcp");
-   timer_step = gpu_data_manager->system_timer.GetTime("step");
+   timer_update = data_manager->system_timer.GetTime("update");
+   timer_collision = data_manager->system_timer.GetTime("collision");
+   timer_lcp = data_manager->system_timer.GetTime("lcp");
+   timer_step = data_manager->system_timer.GetTime("step");
 
-   timer_accumulator.insert(timer_accumulator.begin(), timer_step);
-   timer_accumulator.pop_back();
-
-   cd_accumulator.insert(cd_accumulator.begin(), timer_collision);
-   cd_accumulator.pop_back();
    if (perform_thread_tuning) {
       RecomputeThreads();
    }
    if (perform_bin_tuning) {
-     RecomputeBins();
+      RecomputeBins();
    }
-   //cout << "timer_accumulator " << sum_of_elems / 10.0 << " s: " << timer_accumulator[0] << endl;
-
-   //cout << "current threads " << current_threads <<" "<<frame_threads<<" "<<detect_optimal_threads<< endl;
-   frame_threads++;
-   frame_bins++;
 
    return 1;
 }
 
-void ChSystemParallel::AddBody(
-      ChSharedPtr<ChBody> newbody) {
+void ChSystemParallel::AddBody(ChSharedPtr<ChBody> newbody) {
 
    newbody->AddRef();
    newbody->SetSystem(this);
@@ -181,37 +158,36 @@ void ChSystemParallel::AddBody(
    newbody->GetRot().Normalize();
    ChMatrix33<>& inertia = mbodyvar.GetBodyInvInertia();
 
-   gpu_data_manager->host_data.vel_data.push_back(
+   data_manager->host_data.vel_data.push_back(
    R3(mbodyvar.Get_qb().GetElementN(0), mbodyvar.Get_qb().GetElementN(1), mbodyvar.Get_qb().GetElementN(2)));
-   gpu_data_manager->host_data.acc_data.push_back(R3(0, 0, 0));
-   gpu_data_manager->host_data.omg_data.push_back(
+   data_manager->host_data.acc_data.push_back(R3(0, 0, 0));
+   data_manager->host_data.omg_data.push_back(
    R3(mbodyvar.Get_qb().GetElementN(3), mbodyvar.Get_qb().GetElementN(4), mbodyvar.Get_qb().GetElementN(5)));
-   gpu_data_manager->host_data.pos_data.push_back(
+   data_manager->host_data.pos_data.push_back(
    R3(newbody->GetPos().x, newbody->GetPos().y, newbody->GetPos().z));
-   gpu_data_manager->host_data.rot_data.push_back(
+   data_manager->host_data.rot_data.push_back(
    R4(newbody->GetRot().e0, newbody->GetRot().e1, newbody->GetRot().e2, newbody->GetRot().e3));
-   gpu_data_manager->host_data.inr_data.push_back(
+   data_manager->host_data.inr_data.push_back(
    R3(inertia.GetElement(0, 0), inertia.GetElement(1, 1), inertia.GetElement(2, 2)));
-   gpu_data_manager->host_data.frc_data.push_back(
+   data_manager->host_data.frc_data.push_back(
    R3(mbodyvar.Get_fb().ElementN(0), mbodyvar.Get_fb().ElementN(1), mbodyvar.Get_fb().ElementN(2)));     //forces
-   gpu_data_manager->host_data.trq_data.push_back(
+   data_manager->host_data.trq_data.push_back(
    R3(mbodyvar.Get_fb().ElementN(3), mbodyvar.Get_fb().ElementN(4), mbodyvar.Get_fb().ElementN(5)));     //torques
-   gpu_data_manager->host_data.active_data.push_back(newbody->IsActive());
-   gpu_data_manager->host_data.mass_data.push_back(inv_mass);
+   data_manager->host_data.active_data.push_back(newbody->IsActive());
+   data_manager->host_data.collide_data.push_back(newbody->GetCollide());
+   data_manager->host_data.mass_data.push_back(inv_mass);
 
-   gpu_data_manager->host_data.lim_data.push_back(
+   data_manager->host_data.lim_data.push_back(
    R3(newbody->GetLimitSpeed(), .05 / GetStep(), .05 / GetStep()));
-   //gpu_data_manager->host_data.pressure_data.push_back(0);
 
    // Let derived classes load specific material surface data
    LoadMaterialSurfaceData(newbody);
 
    counter++;
-   gpu_data_manager->num_bodies = counter;
+   data_manager->num_bodies = counter;
 }
 
-void ChSystemParallel::RemoveBody(
-      ChSharedPtr<ChBody> mbody) {
+void ChSystemParallel::RemoveBody(ChSharedPtr<ChBody> mbody) {
    assert(std::find<std::vector<ChBody *>::iterator>(bodylist.begin(), bodylist.end(), mbody.get_ptr()) != bodylist.end());
 
    // remove from collision system
@@ -226,8 +202,7 @@ void ChSystemParallel::RemoveBody(
    mbody->RemoveRef();
 }
 
-void ChSystemParallel::RemoveBody(
-      int body) {
+void ChSystemParallel::RemoveBody(int body) {
    //assert( std::find<std::vector<ChBody*>::iterator>(bodylist.begin(), bodylist.end(), mbody.get_ptr()) != bodylist.end());
    ChBody *mbody = ((ChBody *) (bodylist[body]));
 
@@ -271,16 +246,16 @@ void ChSystemParallel::UpdateBilaterals() {
          mapping.push_back(ic);
       }
    }
-   gpu_data_manager->num_bilaterals = num_bilaterals;
+   data_manager->num_bilaterals = num_bilaterals;
 
-   gpu_data_manager->host_data.JXYZA_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.JXYZB_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.JUVWA_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.JUVWB_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.residual_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.correction_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.bids_bilateral.resize(num_bilaterals);
-   gpu_data_manager->host_data.gamma_bilateral.resize(num_bilaterals);
+   data_manager->host_data.JXYZA_bilateral.resize(num_bilaterals);
+   data_manager->host_data.JXYZB_bilateral.resize(num_bilaterals);
+   data_manager->host_data.JUVWA_bilateral.resize(num_bilaterals);
+   data_manager->host_data.JUVWB_bilateral.resize(num_bilaterals);
+   data_manager->host_data.residual_bilateral.resize(num_bilaterals);
+   data_manager->host_data.correction_bilateral.resize(num_bilaterals);
+   data_manager->host_data.bids_bilateral.resize(num_bilaterals);
+   data_manager->host_data.gamma_bilateral.resize(num_bilaterals);
 #pragma omp parallel for
    for (int i = 0; i < num_bilaterals; i++) {
       int cntr = mapping[i];
@@ -295,20 +270,21 @@ void ChSystemParallel::UpdateBilaterals() {
       C = R3(mbilateral->Get_Cq_a()->GetElementN(3), mbilateral->Get_Cq_a()->GetElementN(4), mbilateral->Get_Cq_a()->GetElementN(5));     //J1w
       D = R3(mbilateral->Get_Cq_b()->GetElementN(3), mbilateral->Get_Cq_b()->GetElementN(4), mbilateral->Get_Cq_b()->GetElementN(5));     //J2w
 
-      gpu_data_manager->host_data.JXYZA_bilateral[i] = A;
-      gpu_data_manager->host_data.JXYZB_bilateral[i] = B;
-      gpu_data_manager->host_data.JUVWA_bilateral[i] = C;
-      gpu_data_manager->host_data.JUVWB_bilateral[i] = D;
-      gpu_data_manager->host_data.residual_bilateral[i] = mbilateral->Get_b_i();     // b_i is residual b
-      gpu_data_manager->host_data.correction_bilateral[i] = 1.0 / mbilateral->Get_g_i();     // eta = 1/g
-      gpu_data_manager->host_data.bids_bilateral[i] = I2(idA, idB);
-      //gpu_data_manager->host_data.gamma_bilateral[i] = -mbilateral->Get_l_i();
-      //cout<<"gamma "<<gpu_data_manager->host_data.gamma_bilateral[i]<<endl;
-
+      data_manager->host_data.JXYZA_bilateral[i] = A;
+      data_manager->host_data.JXYZB_bilateral[i] = B;
+      data_manager->host_data.JUVWA_bilateral[i] = C;
+      data_manager->host_data.JUVWB_bilateral[i] = D;
+      data_manager->host_data.residual_bilateral[i] = mbilateral->Get_b_i();     // b_i is residual b
+      data_manager->host_data.correction_bilateral[i] = 1.0 / mbilateral->Get_g_i();     // eta = 1/g
+      data_manager->host_data.bids_bilateral[i] = I2(idA, idB);
+      //data_manager->host_data.gamma_bilateral[i] = -mbilateral->Get_l_i();
    }
 }
 
 void ChSystemParallel::RecomputeThreads() {
+   timer_accumulator.insert(timer_accumulator.begin(), timer_step);
+   timer_accumulator.pop_back();
+
    double sum_of_elems = std::accumulate(timer_accumulator.begin(), timer_accumulator.end(), 0.0);
 
    if (frame_threads == 50 && detect_optimal_threads == false) {
@@ -345,11 +321,11 @@ void ChSystemParallel::RecomputeThreads() {
       current_threads = min_threads;
       omp_set_num_threads(min_threads);
    }
+   frame_threads++;
 }
 
-void ChSystemParallel::PerturbBins(
-      bool increase,
-      int number) {
+void ChSystemParallel::PerturbBins(bool increase,
+                                   int number) {
 
    if (increase) {
       int3 grid_size = ((ChCollisionSystemParallel *) (GetCollisionSystem()))->broadphase->getBinsPerAxis();
@@ -389,9 +365,14 @@ void ChSystemParallel::PerturbBins(
 
    }
 
+   frame_bins++;
 }
 
 void ChSystemParallel::RecomputeBins() {
+
+   cd_accumulator.insert(cd_accumulator.begin(), timer_collision);
+   cd_accumulator.pop_back();
+
    double sum_of_elems_cd = std::accumulate(cd_accumulator.begin(), cd_accumulator.end(), 0.0);
 
    //if 0 increase and then measure
@@ -444,8 +425,7 @@ void ChSystemParallel::RecomputeBins() {
 
 }
 
-void ChSystemParallel::ChangeCollisionSystem(
-      ChCollisionSystem *newcollsystem) {
+void ChSystemParallel::ChangeCollisionSystem(ChCollisionSystem *newcollsystem) {
    assert(this->GetNbodies() == 0);
    assert(newcollsystem);
 
@@ -454,9 +434,10 @@ void ChSystemParallel::ChangeCollisionSystem(
    }
    this->collision_system = newcollsystem;
 
-   if (ChCollisionSystemParallel* coll_sys = dynamic_cast<ChCollisionSystemParallel*>(newcollsystem)) {
-      ((ChCollisionSystemParallel *) (collision_system))->data_container = gpu_data_manager;
-   } else if (ChCollisionSystemBulletParallel* coll_sys = dynamic_cast<ChCollisionSystemBulletParallel*>(newcollsystem)) {
-      ((ChCollisionSystemBulletParallel *) (collision_system))->data_container = gpu_data_manager;
+   if (ChCollisionSystemParallel* coll_sys = dynamic_cast<ChCollisionSystemParallel*>(collision_system)) {
+      coll_sys->data_container = data_manager;
+   } else if (ChCollisionSystemBulletParallel* coll_sys = dynamic_cast<ChCollisionSystemBulletParallel*>(collision_system)) {
+      coll_sys->data_container = data_manager;
    }
+
 }

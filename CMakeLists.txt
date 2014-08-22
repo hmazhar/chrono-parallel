@@ -6,8 +6,25 @@ cmake_minimum_required(VERSION 2.8)
 
 project(ChronoEngine_Parallel)
 
+# Policy CMP0046 warning when a dependency does not exist
+# According to a dev from kitware The add_dependencies 
+# command is for inter-target ordering dependencies, not
+# file-level dependencies.
+# This warning appears in Cmake 3.0
+
+if(CMAKE_MAJOR_VERSION EQUAL 3)
+    if(COMMAND cmake_policy)
+      cmake_policy(SET CMP0046 OLD)
+    endif(COMMAND cmake_policy)
+endif(CMAKE_MAJOR_VERSION EQUAL 3)
+
+IF(APPLE)
+  set(CMAKE_MACOSX_RPATH OFF)
+ENDIF()
+
 # Enable CTest
 enable_testing()
+include(CTest)
 
 # Location of additional CMAKE modules
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -53,8 +70,8 @@ ENDIF()
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   # using Clang
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse${SSE_VERSION} -std=c++11")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse${SSE_VERSION} -std=c++11")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -std=c++11")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SSE_FLAGS} -std=c++11")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xsse${SSE_VERSION}")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xsse${SSE_VERSION}")
@@ -175,13 +192,13 @@ ELSEIF(MSVC)
 ENDIF()
 
 IF(MSVC)
-    # Avoid deprecation warnings
     ADD_DEFINITIONS( "-D_CRT_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
     ADD_DEFINITIONS( "-D_SCL_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
-    
-    # Specify a single Build type, so we can import the correct .lib for Chrono
+    SET(CMAKE_CONFIGURATION_TYPES Release CACHE STRING "Choose the type of build.")
+    SET_PROPERTY(CACHE CMAKE_CONFIGURATION_TYPES PROPERTY STRINGS Debug Release)
+ELSE()    
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "For single-configuration generators (e.g. make) set the type of build: Release, Debug, RelWithDebInfo, MinSizeRel")
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Release" "Debug" "RelWithDebInfo" "MinSizeRel")
+    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release MinSizeRel RelWithDebInfo)
 ENDIF()
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -270,7 +287,7 @@ IF(ENABLE_UTILS)
 
   ADD_SUBDIRECTORY(chrono_utils)
   IF(ENABLE_OPENGL)
-    ADD_SUBDIRECTORY(chrono_utils/opengl)
+    ADD_SUBDIRECTORY(chrono_opengl)
   ENDIF()
 
 ENDIF()

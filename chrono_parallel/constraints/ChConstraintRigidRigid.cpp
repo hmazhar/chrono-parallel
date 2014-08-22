@@ -230,7 +230,6 @@ void chrono::Compute_Jacobian(
    T2 = cross(quatRotate(V, quaternion_conjugate), sbar);
    T3 = cross(quatRotate(W, quaternion_conjugate), sbar);
 
-
 //  M33 X =  XMatrix(sbar);
 //  M33 R = AMat(quat);
 //
@@ -281,7 +280,7 @@ void ChConstraintRigidRigid::host_RHS(
       real3 temp = R3(0);
 
       real3 U = norm[index], V, W;
-      Orthogonalize(U, V, W);     //read 3 float
+      Orthogonalize(U, V, W);     //read 3 real
 
       if (isactive.x) {
          real3 omega_b1 = omega[bid.x];
@@ -318,6 +317,59 @@ void ChConstraintRigidRigid::host_RHS(
    }
 }
 
+void ChConstraintRigidRigid::host_ComputeS(
+      int2 *ids,
+      real3 *mu,
+      bool2 * active,
+      real3* norm,
+      real3 *vel,
+      real3 *omega,
+      real3 *ptA,
+      real3 *ptB,
+      real4 *rot,
+      const real *rhs,
+      real*b) {
+
+#pragma omp parallel for
+   for (int index = 0; index < num_contacts; index++) {
+
+      int2 bid = ids[index];
+      bool2 isactive = active[index];
+
+      real3 temp = R3(0);
+
+      real3 U = norm[index], V, W;
+      Orthogonalize(U, V, W);     //read 3 real
+
+      if (isactive.x) {
+         real3 omega_b1 = omega[bid.x];
+         real3 vel_b1 = vel[bid.x];
+         real3 T3, T4, T5;
+         Compute_Jacobian(rot[index], U, V, W, ptA[index], T3, T4, T5);
+         temp.x = dot(-U, vel_b1) + dot(T3, omega_b1);
+         temp.y = dot(-V, vel_b1) + dot(T4, omega_b1);
+         temp.z = dot(-W, vel_b1) + dot(T5, omega_b1);
+      }
+      if (isactive.y) {
+         real3 omega_b2 = omega[bid.y];
+         real3 vel_b2 = vel[bid.y];
+         real3 T6, T7, T8;
+         Compute_Jacobian(rot[index + num_contacts], U, V, W, ptB[index], T6, T7, T8);
+         temp.x += dot(U, vel_b2) + dot(-T6, omega_b2);
+         temp.y += dot(V, vel_b2) + dot(-T7, omega_b2);
+         temp.z += dot(W, vel_b2) + dot(-T8, omega_b2);
+      }
+      real3 f_a = mu[bid.x];
+      real3 f_b = mu[bid.y];
+
+      real fric = (f_a.x == 0 || f_b.x == 0) ? 0 : (f_a.x + f_b.x) * .5;
+      real s = sqrt(temp.y * temp.y + temp.z * temp.z) * fric;
+      b[_index_ + 0] = rhs[_index_ + 0] - s;
+      //cout<<"here: "<<s<<endl;
+
+   }
+}
+
 void ChConstraintRigidRigid::host_RHS_spinning(
       int2 *ids,
       bool2 * active,
@@ -335,7 +387,7 @@ void ChConstraintRigidRigid::host_RHS_spinning(
       if (solve_spinning) {
 
          real3 U = norm[index], V, W;
-         Orthogonalize(U, V, W);     //read 3 float
+         Orthogonalize(U, V, W);     //read 3 real
 
          if (isactive.x) {
 
@@ -405,6 +457,18 @@ void ChConstraintRigidRigid::UpdateRHS() {
                      data_container->host_data.norm_rigid_rigid.data(), contact_rotation.data(), data_container->host_data.rhs_data.data());
 }
 
+void ChConstraintRigidRigid::ComputeS(
+      const custom_vector<real>& rhs,
+      custom_vector<real3>& vel_data,
+      custom_vector<real3>& omg_data,
+      custom_vector<real>& b) {
+   if (solve_sliding) {
+      host_ComputeS(data_container->host_data.bids_rigid_rigid.data(), data_container->host_data.fric_data.data(), contact_active_pairs.data(),
+                    data_container->host_data.norm_rigid_rigid.data(), vel_data.data(), omg_data.data(), data_container->host_data.cpta_rigid_rigid.data(),
+                    data_container->host_data.cptb_rigid_rigid.data(), contact_rotation.data(), rhs.data(), b.data());
+   }
+
+}
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -532,7 +596,11 @@ void ChConstraintRigidRigid::host_shurA_sliding(
 #pragma omp parallel for
 #endif
    for (int index = 0; index < num_contacts; index++) {
+#ifndef DISABLE_SSE
       real3 gam(_mm_loadu_ps(&gamma[_index_]));
+#else
+      real3 gam(gamma[_index_+0], gamma[_index_+1], gamma[_index_+2]);
+#endif
       real3 U = norm[index], V, W;
       Orthogonalize(U, V, W);
       bool2 active = contact_active[index];
@@ -563,8 +631,11 @@ void ChConstraintRigidRigid::host_shurA_spinning(
       real3 * updateO) {
 #pragma omp parallel for
    for (int index = 0; index < num_contacts; index++) {
-
+#ifndef DISABLE_SSE
       real3 gam(_mm_loadu_ps(&gamma[_index_]));
+#else
+      real3 gam(gamma[_index_+0], gamma[_index_+1], gamma[_index_+2]);
+#endif
       real3 gam_roll(gamma[_index_ + 3], gamma[_index_ + 4], gamma[_index_ + 5]);
 
       real3 U = norm[index], V, W;
@@ -684,7 +755,11 @@ void ChConstraintRigidRigid::host_shurB_sliding(
       }
 
       real4 comp = compliance[index];
+#ifndef DISABLE_SSE
       real3 gam(_mm_loadu_ps(&gamma[_index_]));
+#else
+      real3 gam(gamma[_index_+0], gamma[_index_+1], gamma[_index_+2]);
+#endif
       //temp += (alpha) ? gam * real3(comp.x,comp.y,comp.y) : 0;
 
       AX[_index_ + 0] = temp.x;

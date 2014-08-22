@@ -2,41 +2,48 @@
 
 using namespace chrono;
 
+ChSolverParallel::ChSolverParallel() {
+   tolerance = 1e-6;
+   max_iteration = 100;
+   total_iteration = 0;
+   current_iteration = 0;
+   collision_inside = false;
+   rigid_rigid = NULL;
+   bilateral = NULL;
+   update_rhs = false;
+   verbose = false;
+}
+ChSolverParallel::~ChSolverParallel() {
+
+}
 void ChSolverParallel::Setup(ChParallelDataManager *data_container_) {
-  data_container = data_container_;
-  Initialize();
+   data_container = data_container_;
+   Initialize();
 
-   //APGD specific
-   step_shrink = .9;
-   step_grow = 2.0;
-   init_theta_k = 1.0;
-
-  // Ensure that the size of the data structures is equal to the current number
-  // of rigid bodies. New bodies could have been added in between time steps.
-  data_container->host_data.QXYZ_data.resize(num_bodies);
-  data_container->host_data.QUVW_data.resize(num_bodies);
+   // Ensure that the size of the data structures is equal to the current number
+   // of rigid bodies. New bodies could have been added in between time steps.
+   data_container->host_data.QXYZ_data.resize(num_bodies);
+   data_container->host_data.QUVW_data.resize(num_bodies);
 
 #pragma omp parallel for
-  for (int i = 0; i < num_bodies; i++) {
-    data_container->host_data.QXYZ_data[i] = R3(0);
-    data_container->host_data.QUVW_data[i] = R3(0);
-  }
+   for (int i = 0; i < num_bodies; i++) {
+      data_container->host_data.QXYZ_data[i] = R3(0);
+      data_container->host_data.QUVW_data[i] = R3(0);
+   }
 #pragma omp parallel for
-  for (int i = 0; i < num_constraints; i++) {
-    data_container->host_data.gamma_data[i] = 0;
-  }
+   for (int i = 0; i < num_constraints; i++) {
+      data_container->host_data.gamma_data[i] = 0;
+   }
 }
 
-void ChSolverParallel::Project(
-      real* gamma) {
+void ChSolverParallel::Project(real* gamma) {
    data_container->system_timer.start("ChSolverParallel_Project");
    rigid_rigid->Project(gamma);
    data_container->system_timer.stop("ChSolverParallel_Project");
 }
 //=================================================================================================================================
 
-void ChSolverParallel::shurA(
-      real* x) {
+void ChSolverParallel::shurA(real* x) {
 
 #pragma omp parallel for
    for (int i = 0; i < num_bodies; i++) {
@@ -53,13 +60,23 @@ void ChSolverParallel::shurA(
 }
 //=================================================================================================================================
 
-void ChSolverParallel::shurB(
-      real*x,
-      real*out) {
+void ChSolverParallel::shurB(real*x,
+                             real*out) {
    if (rigid_rigid) {
       rigid_rigid->ShurB(x, out);
    }
    bilateral->ShurB(x, out);
+
+}
+
+void ChSolverParallel::ComputeSRhs(
+                                   custom_vector<real>& gamma,
+                                   const custom_vector<real>& rhs,
+                                   custom_vector<real3>& vel_data,
+                                   custom_vector<real3>& omg_data,
+                                   custom_vector<real>& b) {
+   ComputeImpulses(gamma, vel_data, omg_data);
+   rigid_rigid->ComputeS(rhs, vel_data, omg_data, b);
 
 }
 
@@ -70,9 +87,18 @@ void ChSolverParallel::ComputeImpulses() {
 
 }
 
+void ChSolverParallel::ComputeImpulses(
+                                       custom_vector<real>& gamma,
+                                       custom_vector<real3>& vel_data,
+                                       custom_vector<real3>& omg_data) {
+   //shurA(gamma.data());
+   vel_data = data_container->host_data.vel_data + data_container->host_data.QXYZ_data;
+   omg_data = data_container->host_data.omg_data + data_container->host_data.QUVW_data;
+}
+
 void ChSolverParallel::ShurProduct(
-      custom_vector<real> &x,
-      custom_vector<real> & output) {
+                                   custom_vector<real> &x,
+                                   custom_vector<real> & output) {
 
    data_container->system_timer.start("ChSolverParallel_shurA");
    shurA(x.data());
@@ -85,14 +111,14 @@ void ChSolverParallel::ShurProduct(
 }
 //=================================================================================================================================
 void ChSolverParallel::ShurBilaterals(
-      custom_vector<real> &x,
-      custom_vector<real> & AX) {
+                                      custom_vector<real> &x,
+                                      custom_vector<real> & AX) {
    bilateral->ShurBilaterals(x, AX);
 }
 //=================================================================================================================================
 
 void ChSolverParallel::UpdatePosition(
-      custom_vector<real> &x) {
+custom_vector<real> &x) {
 
    if (rigid_rigid->solve_sliding == true || rigid_rigid->solve_spinning == true) {
       return;
@@ -138,68 +164,72 @@ void ChSolverParallel::UpdateContacts() {
    rigid_rigid->UpdateRHS();
 
 }
+//
+//void ChSolverParallel::Solve(
+//      GPUSOLVERTYPE solver_type
+//                             ) {
+////
+////   if (num_constraints > 0) {
+////      if (solver_type == STEEPEST_DESCENT) {
+////         total_iteration += SolveSD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == GRADIENT_DESCENT) {
+////         total_iteration += SolveGD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == CONJUGATE_GRADIENT) {
+////         total_iteration += SolveCG(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == CONJUGATE_GRADIENT_SQUARED) {
+////         total_iteration += SolveCGS(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == BICONJUGATE_GRADIENT) {
+////         total_iteration += SolveBiCG(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == BICONJUGATE_GRADIENT_STAB) {
+////         total_iteration += SolveBiCGStab(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == MINIMUM_RESIDUAL) {
+////         total_iteration += SolveMinRes(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////      } else if (solver_type == QUASAI_MINIMUM_RESIDUAL) {
+////         // This solver has not been implemented yet
+////         //SolveQMR(data_container->gpu_data.device_gam_data, rhs, max_iteration);
+////      } else if (solver_type == APGD || solver_type == APGDRS) {
+////         if (do_stab) {
+////            custom_vector<real> rhs_bilateral(data_container->num_bilaterals);
+////            thrust::copy_n(data_container->host_data.rhs_data.begin() + data_container->num_unilaterals, data_container->num_bilaterals, rhs_bilateral.begin());
+////
+////            for (int i = 0; i < 4; i++) {
+////               total_iteration += SolveAPGDRS(max_iteration / 8, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////
+////               thrust::copy_n(data_container->host_data.gamma_data.begin() + data_container->num_unilaterals, data_container->num_bilaterals,
+////                              data_container->host_data.gamma_bilateral.begin());
+////
+////               SolveStab(5, num_bilaterals, rhs_bilateral, data_container->host_data.gamma_bilateral);
+////
+////               thrust::copy_n(data_container->host_data.gamma_bilateral.begin(), data_container->num_bilaterals,
+////                              data_container->host_data.gamma_data.begin() + data_container->num_unilaterals);
+////
+////               total_iteration += SolveAPGDRS(max_iteration / 8, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////            }
+////         } else {
+////            if (solver_type == APGD) {
+////               total_iteration += SolveAPGD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////            } else {
+////               total_iteration += SolveAPGDRS(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+////            }
+////
+////         }
+////      } else if (solver_type == BLOCK_JACOBI) {
+////         //SolveJacobi();
+////      }
+////      //		thrust::copy_n(
+////      //				data_container->host_data.gamma_data.begin() + data_container->num_contacts * 3,
+////      //				data_container->num_bilaterals,
+////      //				data_container->host_data.gamma_bilateral.begin());
+////
+////      current_iteration = total_iteration;
+////
+////   }
+//}
 
-void ChSolverParallel::Solve(
-      GPUSOLVERTYPE solver_type) {
-
-   if (num_constraints > 0) {
-      if (solver_type == STEEPEST_DESCENT) {
-         total_iteration += SolveSD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == GRADIENT_DESCENT) {
-         total_iteration += SolveGD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == CONJUGATE_GRADIENT) {
-         total_iteration += SolveCG(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == CONJUGATE_GRADIENT_SQUARED) {
-         total_iteration += SolveCGS(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == BICONJUGATE_GRADIENT) {
-         total_iteration += SolveBiCG(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == BICONJUGATE_GRADIENT_STAB) {
-         total_iteration += SolveBiCGStab(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == MINIMUM_RESIDUAL) {
-         total_iteration += SolveMinRes(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      } else if (solver_type == QUASAI_MINIMUM_RESIDUAL) {
-         // This solver has not been implemented yet
-         //SolveQMR(data_container->gpu_data.device_gam_data, rhs, max_iteration);
-      } else if (solver_type == ACCELERATED_PROJECTED_GRADIENT_DESCENT || solver_type == APGDRS) {
-         if (do_stab) {
-            custom_vector<real> rhs_bilateral(data_container->num_bilaterals);
-            thrust::copy_n(data_container->host_data.rhs_data.begin() + data_container->num_unilaterals, data_container->num_bilaterals, rhs_bilateral.begin());
-
-            for (int i = 0; i < 4; i++) {
-               total_iteration += SolveAPGDRS(max_iteration/8, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-
-               thrust::copy_n(data_container->host_data.gamma_data.begin() + data_container->num_unilaterals, data_container->num_bilaterals,
-                              data_container->host_data.gamma_bilateral.begin());
-
-               SolveStab(5, num_bilaterals,rhs_bilateral,data_container->host_data.gamma_bilateral);
-
-               thrust::copy_n(data_container->host_data.gamma_bilateral.begin(), data_container->num_bilaterals,
-                              data_container->host_data.gamma_data.begin() + data_container->num_unilaterals);
-
-               total_iteration += SolveAPGDRS(max_iteration/8, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-            }
-         } else {
-            if (solver_type == ACCELERATED_PROJECTED_GRADIENT_DESCENT) {
-               total_iteration += SolveAPGD(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-            } else {
-               total_iteration += SolveAPGDRS(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-            }
-
-         }
-      } else if (solver_type == BLOCK_JACOBI) {
-         //SolveJacobi();
-      }
-      //		thrust::copy_n(
-      //				data_container->host_data.gamma_data.begin() + data_container->num_contacts * 3,
-      //				data_container->num_bilaterals,
-      //				data_container->host_data.gamma_bilateral.begin());
-
-      current_iteration = total_iteration;
-
-   }
-}
-
-uint ChSolverParallel::SolveStab(const uint max_iter,const uint size,const custom_vector<real> &mb,custom_vector<real> &x) {
+uint ChSolverParallel::SolveStab(const uint max_iter,
+                                 const uint size,
+                                 const custom_vector<real> &mb,
+                                 custom_vector<real> &x) {
    uint N = mb.size();
    //	bool verbose = false;
    //	custom_vector<real> mr(N, 0), ml(N,0), mp(N,0), mz(N,0), mNMr(N,0), mNp(N,0), mMNp(N,0), mtmp(N,0);
@@ -320,7 +350,7 @@ uint ChSolverParallel::SolveStab(const uint max_iter,const uint size,const custo
       residual = norm_rMR / norm_r0;
 
       real maxdeltalambda = CompRes(mb, num_contacts);      //NormInf(ms);
-      AtIterationEnd(residual, maxdeltalambda, iter_hist.size()+current_iteration);
+      AtIterationEnd(residual, maxdeltalambda, iter_hist.size() + current_iteration);
 
       if (residual < tolerance) {
          break;

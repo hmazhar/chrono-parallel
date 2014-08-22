@@ -133,7 +133,7 @@ void WriteBodies(ChSystem*          system,
 
 // Create a CSV file with a checkpoint...
 CH_UTILS_API
-void WriteCheckpoint(ChSystem*          system,
+bool WriteCheckpoint(ChSystem*          system,
                      const std::string& filename);
 
 // Read a CSV file with a checkpoint...
@@ -152,11 +152,13 @@ void WriteShapesPovray(ChSystem*          system,
                        const std::string& delim = ",");
 
 // Write the triangular mesh from the specified OBJ file as a macro in a PovRay
-// include file.
+// include file. The output file will be "[out_dir]/[mesh_name].inc". The mesh
+// vertices will be tranformed to the frame with specified offset and
+// orientation.
 CH_UTILS_API
 void WriteMeshPovray(const std::string&    obj_filename,
-                     const std::string&    name,
-                     const std::string&    pov_filename,
+                     const std::string&    mesh_name,
+                     const std::string&    out_dir,
                      const ChVector<>&     pos = ChVector<>(0,0,0),
                      const ChQuaternion<>& rot = ChQuaternion<>(1,0,0,0));
 
