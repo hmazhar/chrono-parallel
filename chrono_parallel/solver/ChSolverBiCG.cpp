@@ -1,52 +1,74 @@
-#include "ChSolverParallel.h"
+#include "ChSolverBiCG.h"
 
 using namespace chrono;
 
-uint ChSolverParallel::SolveBiCG(const uint max_iter,const uint size,const custom_vector<real> &b,custom_vector<real> &x) {
-	real rho_1, rho_2, alpha, beta;
-	custom_vector<real> z, ztilde, p, ptilde, q(size), qtilde(size),r(size);
-	real normb = Norm(b);
-	ShurProduct(x,r);
-	r= b - r;
+uint ChSolverBiCG::SolveBiCG(const uint max_iter,
+                             const uint size,
+                             const custom_vector<real> &b,
+                             custom_vector<real> &x) {
+   ml.resize(size);
+   mb.resize(size);
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      ml[i] = x[i];
+      mb[i] = b[i];
+   }
 
-	custom_vector<real> rtilde = r;
+   q.resize(size), qtilde.resize(size), r.resize(size);
+   real normb = std::sqrt((mb, mb));
+   r = data_container->host_data.Nshur * ml;
+   r = mb - r;
 
-	if (normb == 0.0) {normb = 1;}
+   rtilde = r;
 
-	if ((residual = Norm(r) / normb) <= tolerance) {
-		return 0;
-	}
+   if (normb == 0.0) {
+      normb = 1;
+   }
 
-	for (current_iteration = 0; current_iteration <= max_iter; current_iteration++) {
-		z = (r);
-		ztilde = (rtilde);
-		rho_1 = Dot(z, rtilde);
+   if ((residual = std::sqrt((r, r)) / normb) <= tolerance) {
+      return 0;
+   }
 
-		if (rho_1 == 0) {
-			break;
-		}
+   for (current_iteration = 0; current_iteration <= max_iter; current_iteration++) {
+      z = (r);
+      ztilde = rtilde;
+      rho_1 = (z, rtilde);
 
-		if (current_iteration == 0) {
-			p = z;
-			ptilde = ztilde;
-		} else {
-			beta = rho_1 / rho_2;
-			p = z + beta * p;
-			ptilde = ztilde + beta * ptilde;
-		}
+      if (rho_1 == 0) {
+         break;
+      }
 
-		ShurProduct(p,q);
-		ShurProduct(ptilde,qtilde);
-		alpha = rho_1 / Dot(ptilde, q);
-		x = x + alpha * p;
-		r = r - alpha * q;
-		rtilde = rtilde - alpha * qtilde;
-		rho_2 = rho_1;
-		residual = Norm(r) / normb;
+      if (current_iteration == 0) {
+         p = z;
+         ptilde = ztilde;
+      } else {
+         beta = rho_1 / rho_2;
+         p = z + beta * p;
+         ptilde = ztilde + beta * ptilde;
+      }
 
-		if (residual < tolerance) {break;}
-	}
+      q = data_container->host_data.Nshur * p;
+      qtilde = data_container->host_data.Nshur * ptilde;
 
-	return current_iteration;
+      alpha = rho_1 / Dot(ptilde, q);
+      ml = ml + alpha * p;
+      r = r - alpha * q;
+      rtilde = rtilde - alpha * qtilde;
+      rho_2 = rho_1;
+      residual = sqrt((r, r)) / normb;
+
+      objective_value = GetObjectiveBlaze(ml, mb);
+      AtIterationEnd(residual, objective_value, iter_hist.size());
+
+      if (residual < tolerance) {
+         break;
+      }
+
+   }
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      x[i] = ml[i];
+   }
+   return current_iteration;
 
 }

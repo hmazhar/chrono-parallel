@@ -22,7 +22,7 @@
 #include "chrono_utils/ChUtilsCreators.h"
 #include "chrono_utils/ChUtilsGenerators.h"
 
-#include "chrono_utils/opengl/ChOpenGLWindow.h"
+#include "chrono_opengl/ChOpenGLWindow.h"
 
 using namespace chrono;
 using namespace geometry;
@@ -62,7 +62,7 @@ int main(
    msystem.DoFullAssembly();
    // Render everything
    // ----------------------------------
-   utils::ChOpenGLWindow &gl_window = utils::ChOpenGLWindow::getInstance();
+   opengl::ChOpenGLWindow &gl_window = opengl::ChOpenGLWindow::getInstance();
    gl_window.Initialize(1280, 720, "benchmarkOpenGL", &msystem);
    gl_window.SetCamera(ChVector<>(0, -100, 0), ChVector<>(0, 0, 0), ChVector<>(0, 0, 1));
    while (gl_window.Active()) {

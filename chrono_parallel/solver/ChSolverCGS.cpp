@@ -1,51 +1,80 @@
-#include "ChSolverParallel.h"
+#include "ChSolverCGS.h"
 
 using namespace chrono;
 
+uint ChSolverCGS::SolveCGS(const uint max_iter,
+                           const uint size,
+                           const custom_vector<real> &b,
+                           custom_vector<real> &x) {
 
-uint ChSolverParallel::SolveCGS(const uint max_iter,const uint size,const custom_vector<real> &b,custom_vector<real> &x) {
-	real rho_1, rho_2, alpha, beta;
-	custom_vector<real> r(size);
-	ShurProduct(x,r);
-	r= b - r;
-		custom_vector<real> p = r, phat, q = r, qhat(size), vhat(size), u = r, uhat(size);
-		real normb = Norm(b);
-		custom_vector<real> rtilde = r;
+   r.resize(size);
+   qhat.resize(size);
+   vhat.resize(size);
+   uhat.resize(size);
+   ml.resize(size);
+   mb.resize(size);
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      ml[i] = x[i];
+      mb[i] = b[i];
+   }
 
-		if (normb == 0.0) {normb = 1;}
+   r = data_container->host_data.Nshur * ml;
+   r = mb - r;
+   p = r;
+   q = r;
 
-		if ((Norm(r) / normb) <= tolerance) {return 0;}
+   u = r;
 
-		for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
-			rho_1 = Dot(rtilde, r);
+   real normb = sqrt((mb, mb));
+   rtilde = r;
 
-			if (rho_1 == 0) {break;}
+   if (normb == 0.0) {
+      normb = 1;
+   }
 
-			if (current_iteration > 0) {
-				beta = rho_1 / rho_2;
-				#pragma omp parallel for schedule(guided)
+   if ((sqrt((r, r)) / normb) <= tolerance) {
+      return 0;
+   }
 
-				for (int i = 0; i < size; i++) {
-					u[i] = r[i] + beta * q[i]; //u = r + beta * q;
-					p[i] = u[i] + beta * (q[i] + beta * p[i]); //p = u + beta * (q + beta * p);
-				}
-			}
+   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
+      rho_1 = Dot(rtilde, r);
 
-			phat = p;
-			ShurProduct(phat,vhat);
-			alpha = rho_1 / Dot(rtilde, vhat);
-			SEAXPY(-alpha, vhat, u, q); //q = u - alpha * vhat;
-			uhat = (u + q);
-			SEAXPY(alpha, uhat, x, x);  //x = x + alpha * uhat;
-			ShurProduct(uhat,qhat);
-			SEAXPY(-alpha, qhat, r, r); //r = r - alpha * qhat;
-			rho_2 = rho_1;
-			residual = (Norm(r) / normb);
+      if (rho_1 == 0) {
+         break;
+      }
 
-			if (residual < tolerance) {
-				break;
-			}
-		}
-		Project(x.data());
-		return current_iteration;
+      if (current_iteration > 0) {
+         beta = rho_1 / rho_2;
+
+         u = r + beta * q;
+         p = u + beta * (q + beta * p);
+      }
+
+      phat = p;
+      vhat = data_container->host_data.Nshur * phat;
+      alpha = rho_1 / Dot(rtilde, vhat);
+      q = u - alpha * vhat;
+      uhat = (u + q);
+      ml = ml + alpha * uhat;
+      qhat = data_container->host_data.Nshur * uhat;
+      r = r - alpha * qhat;
+      rho_2 = rho_1;
+      residual = (sqrt((r, r)) / normb);
+
+      objective_value = GetObjectiveBlaze(ml, mb);
+      AtIterationEnd(residual, objective_value, iter_hist.size());
+
+      if (residual < tolerance) {
+         break;
+      }
+   }
+   Project(ml.data());
+
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      x[i] = ml[i];
+   }
+
+   return current_iteration;
 }

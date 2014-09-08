@@ -8,6 +8,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}
 SET(LIBRARIES
     ${CHRONO_LIB}
     ChronoEngine_Parallel
+    ChronoEngine_Utils
 )
 
 #--------------------------------------------------------------
@@ -49,12 +50,15 @@ SET(TESTS
     test_real3
     test_real4
     test_mat33
-    test_mpr
     test_gravity
     test_jacobians
+    test_rhs
+    test_r
+    test_apgd
+    test_shur_performance
 )
 
-MESSAGE(STATUS "Executable programs...")
+MESSAGE(STATUS "Unit test programs...")
 
 FOREACH(PROGRAM ${TESTS})
     MESSAGE(STATUS "...add ${PROGRAM}")
@@ -76,3 +80,57 @@ FOREACH(PROGRAM ${TESTS})
 
 ENDFOREACH(PROGRAM)
 
+#--------------------------------------------------------------
+# Executables that use Bullet
+
+SET(TESTS_B
+    test_mpr
+)
+
+# Because Bullet classes are not DLL exported, the sources must be explicitly
+# included.
+IF (MSVC)
+  SET(BULLET_FILES
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/LinearMath/btAlignedAllocator.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/LinearMath/btAlignedAllocator.cpp
+  )
+  SOURCE_GROUP(bullet FILES ${BULLET_FILES})
+ELSE()
+    SET(BULLET_FILES "")
+ENDIF()
+
+FOREACH(PROGRAM ${TESTS_B})
+    MESSAGE(STATUS "...add ${PROGRAM}")
+
+    ADD_EXECUTABLE(${PROGRAM}  ${PROGRAM}.cpp ${BULLET_FILES})
+    SOURCE_GROUP(""  FILES "${PROGRAM}.cpp")
+
+    SET_TARGET_PROPERTIES(${PROGRAM} PROPERTIES
+        FOLDER demos
+        COMPILE_FLAGS "${CH_BUILDFLAGS}"
+        LINK_FLAGS "${CH_LINKERFLAG_EXE}"
+    )
+
+    TARGET_LINK_LIBRARIES(${PROGRAM} ${LIBRARIES})
+    ADD_DEPENDENCIES(${PROGRAM} ${LIBRARIES})
+
+    INSTALL(TARGETS ${PROGRAM} DESTINATION bin)
+    ADD_TEST(${PROGRAM} ${PROJECT_BINARY_DIR}/bin/${PROGRAM})
+
+ENDFOREACH(PROGRAM)

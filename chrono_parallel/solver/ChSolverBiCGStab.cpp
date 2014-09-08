@@ -1,53 +1,79 @@
-#include "ChSolverParallel.h"
+#include "ChSolverBiCGStab.h"
 
 using namespace chrono;
 
-uint ChSolverParallel::SolveBiCGStab(const uint max_iter,const uint size,const custom_vector<real> &b,custom_vector<real> &x) {
-	real rho_1, rho_2, alpha = 1, beta, omega = 1;
-	custom_vector<real> p, r(size), phat, s, shat, t(size), v(size);
-	real normb = Norm(b);
+uint ChSolverBiCGStab::SolveBiCGStab(const uint max_iter,
+                                     const uint size,
+                                     const custom_vector<real> &b,
+                                     custom_vector<real> &x) {
+   real rho_1, rho_2, alpha = 1, beta, omega = 1;
+   ml.resize(size);
+   mb.resize(size);
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      ml[i] = x[i];
+      mb[i] = b[i];
+   }
 
-	ShurProduct(x,r);
-	p = r = b - r;
-	custom_vector<real> rtilde = r;
+   r.resize(size);
+   t.resize(size);
+   v.resize(size);
+   real normb = sqrt((mb, mb));
 
-	if (normb == 0.0) {normb = 1;}
+   r = data_container->host_data.Nshur * ml;
+   p = r = mb - r;
+   rtilde = r;
 
-	if ((residual = Norm(r) / normb) <= tolerance) {return 0;}
+   if (normb == 0.0) {
+      normb = 1;
+   }
 
-	for (current_iteration = 0; current_iteration <= max_iter; current_iteration++) {
-		rho_1 = Dot(rtilde, r);
+   if ((residual = sqrt((r, r)) / normb) <= tolerance) {
+      return 0;
+   }
 
-		if (rho_1 == 0) {break;}
+   for (current_iteration = 0; current_iteration <= max_iter; current_iteration++) {
+      rho_1 = Dot(rtilde, r);
 
-		if (current_iteration > 0) {
-			beta = (rho_1 / rho_2) * (alpha / omega);
-			p = r + beta * (p - omega * v);
-		}
+      if (rho_1 == 0) {
+         break;
+      }
 
-		phat = p;
-		ShurProduct(phat,v);
-		alpha = rho_1 / Dot(rtilde, v);
-		s = r - alpha * v; //SEAXPY(-alpha,v,r,s);//
-		residual = Norm(s) / normb;
+      if (current_iteration > 0) {
+         beta = (rho_1 / rho_2) * (alpha / omega);
+         p = r + beta * (p - omega * v);
+      }
 
-		if (residual < tolerance) {
+      phat = p;
+      v = data_container->host_data.Nshur * phat;
+      alpha = rho_1 / Dot(rtilde, v);
+      s = r - alpha * v;  //SEAXPY(-alpha,v,r,s);//
+      residual = sqrt((s, s)) / normb;
 
-			SEAXPY(alpha, phat, x, x); //x = x + alpha * phat;
-			break;
-		}
+      if (residual < tolerance) {
 
-		shat = s;
-		ShurProduct(shat,t);
-		omega = Dot(t, s) / Dot(t, t);
-		SEAXPY(alpha, phat, x, x);
-		SEAXPY(omega, shat, x, x); //x = x + alpha * phat + omega * shat;
-		SEAXPY(-omega, t, s, r);//r = s - omega * t;
-		rho_2 = rho_1;
-		residual = Norm(r) / normb;
+         ml = ml + alpha * phat;
+         break;
+      }
 
-		if (residual < tolerance || omega == 0) {break;}
-	}
+      shat = s;
+      t = data_container->host_data.Nshur * shat;
+      omega = Dot(t, s) / Dot(t, t);
+      ml = ml + alpha * phat + omega * shat;
+      r = s - omega * t;
+      rho_2 = rho_1;
+      residual = Norm(r) / normb;
 
-	return current_iteration;
+      objective_value = GetObjectiveBlaze(ml, mb);
+      AtIterationEnd(residual, objective_value, iter_hist.size());
+
+      if (residual < tolerance || omega == 0) {
+         break;
+      }
+   }
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      x[i] = ml[i];
+   }
+   return current_iteration;
 }

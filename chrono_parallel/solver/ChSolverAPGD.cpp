@@ -1,8 +1,8 @@
-#include "ChSolverParallel.h"
+#include "ChSolverAPGD.h"
 
 using namespace chrono;
 
-void ChSolverParallel::SetAPGDParams(
+void ChSolverAPGD::SetAPGDParams(
       real theta_k,
       real shrink,
       real grow) {
@@ -12,7 +12,7 @@ void ChSolverParallel::SetAPGDParams(
 
 }
 
-real ChSolverParallel::Res4(
+real ChSolverAPGD::Res4(
       const int SIZE,
       real* mg_tmp,
       const real* b,
@@ -41,7 +41,7 @@ real ChSolverParallel::Res4(
    return sqrt(sum);
 
 }
-uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custom_vector<real> &b,custom_vector<real> &x) {
+uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_vector<real> &b,custom_vector<real> &x) {
    ms.resize(size);
    mg_tmp2.resize(size);
    mb_tmp.resize(size);
@@ -54,10 +54,10 @@ uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custo
 
    bool verbose = false;
    real lastgoodres = 10e30;
-   real theta_k = init_theta_k;
-   real theta_k1 = theta_k;
+   real theta_k = 1.0;
+   real theta_k1 = 0;
    real beta_k1 = 0.0;
-   //custom_vector<real> x_initial =x;
+
 
    ml = x;
 
@@ -86,7 +86,7 @@ uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custo
 
    real t_k = 1.0 / L_k;
    if (verbose)
-      cout << "L_k:" << L_k << " t_k:" << -t_k << "\n";
+      std::cout << "L_k:" << L_k << " t_k:" << -t_k << "\n";
    my = ml;
    mx = ml;
 
@@ -106,7 +106,7 @@ uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custo
       obj2 = Dot(my, ms);
       Sub(ms, mx, my);     //ms = mx - my;
       //cout<<obj1<<" "<<obj2<<endl;
-      while (obj1 > obj2 + Dot(mg, ms) + 0.5 * L_k * powf(Norm(ms), 2.0)) {
+      while (obj1 > obj2 + Dot(mg, ms) + 0.5 * L_k * pow(Norm(ms), real(2.0))) {
          L_k = step_grow * L_k;
          t_k = 1.0 / L_k;
          SEAXPY(-t_k, mg, my, mx);     // mx = my + mg*(t_k);
@@ -165,9 +165,9 @@ uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custo
          real resid_bilat = -1;
 
          for (int i = num_unilaterals; i < x.size(); i++) {
-            resid_bilat = max(resid_bilat, fabs(mg_tmp2[i]));
+            resid_bilat = std::max(resid_bilat, std::abs(mg_tmp2[i]));
          }
-         g_proj_norm = max(g_proj_norm, resid_bilat);
+         g_proj_norm = std::max(g_proj_norm, resid_bilat);
          //cout<<resid_bilat<<endl;
       }
 
@@ -177,9 +177,9 @@ uint ChSolverParallel::SolveAPGD(const uint max_iter,const uint size,const custo
       }
 
       residual = lastgoodres;
-      real maxdeltalambda = CompRes(b, num_contacts);     //NormInf(ms);
+      objective_value = CompRes(b, num_contacts);     //NormInf(ms);
 
-      AtIterationEnd(residual, maxdeltalambda, iter_hist.size()+current_iteration);
+      AtIterationEnd(residual, objective_value, iter_hist.size());
       //custom_vector<real> error = (x_initial-x)/x;
       //x_initial = x;
 
