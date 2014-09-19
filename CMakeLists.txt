@@ -32,52 +32,86 @@ SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # ------------------------------------------------------------------------------
 # User-specified for optional modules
 # ------------------------------------------------------------------------------
-SET(ENABLE_UTILS  TRUE  CACHE BOOL "Build the ChronoParallel_Utils library") 
-SET(ENABLE_TESTS  FALSE CACHE BOOL "Build test programs")
-SET(ENABLE_UNIT_TESTING  FALSE CACHE BOOL "Build unit tests")
-SET(ENABLE_DEMOS  FALSE CACHE BOOL "Build demo programs")
+INCLUDE(CMakeDependentOption)
 
-# ------------------------------------------------------------------------------
-# Required Chrono library and headers
-# ------------------------------------------------------------------------------
-SET(CHRONO_INC       ""   CACHE PATH "Location of the Chrono headers")
-SET(CHRONO_LIB_PATH  ""   CACHE PATH "Location of the ChronoEngine library")
+OPTION(BUILD_UTILS "Build the ChronoEngine_Utils library" ON)
+OPTION(BUILD_OPENGL "Build the ChronoEngine_OpenGL library" ON)
+
+# If building the ChronoEngine_Utils library, provide an option to build demo
+# programs (default ON). Otherwise, do not build demo programs.
+CMAKE_DEPENDENT_OPTION(BUILD_DEMOS "Build demo programs" ON "BUILD_UTILS" OFF)
 
 # ------------------------------------------------------------------------------
 # Specify output locations for libraries and executables
+# Set the build type depending on the platform
 # ------------------------------------------------------------------------------
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 IF (MSVC OR XCODE_VERSION)
   SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+  SET(CMAKE_CONFIGURATION_TYPES Release CACHE STRING "Choose the type of build.")
+  mark_as_advanced(FORCE CMAKE_BUILD_TYPE)
+  mark_as_advanced(CLEAR CMAKE_CONFIGURATION_TYPES)
+ELSE()
+    SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build.")
+    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release MinSizeRel RelWithDebInfo)
 ENDIF()
 
 # ------------------------------------------------------------------------------
 # Figure out SSE level support
 # ------------------------------------------------------------------------------
-FIND_PACKAGE(SSE)
+OPTION(USE_SSE "Compile with SSE support for floating point math" ON)
+OPTION(USE_DOUBLE "Compile with double precision math (no SSE support)" OFF)
 
-# Set substitution variables for configuration file.
-IF(SSE_FOUND)
-  MESSAGE(STATUS "SSE version: ${SSE_VERSION}")
-  SET(CHRONO_PARALLEL_HAS_SSE "#define CHRONO_PARALLEL_HAS_SSE")
-  SET(CHRONO_PARALLEL_SSE_LEVEL "#define CHRONO_PARALLEL_SSE_LEVEL \"${SSE_VERSION}\"")
-ELSE()
-  MESSAGE("No SSE support")
-ENDIF()
+IF(USE_DOUBLE)
+  OPTION(USE_SSE "Compile with SSE support for floating point math" OFF)
+  SET(CHRONO_PARALLEL_USE_DOUBLE "#define CHRONO_PARALLEL_USE_DOUBLE")
+  
+    IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wa,-q")
+      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -Wa,-q")
+    ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    ENDIF()
+  
+ELSEIF(USE_SSE)
+  FIND_PACKAGE(SSE)
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  # using Clang
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS} -std=c++11")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SSE_FLAGS} -std=c++11")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  # Set substitution variables for configuration file.
+  IF(SSE_FOUND)
+    MESSAGE(STATUS "SSE version: ${SSE_VERSION}")
+    SET(CHRONO_PARALLEL_HAS_SSE "#define CHRONO_PARALLEL_HAS_SSE")
+    SET(CHRONO_PARALLEL_SSE_LEVEL "#define CHRONO_PARALLEL_SSE_LEVEL \"${SSE_VERSION}\"")
+  ELSE()
+    MESSAGE("No SSE support")
+  ENDIF()
+
+  IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    # using Clang
+  ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SSE_FLAGS}")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SSE_FLAGS}")
+  ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xsse${SSE_VERSION}")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -xsse${SSE_VERSION}")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  # using Visual Studio C++
-endif()
+  ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    # using Visual Studio C++
+  ENDIF()
+ENDIF()
+
+#Set c++11 flags
+IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+# using Clang
+ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
+ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+# using Visual Studio C++
+ENDIF()
+
 
 # ------------------------------------------------------------------------------
 # Thrust-related settings
@@ -88,7 +122,7 @@ endif()
 # ------------------------------------------------------------------------------
 # OpenMP
 # ------------------------------------------------------------------------------
-find_package("OpenMP" REQUIRED)
+find_package("OpenMP")
 
 # Add the OpenMP-specific compiler and linker flags
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -143,7 +177,7 @@ find_package(CUDA QUIET)
 IF(CUDA_FOUND)
     message(STATUS "CUDA found")
 ELSE()
-    message(FATAL_ERROR "CUDA not found! (you may switch off ENABLE_UNIT_GPU and build without this unit)")
+    message(FATAL_ERROR "CUDA not found!")
 ENDIF()
 
 # Detect what architecture we're on
@@ -165,153 +199,145 @@ ENDIF()
 find_library(CH_CUDART NAMES cudart libcudart PATHS ${CUDA_TOOLKIT_LIB_DIR})
 
 # These need to get straightened out
-# Anything using the SDK should only be used by nvcc, no need to include them for anything being sent to the system compiler
+# Anything using the SDK should only be used by nvcc,
+# no need to include them for anything being sent to the system compiler
 INCLUDE_DIRECTORIES(
     ${CUDA_TOOLKIT_ROOT_DIR}/include
     ${CUDA_SDK_ROOT_DIR}/common/inc
     ${CUDA_TOOLKIT_INCLUDE}
     )
 
+
+
 # ------------------------------------------------------------------------------
-# Compiler settings
+# BLAZE -- required for some parallel solvers
 # ------------------------------------------------------------------------------
-
-# set the compiler as a variable
-IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANG OR CMAKE_COMPILER_IS_CLANGXX)
-    IF(CMAKE_SIZEOF_VOID_P MATCHES 4)
-        SET (COMPILER "COMPILER_GCC" CACHE STRING "Compiler Type" FORCE)
-    ELSE()
-        SET (COMPILER "COMPILER_GCC_X64" CACHE STRING "Compiler Type" FORCE)
-    ENDIF()
-ENDIF()
-
-IF(MSVC AND CMAKE_CL_64)
-    SET (COMPILER "COMPILER_MSVC_X64" CACHE STRING "Compiler Type" FORCE)
-ELSEIF(MSVC)
-    SET (COMPILER "COMPILER_MSVC" CACHE STRING "Compiler Type" FORCE)
-ENDIF()
-
-IF(MSVC)
-    ADD_DEFINITIONS( "-D_CRT_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
-    ADD_DEFINITIONS( "-D_SCL_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
-    SET(CMAKE_CONFIGURATION_TYPES Release CACHE STRING "Choose the type of build.")
-    SET_PROPERTY(CACHE CMAKE_CONFIGURATION_TYPES PROPERTY STRINGS Debug Release)
-ELSE()    
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "For single-configuration generators (e.g. make) set the type of build: Release, Debug, RelWithDebInfo, MinSizeRel")
-    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release MinSizeRel RelWithDebInfo)
-ENDIF()
-
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    SET(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG} -DWIN32_LEAN_AND_MEAN")
-    SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DWIN32_LEAN_AND_MEAN")
+SET(BLAZE_DIR ""  CACHE PATH   "Where is Blaze located?")
+ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+FIND_PATH(BLAZE_DIR NAMES blaze/Blaze.h PATHS "/usr/include" "/usr/local/include")
+ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+FIND_PATH(BLAZE_DIR NAMES blaze/Blaze.h PATHS "/usr/include" "/usr/local/include")
+ENDIF()
 
-    # Set compiler flags based on which compiler we're using
-    IF("${COMPILER}" STREQUAL "COMPILER_MSVC")
-        SET(CH_BUILDFLAGS "-DWIN32 -DNOMINMAX -MP")
-    ELSEIF("${COMPILER}" STREQUAL "COMPILER_MSVC_X64")
-        SET(CH_BUILDFLAGS "-DWIN64 -D_WIN64 -DNOMINMAX -MP")
-    ELSEIF("${COMPILER}" STREQUAL "COMPILER_GCC")
-        SET(CH_BUILDFLAGS "-DWIN32 -D_MINGW -D_WINDOWS")
-    ELSEIF("${COMPILER}" STREQUAL "COMPILER_GCC_X64")
-        SET(CH_BUILDFLAGS "-DWIN64 -D_MINGW -D_WINDOWS -m64")
-    ENDIF()
+# ------------------------------------------------------------------------------
+# BOOST -- required for BLAZE
+# ------------------------------------------------------------------------------
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+   SET(BOOST_DIR ""  CACHE PATH   "Where is Boost located?")
 ENDIF()
 
 # ------------------------------------------------------------------------------
 # Find the ChronoEngine library
 # ------------------------------------------------------------------------------
 
-# Hack to be able to link different libraries depending on build type
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    # find the CE library. First make sure we didn't already find it; if we did, unset the variable
-    # need this to easily switch between Debug and Release build types
-    IF(CHRONO_LIB)
-        UNSET(CHRONO_LIB CACHE)
-    ENDIF()
+FIND_PACKAGE(ChronoEngine)
 
-    # Find the Chrono library based on the build type
-    FIND_LIBRARY(CHRONO_LIB NAMES ChronoEngine PATHS ${CHRONO_LIB_PATH}/${CMAKE_BUILD_TYPE} REQUIRED)
+IF(CHRONOENGINE_LIBRARY_DEBUG)
+  MESSAGE(STATUS "ChronoEngine library (debug) found")
+ENDIF()
+IF(CHRONOENGINE_LIBRARY_RELEASE)
+  MESSAGE(STATUS "ChronoEngine library (release) found")
+ENDIF()
 
-    # Copy the Chrono DLL from/to appropriate place, based on build type
-    SET(CHRONO_DLL "${CHRONO_LIB_PATH}/../bin/${CMAKE_BUILD_TYPE}/ChronoEngine.dll")
-    FILE(COPY ${CHRONO_DLL} DESTINATION "${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}")
+# Stop now if the path to the Chrono SDK is invalid or if we could not find
+# at least one of the debug or release Chrono libraries.
+IF(NOT EXISTS "${CH_CHRONO_SDKDIR}/physics/ChSystem.h")
+  MESSAGE(FATAL_ERROR "Cannot find the Chrono SDK. Make sure CH_CHRONO_SDKDIR is set correctly.")
+  RETURN()
+ENDIF()
+IF(NOT CHRONOENGINE_LIBRARY_DEBUG AND NOT CHRONOENGINE_LIBRARY_RELEASE)
+  MESSAGE(FATAL_ERROR "Cannot find the ChronoEngine library. Check CH_LIBDIR_DEBUG and CH_LIBDIR_RELEASE.")
+  RETURN()
+ENDIF()
 
-    # Report what library we use and which DLL was copied
-    MESSAGE(STATUS "Found chrono lib: ${CHRONO_LIB}")
-    MESSAGE(STATUS "Copied chrono dll: ${CHRONO_DLL}")
+# Add paths to Chrono headers
+INCLUDE_DIRECTORIES(${CHRONOENGINE_INCLUDES})
+
+# ------------------------------------------------------------------------------
+# Dependencies for ChronoEngine_OpenGL
+# ------------------------------------------------------------------------------
+IF(BUILD_OPENGL)
+
+  find_package(OpenGL)
+  find_package(GLM)
+  find_package(GLEW)
+  find_package(GLFW)
+
+  # On windows, ask for the GLEW and GLFW DLLs so that we can copy. This is
+  # optional.  If not specified, it is the user's responsibility to make them
+  # available at runtime.
+  IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    SET(GLEW_DLL  "" CACHE FILEPATH "The GLEW DLL")
+    SET(GLFW_DLL  "" CACHE FILEPATH "The GLFW DLL")
+  ENDIF()
+
+  # If all dependencies are available, enable building OpenGL support.
+  IF(OPENGL_FOUND AND GLM_FOUND AND GLEW_FOUND AND GLFW_FOUND)
+    SET(CHRONO_PARALLEL_HAS_OPENGL "#define CHRONO_PARALLEL_HAS_OPENGL")
+    SET(ENABLE_OPENGL ON)
+  ELSE()
+    # Unable to find everything, turn off OpenGL
+    MESSAGE("Cannot build ChronoEngine_OpenGL (missing dependencies).")
+    SET(CHRONO_PARALLEL_HAS_OPENGL "")
+    SET(ENABLE_OPENGL OFF)
+  ENDIF()
+
 ELSE()
-    # Find Chrono libs
-    FIND_LIBRARY(CHRONO_LIB NAMES ChronoEngine PATHS ${CHRONO_LIB_PATH} REQUIRED)
+
+  SET(CHRONO_PARALLEL_HAS_OPENGL "")
+  SET(ENABLE_OPENGL OFF)
+
 ENDIF()
 
-# ------------------------------------------------------------------------------
-# Add paths to required Chrono headers
-# ------------------------------------------------------------------------------
-INCLUDE_DIRECTORIES(
-     ${CHRONO_INC}
-    "${CHRONO_INC}/collision"
-    "${CHRONO_INC}/collision/bullet"
-    "${CHRONO_INC}/collision/bullet/LinearMath"
-    "${CHRONO_INC}/collision/bullet/BulletCollision/NarrowPhaseCollision"
-    )
 
 # ------------------------------------------------------------------------------
-# Add paths to the top of the source directory and the binary directory
+# Automatically copy DLLs 
 # ------------------------------------------------------------------------------
-INCLUDE_DIRECTORIES(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_BINARY_DIR}
-    )
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  # Get the path to the Chrono bin directory (at this point, we know that at
+  # least one of CH_LIBDIR_DEBUG or CH_LIBDIR_RELEASE is properly specified)
+  IF(CH_LIBDIR_DEBUG)
+      SET(CH_BINDIR "${CH_LIBDIR_DEBUG}/../../bin")
+  ENDIF()
+  IF(CH_LIBDIR_RELEASE)
+      SET(CH_BINDIR "${CH_LIBDIR_RELEASE}/../../bin")
+  ENDIF()
 
-# ------------------------------------------------------------------------------
-# Add subdirectories, depending on user-specified options
-# ------------------------------------------------------------------------------
-ADD_SUBDIRECTORY(chrono_parallel)
+  # Create custom target for copying DLLs; add it to the default build target
+  ADD_CUSTOM_TARGET(COPY_DLLS ALL)
 
-IF(ENABLE_UTILS)
+  # Create custom commands, invoked post-build to copy DLLs to the appropriate
+  # directory (depending on the configuration selected at build time in VS)
+  ADD_CUSTOM_COMMAND(
+    TARGET COPY_DLLS POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CH_BINDIR}/$<CONFIGURATION>/ChronoEngine.dll"
+        "${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>"
+  )
 
-  SET(ENABLE_OPENGL  TRUE  CACHE BOOL "Build the ChronoParallel_Utils_OpenGL library")
-
-  IF(${ENABLE_OPENGL})
-    find_package(OpenGL)
-    find_package(GLM)
-    find_package(GLEW)
-    find_package(GLFW)
-    IF(${OPENGL_FOUND} AND ${GLM_FOUND})
-      SET(CHRONO_PARALLEL_HAS_OPENGL "#define CHRONO_PARALLEL_HAS_OPENGL")
-    ELSE()
-      # Unable to find everything, turn off OpenGL
-      SET(ENABLE_OPENGL  FALSE  CACHE BOOL "Build the ChronoParallel_Utils_OpenGL library") 
+  # If building OpenGL support, also copy the DLLs for GLEW and GLFW (if specified)
+  IF(ENABLE_OPENGL)
+    IF(EXISTS ${GLEW_DLL})
+      ADD_CUSTOM_COMMAND(
+        TARGET COPY_DLLS POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GLEW_DLL}"
+            "${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>"
+      )
+    ENDIF()
+    IF(EXISTS ${GLFW_DLL})
+      ADD_CUSTOM_COMMAND(
+        TARGET COPY_DLLS POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GLFW_DLL}"
+            "${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>"
+      )
     ENDIF()
   ENDIF()
 
-  ADD_SUBDIRECTORY(chrono_utils)
-  IF(ENABLE_OPENGL)
-    ADD_SUBDIRECTORY(chrono_opengl)
-  ENDIF()
-
 ENDIF()
 
-IF(ENABLE_TESTS)
-  IF(NOT ENABLE_UTILS)
-    MESSAGE(STATUS "The test programs require building the ChronoParallel_Utils library.")
-  ELSE()
-    ADD_SUBDIRECTORY(tests)
-  ENDIF()
-ENDIF()
-
-IF(ENABLE_UNIT_TESTING)
-  ADD_SUBDIRECTORY(unit_testing)
-ENDIF()
-
-
-IF(ENABLE_DEMOS)
-  IF(NOT ENABLE_UTILS)
-    MESSAGE(STATUS "The demo programs require building the ChronoParallel_Utils library.")
-  ELSE()
-    ADD_SUBDIRECTORY(demos)
-  ENDIF()
-ENDIF()
 
 # ----------------------------------------------------------------------------
 # Generate configuration header file.
@@ -325,5 +351,31 @@ CONFIGURE_FILE(
   ${PROJECT_BINARY_DIR}/chrono_parallel/ChConfigParallel.h
   )
 
-INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})
+INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR} ${BLAZE_DIR} ${BOOST_DIR})
 
+# ------------------------------------------------------------------------------
+# Add paths to the top of the source directory
+# ------------------------------------------------------------------------------
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
+
+# ------------------------------------------------------------------------------
+# Add subdirectories, depending on user-specified options
+# ------------------------------------------------------------------------------
+ADD_SUBDIRECTORY(chrono_parallel)
+
+IF(BUILD_UTILS)
+  ADD_SUBDIRECTORY(chrono_utils)
+ENDIF()
+
+IF(ENABLE_OPENGL)
+  ADD_SUBDIRECTORY(chrono_opengl)
+ENDIF()
+
+IF(BUILD_DEMOS)
+  ADD_SUBDIRECTORY(tests)
+  ADD_SUBDIRECTORY(demos)
+ENDIF()
+
+IF(BUILD_TESTING)
+  ADD_SUBDIRECTORY(unit_testing)
+ENDIF()
