@@ -8,6 +8,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}
 SET(LIBRARIES
     ${CHRONO_LIB}
     ChronoEngine_Parallel
+    ChronoEngine_Utils
 )
 
 #--------------------------------------------------------------
@@ -51,10 +52,13 @@ SET(TESTS
     test_mat33
     test_gravity
     test_jacobians
+    test_rhs
     test_r
+    test_apgd
+    test_shur_performance
 )
 
-MESSAGE(STATUS "Executable programs...")
+MESSAGE(STATUS "Unit test programs...")
 
 FOREACH(PROGRAM ${TESTS})
     MESSAGE(STATUS "...add ${PROGRAM}")
@@ -87,24 +91,24 @@ SET(TESTS_B
 # included.
 IF (MSVC)
   SET(BULLET_FILES
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.cpp
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.h
-        ${CHRONO_INC}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.cpp
-        ${CHRONO_INC}/collision/bullet/LinearMath/btAlignedAllocator.h
-        ${CHRONO_INC}/collision/bullet/LinearMath/btAlignedAllocator.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCollisionShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexInternalShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConvexShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btPolyhedralConvexShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btBoxShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btConeShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btCylinderShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/BulletCollision/CollisionShapes/btSphereShape.cpp
+        ${CH_CHRONO_SDKDIR}/collision/bullet/LinearMath/btAlignedAllocator.h
+        ${CH_CHRONO_SDKDIR}/collision/bullet/LinearMath/btAlignedAllocator.cpp
   )
   SOURCE_GROUP(bullet FILES ${BULLET_FILES})
 ELSE()

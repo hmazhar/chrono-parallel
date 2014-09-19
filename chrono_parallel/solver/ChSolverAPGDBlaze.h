@@ -15,19 +15,18 @@
 // This file contains an implementation of APGD that is more optimized.
 // =============================================================================
 
-#ifndef CHSOLVERAPGDRS_H
-#define CHSOLVERAPGDRS_H
+#ifndef CHSOLVERAPGDBLAZE_H
+#define CHSOLVERAPGDBLAZE_H
 
 #include "chrono_parallel/ChConfigParallel.h"
 #include "ChSolverParallel.h"
 
 namespace chrono {
-class CH_PARALLEL_API ChSolverAPGDRS : public ChSolverParallel {
+class CH_PARALLEL_API ChSolverAPGDBlaze : public ChSolverParallel {
  public:
 
-   ChSolverAPGDRS()
-         :
-           ChSolverParallel() {
+   ChSolverAPGDBlaze()
+         : ChSolverParallel() {
 
       //APGD specific
       step_shrink = .9;
@@ -35,47 +34,58 @@ class CH_PARALLEL_API ChSolverAPGDRS : public ChSolverParallel {
       init_theta_k = 1.0;
 
    }
-   ~ChSolverAPGDRS() {
+   ~ChSolverAPGDBlaze() {
 
    }
 
    void Solve() {
-      if (num_constraints == 0) {return;}
-      data_container->system_timer.start("ChSolverParallel_Solve");
-      total_iteration += SolveAPGDRS(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
-      data_container->system_timer.stop("ChSolverParallel_Solve");
+      if (num_constraints == 0) {
+         return;
+      }
+
+      total_iteration += SolveAPGDBlaze(max_iteration, num_constraints, data_container->host_data.rhs_data, data_container->host_data.gamma_data);
+
       current_iteration = total_iteration;
    }
 
    // Solve using a more streamlined but harder to read version of the APGD method
-   uint SolveAPGDRS(
-                    const uint max_iter,           // Maximum number of iterations
-                    const uint size,               // Number of unknowns
-                    custom_vector<real> &b,        // Rhs vector
-                    custom_vector<real> &x         // The vector of unknowns
-                    );
+   uint SolveAPGDBlaze(const uint max_iter,           // Maximum number of iterations
+                       const uint size,               // Number of unknowns
+                       custom_vector<real> &b,        // Rhs vector
+                       custom_vector<real> &x         // The vector of unknowns
+                       );
+
+   // Compute the updated velocities
+   // The solution for gamma is already here, so use it rather than having to copy it
+   void ComputeImpulses();
 
    // Compute the residual for the solver
    // TODO: What is the best way to explain this...
-   real Res4(
-             const int SIZE,
-             real* mg_tmp2,
-             real*x,
-             real* mb_tmp);
+   real Res4(const int SIZE,
+             blaze::DynamicVector<real> & mg_tmp2,
+             blaze::DynamicVector<real> & x,
+             blaze::DynamicVector<real> & mb_tmp);
 
    // Set parameters for growing and shrinking the step size
-   void SetAPGDParams(
-                      real theta_k,
+   void SetAPGDParams(real theta_k,
                       real shrink,
                       real grow);
 
    //APGD specific vectors
-   custom_vector<real> obj2_temp, obj1_temp, ms, mg_tmp2, mb_tmp, mg_tmp, mg_tmp1, mg, ml, mx, my, ml_candidate;
-
+   blaze::DynamicVector<real> obj2_temp, obj1_temp, ms, mg_tmp2, mb_tmp, mg_tmp, mg_tmp1, mg, ml, mx, my, ml_candidate, mb, mso;
+   real L_k, t_k;
    real init_theta_k;
    real step_shrink;
    real step_grow;
    real old_objective;
+   real lastgoodres;
+   real theta_k;
+   real theta_k1;
+   real beta_k1;
+   real mb_tmp_norm, mg_tmp_norm;
+   real obj1, obj2;
+   real dot_mg_ms, norm_ms;
+   real delta_obj;
 
 };
 }

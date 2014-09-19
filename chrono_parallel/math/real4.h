@@ -23,7 +23,7 @@
 #include "chrono_parallel/math/real3.h"
 
 #define R4  real4
-#ifndef DISABLE_SSE
+#ifdef ENABLE_SSE
 //#define _mm_shufd(xmm, mask) _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(xmm), mask))
 
 static inline real horizontal_add(const __m128 & a) {
@@ -55,12 +55,12 @@ class CHRONO_ALIGN_16 real4 {
       struct {
          real w, x, y, z;
       };
-#ifndef DISABLE_SSE
+#ifdef ENABLE_SSE
       __m128 mmvalue;
 #endif
    };
 
-#ifndef DISABLE_SSE
+#ifdef ENABLE_SSE
    inline real4() : mmvalue(_mm_setzero_ps()) {}
    inline real4(real a) : mmvalue(_mm_set1_ps(a)) {}
    inline real4(real a, real b, real c) : mmvalue(_mm_setr_ps(0, a,b,c)) {}
@@ -224,16 +224,16 @@ static inline quaternion inv(const quaternion &a) {
 }
 
 static inline real4 operator ~(real4 const & a) {
-#ifndef DISABLE_SSE
+#ifdef ENABLE_SSE
    return real4(change_sign<0,1,1,1>(a));
 #else
    return real4(a.w, -a.x, -a.y, -a.z);
 #endif
 }
 
-static inline ostream &operator<<(ostream &out,
+static inline std::ostream &operator<<(std::ostream &out,
                                   const real4 &a) {
-   out << "[" << a.w << ", " << a.x << ", " << a.y << ", " << a.z << "]" << endl;
+   out << "[" << a.w << ", " << a.x << ", " << a.y << ", " << a.z << "]" << std::endl;
    return out;
 }
 
@@ -281,7 +281,7 @@ static inline quaternion mult_classic(const quaternion &qa,
 }
 static inline quaternion mult(const quaternion &a,
                               const quaternion &b) {
-#ifndef DISABLE_SSE
+#ifdef ENABLE_SSE
    __m128 a1123 = _mm_shuffle_ps(a,a,0xE5);
    __m128 a2231 = _mm_shuffle_ps(a,a,0x7A);
    __m128 b1000 = _mm_shuffle_ps(b,b,0x01);
@@ -352,12 +352,27 @@ static inline quaternion slerp(const quaternion &a,
 
 static inline real3 quatRotate(const real3 &v,
                                const quaternion &q) {
-
+#ifdef ENABLE_SSE
    real3 t = 2 * cross(real3(q.x, q.y, q.z), v);
    return v + q.w * t + cross(real3(q.x, q.y, q.z), t);
    //return v+2.0*cross(cross(v,real3(q.x,q.y,q.z))+q.w*v, real3(q.x,q.y,q.z));
    //quaternion r = mult(mult(q, R4(0, v.x, v.y, v.z)), inv(q));
    //return real3(r.x, r.y, r.z);
+#else
+   real e0e0 = q.w * q.w;
+   real e1e1 = q.x * q.x;
+   real e2e2 = q.y * q.y;
+   real e3e3 = q.z * q.z;
+   real e0e1 = q.w * q.x;
+   real e0e2 = q.w * q.y;
+   real e0e3 = q.w * q.z;
+   real e1e2 = q.x * q.y;
+   real e1e3 = q.x * q.z;
+   real e2e3 = q.y * q.z;
+   return R3(((e0e0 + e1e1) * 2 - 1) * v.x + ((e1e2 - e0e3) * 2) * v.y + ((e1e3 + e0e2) * 2) * v.z,
+             ((e1e2 + e0e3) * 2) * v.x + ((e0e0 + e2e2) * 2 - 1) * v.y + ((e2e3 - e0e1) * 2) * v.z,
+             ((e1e3 - e0e2) * 2) * v.x + ((e2e3 + e0e1) * 2) * v.y + ((e0e0 + e3e3) * 2 - 1) * v.z);
+#endif
 }
 static inline real3 quatRotateMat(const real3 &v,
                                   const quaternion &q) {
@@ -366,7 +381,7 @@ static inline real3 quatRotateMat(const real3 &v,
    result.x = (q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z) * v.x + (2 * q.x * q.y - 2 * q.w * q.z) * v.y + (2 * q.x * q.z + 2 * q.w * q.y) * v.z;
    result.y = (2 * q.x * q.y + 2 * q.w * q.z) * v.x + (q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z) * v.y + (2 * q.y * q.z - 2 * q.w * q.x) * v.z;
    result.z = (2 * q.x * q.z - 2 * q.w * q.y) * v.x + (2 * q.y * q.z + 2 * q.w * q.x) * v.y + (q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z) * v.z;
-   return result;	//quatRotate(v,q);
+   return result;  //quatRotate(v,q);
 }
 static inline real3 quatRotateMatT(const real3 &v,
                                    const quaternion &q) {

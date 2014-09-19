@@ -96,17 +96,19 @@ CH_RTTI(ChSystemParallel, ChSystem)
    double GetTimerCollision() {
       return timer_collision;
    }
-
+   settings_container * GetSettings() {
+      return &(data_manager->settings);
+   }
    ChParallelDataManager *data_manager;
 
- private:
+ protected:
 
    double timer_collision, old_timer, old_timer_cd;
    bool detect_optimal_threads, perform_thread_tuning, perform_bin_tuning;
 
    int max_threads, current_threads, min_threads;
    int detect_optimal_bins;
-   vector<double> timer_accumulator, cd_accumulator;
+   std::vector<double> timer_accumulator, cd_accumulator;
    uint frame_threads, frame_bins, counter;
    std::list<ChLink *>::iterator it;
 };
@@ -117,7 +119,9 @@ CH_RTTI(ChSystemParallelDVI, ChSystemParallel)
 
  public:
    ChSystemParallelDVI(unsigned int max_objects = 1000);
-
+   void ChangeSolverType(GPUSOLVERTYPE type) {
+      ((ChLcpSolverParallelDVI *) (LCP_solver_speed))->ChangeSolverType(type);
+   }
    virtual void LoadMaterialSurfaceData(ChSharedPtr<ChBody> newbody);
    virtual void UpdateBodies();
    virtual void AssembleSystem();

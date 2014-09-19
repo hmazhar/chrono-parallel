@@ -54,10 +54,10 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_ve
 
    bool verbose = false;
    real lastgoodres = 10e30;
-   real theta_k = init_theta_k;
-   real theta_k1 = theta_k;
+   real theta_k = 1.0;
+   real theta_k1 = 0;
    real beta_k1 = 0.0;
-   //custom_vector<real> x_initial =x;
+
 
    ml = x;
 
@@ -86,7 +86,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_ve
 
    real t_k = 1.0 / L_k;
    if (verbose)
-      cout << "L_k:" << L_k << " t_k:" << -t_k << "\n";
+      std::cout << "L_k:" << L_k << " t_k:" << -t_k << "\n";
    my = ml;
    mx = ml;
 
@@ -165,9 +165,9 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_ve
          real resid_bilat = -1;
 
          for (int i = num_unilaterals; i < x.size(); i++) {
-            resid_bilat = max(resid_bilat, abs(mg_tmp2[i]));
+            resid_bilat = std::max(resid_bilat, std::abs(mg_tmp2[i]));
          }
-         g_proj_norm = max(g_proj_norm, resid_bilat);
+         g_proj_norm = std::max(g_proj_norm, resid_bilat);
          //cout<<resid_bilat<<endl;
       }
 
@@ -177,9 +177,9 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_ve
       }
 
       residual = lastgoodres;
-      real maxdeltalambda = CompRes(b, num_contacts);     //NormInf(ms);
+      objective_value = CompRes(b, num_contacts);     //NormInf(ms);
 
-      AtIterationEnd(residual, maxdeltalambda, iter_hist.size());
+      AtIterationEnd(residual, objective_value, iter_hist.size());
       //custom_vector<real> error = (x_initial-x)/x;
       //x_initial = x;
 
@@ -190,7 +190,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,const uint size,const custom_ve
       //}
       //summary_stats_data<real> result = Statistics(error);
       //cout<<"current_iteration: "<<current_iteration<<" Max: "<<result.max<<" Mean: "<<result.mean<<" StdDev: "<<std::sqrt(result.variance_n())<<" Variance: "<<result.variance()<<endl;
-      if (residual < tolerance) {
+      if (residual < data_container->settings.solver.tolerance) {
          break;
       }
    }

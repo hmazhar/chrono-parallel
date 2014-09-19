@@ -3,15 +3,12 @@
 using namespace chrono;
 
 ChSolverParallel::ChSolverParallel() {
-   tolerance = 1e-6;
    max_iteration = 100;
    total_iteration = 0;
    current_iteration = 0;
-   collision_inside = false;
    rigid_rigid = NULL;
    bilateral = NULL;
-   update_rhs = false;
-   verbose = false;
+
 }
 ChSolverParallel::~ChSolverParallel() {
 
@@ -39,6 +36,12 @@ void ChSolverParallel::Setup(ChParallelDataManager *data_container_) {
 void ChSolverParallel::Project(real* gamma) {
    data_container->system_timer.start("ChSolverParallel_Project");
    rigid_rigid->Project(gamma);
+   data_container->system_timer.stop("ChSolverParallel_Project");
+}
+void ChSolverParallel::Project_Single(int index,
+                                      real* gamma) {
+   data_container->system_timer.start("ChSolverParallel_Project");
+   rigid_rigid->Project_Single(index, gamma);
    data_container->system_timer.stop("ChSolverParallel_Project");
 }
 //=================================================================================================================================
@@ -157,7 +160,7 @@ void ChSolverParallel::UpdateContacts() {
    ////        modify so that we can use the CHCNarrowphase object
    ////        from the CollisionSystemParallel.
    collision::ChCNarrowphaseMPR narrowphase;
-   narrowphase.SetCollisionEnvelope(data_container->collision_envelope);
+   narrowphase.SetCollisionEnvelope(data_container->settings.collision.collision_envelope);
    narrowphase.Update(data_container);
 
    rigid_rigid->UpdateJacobians();
@@ -315,7 +318,7 @@ uint ChSolverParallel::SolveStab(const uint max_iter,
    norm_rMR = beta;
    norm_r0 = beta;
 
-   if (beta == 0 || norm_rMR / norm_r0 < tolerance) {
+   if (beta == 0 || norm_rMR / norm_r0 < data_container->settings.solver.tolerance) {
       return 0;
    }
 
@@ -352,7 +355,7 @@ uint ChSolverParallel::SolveStab(const uint max_iter,
       real maxdeltalambda = CompRes(mb, num_contacts);      //NormInf(ms);
       AtIterationEnd(residual, maxdeltalambda, iter_hist.size() + current_iteration);
 
-      if (residual < tolerance) {
+      if (residual < data_container->settings.solver.tolerance) {
          break;
       }
    }

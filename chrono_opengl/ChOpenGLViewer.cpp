@@ -15,15 +15,14 @@
 #include <omp.h>
 #include "ChOpenGLViewer.h"
 #include "FontData.h"
-#include "text_frag.h"
-#include "text_vert.h"
-#include "phong_frag.h"
-#include "phong_vert.h"
 
-#include "cloud_frag.h"
-#include "cloud_vert.h"
+#include "resources/text_frag.h"
+#include "resources/text_vert.h"
+#include "resources/phong_frag.h"
+#include "resources/phong_vert.h"
+#include "resources/cloud_frag.h"
+#include "resources/cloud_vert.h"
 
-//using namespace std;
 using namespace chrono;
 using namespace chrono::opengl;
 
@@ -64,7 +63,7 @@ void ChOpenGLViewer::TakeDown() {
    cone.TakeDown();
    cloud.TakeDown();
 
-   for (map<string, ChOpenGLOBJ>::iterator iter = obj_files.begin(); iter != obj_files.end(); iter++) {
+   for (std::map<std::string, ChOpenGLOBJ>::iterator iter = obj_files.begin(); iter != obj_files.end(); iter++) {
       (*iter).second.TakeDown();
    }
 
@@ -105,10 +104,10 @@ bool ChOpenGLViewer::Initialize() {
       return 0;
    }
 
-   sphere.Initialize("sphere.obj", slate, &main_shader);
-   box.Initialize("box.obj", t3, &main_shader);
-   cylinder.Initialize("cylinder.obj", apple, &main_shader);
-   cone.Initialize("cone.obj", white, &main_shader);
+   sphere.Initialize("../resources/sphere.obj", slate, &main_shader);
+   box.Initialize("../resources/box.obj", t3, &main_shader);
+   cylinder.Initialize("../resources/cylinder.obj", apple, &main_shader);
+   cone.Initialize("../resources/cone.obj", white, &main_shader);
 
    // Initialize vbo and vao for text
    glGenBuffers(1, &vbo);
@@ -196,7 +195,7 @@ void ChOpenGLViewer::Render() {
             cylinder.Draw(projection, view);
          }
          if (model_obj.size() > 0) {
-            for (map<string, ChOpenGLOBJ>::iterator iter = obj_files.begin(); iter != obj_files.end(); iter++) {
+            for (std::map<std::string, ChOpenGLOBJ>::iterator iter = obj_files.begin(); iter != obj_files.end(); iter++) {
                (*iter).second.Update(model_obj[(*iter).first]);
                (*iter).second.Draw(projection, view);
 
@@ -379,7 +378,7 @@ void ChOpenGLViewer::DrawObject(
          if (obj_files.find(trimesh_shape->GetName()) == obj_files.end()) {
             ChOpenGLOBJ temp;
             ChOpenGLMaterial pillow(glm::vec3(196.0f, 77.0f, 88.0f) / 255.0f * .5f, glm::vec3(196.0f, 77.0f, 88.0f) / 255.0f, glm::vec3(1, 1, 1));
-            cout << trimesh_shape->GetName() << endl;
+            std::cout << trimesh_shape->GetName() << std::endl;
             temp.Initialize(trimesh_shape->GetName(), pillow, &main_shader);
             obj_files[trimesh_shape->GetName()] = temp;
             model_obj[trimesh_shape->GetName()].push_back(model);
@@ -390,7 +389,7 @@ void ChOpenGLViewer::DrawObject(
    }
 }
 void ChOpenGLViewer::GenerateFontIndex() {
-   string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+   std::string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
    for (int i = 0; i < chars.size(); i++) {
       for (int j = 0; j < font_data.glyphs_count; ++j) {
@@ -476,8 +475,8 @@ void ChOpenGLViewer::DisplayHUD() {
       sprintf(buffer, "Time:  %04f", physics_system->GetChTime());
       RenderText(buffer, -.95, 0.925, sx, sy);
 
-      vector<double> history = ((ChLcpIterativeSolver*) (physics_system->GetLcpSolverSpeed()))->GetViolationHistory();
-      vector<double> dlambda = ((ChLcpIterativeSolver*) (physics_system->GetLcpSolverSpeed()))->GetDeltalambdaHistory();
+      std::vector<double> history = ((ChLcpIterativeSolver*) (physics_system->GetLcpSolverSpeed()))->GetViolationHistory();
+      std::vector<double> dlambda = ((ChLcpIterativeSolver*) (physics_system->GetLcpSolverSpeed()))->GetDeltalambdaHistory();
 
       sprintf(buffer, "Iters   :  %04d", history.size());
       RenderText(buffer, .6, 0.925 - .06 * 0, sx, sy);

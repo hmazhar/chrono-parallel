@@ -19,7 +19,6 @@
 #ifndef CHLCPSOLVERPARALLEL_H
 #define CHLCPSOLVERPARALLEL_H
 
-
 #include "lcp/ChLcpIterativeSolver.h"
 
 #include "chrono_parallel/ChParallelDefines.h"
@@ -31,6 +30,7 @@
 
 #include "chrono_parallel/solver/ChSolverAPGD.h"
 #include "chrono_parallel/solver/ChSolverAPGDRS.h"
+#include "chrono_parallel/solver/ChSolverAPGDBlaze.h"
 #include "chrono_parallel/solver/ChSolverBiCG.h"
 #include "chrono_parallel/solver/ChSolverBiCGStab.h"
 #include "chrono_parallel/solver/ChSolverCG.h"
@@ -38,14 +38,14 @@
 #include "chrono_parallel/solver/ChSolverMinRes.h"
 #include "chrono_parallel/solver/ChSolverSD.h"
 #include "chrono_parallel/solver/ChSolverGD.h"
-
+#include "chrono_parallel/solver/ChSolverPGS.h"
+#include "chrono_parallel/solver/ChSolverJacobi.h"
 namespace chrono {
 
 class CH_PARALLEL_API ChLcpSolverParallel : public ChLcpIterativeSolver {
  public:
    ChLcpSolverParallel() {
       tolerance = 1e-7;
-      max_iter_bilateral = 100;
       record_violation_history = true;
       warm_start = false;
    }
@@ -75,22 +75,19 @@ class CH_PARALLEL_API ChLcpSolverParallel : public ChLcpIterativeSolver {
 
    void SetTolerance(real tol) {
       tolerance = tol;
+      data_container->settings.solver.tolerance = tolerance;
    }
 
    void SetMaxIterationBilateral(uint max_iter) {
-      max_iter_bilateral = max_iter;
+      data_container->settings.solver.max_iteration_bilateral = max_iter;
    }
    real GetResidual() {
       return residual;
    }
-
    ChParallelDataManager *data_container;
 
  protected:
-   real tolerance;
    real residual;
-
-   uint max_iter_bilateral;
 
    ChConstraintBilateral bilateral;
 };
@@ -98,17 +95,7 @@ class CH_PARALLEL_API ChLcpSolverParallel : public ChLcpIterativeSolver {
 class CH_PARALLEL_API ChLcpSolverParallelDVI : public ChLcpSolverParallel {
  public:
    ChLcpSolverParallelDVI() {
-      alpha = .2;
-      contact_recovery_speed = .6;
-      do_stab = false;
-      collision_inside = false;
-      update_rhs = false;
-
-      max_iteration = 1000;
-      max_iter_normal = max_iter_sliding = max_iter_spinning = 100;
-
       solver = new ChSolverAPGD();
-
    }
 
    ~ChLcpSolverParallelDVI() {
@@ -118,82 +105,71 @@ class CH_PARALLEL_API ChLcpSolverParallelDVI : public ChLcpSolverParallel {
    virtual void RunTimeStep(real step);
    void RunWarmStartPostProcess();
    void RunWarmStartPreprocess();
+   void ComputeN();
 
    void SetCompliance(real a) {
-      data_container->alpha = a;
+      data_container->settings.solver.alpha = a;
    }
-   void SetSolverType(GPUSOLVERTYPE type) {
-      solver_type = type;
+   void ChangeSolverType(GPUSOLVERTYPE type) {
+      data_container->settings.solver.solver_type = type;
 
       if (this->solver) {
          delete (this->solver);
       }
 
-      if (solver_type == STEEPEST_DESCENT) {
+      if (type == STEEPEST_DESCENT) {
          solver = new ChSolverSD();
-      } else if (solver_type == GRADIENT_DESCENT) {
+      } else if (type == GRADIENT_DESCENT) {
          solver = new ChSolverGD();
-      } else if (solver_type == CONJUGATE_GRADIENT) {
+      } else if (type == CONJUGATE_GRADIENT) {
          solver = new ChSolverCG();
-      } else if (solver_type == CONJUGATE_GRADIENT_SQUARED) {
+      } else if (type == CONJUGATE_GRADIENT_SQUARED) {
          solver = new ChSolverCGS();
-      } else if (solver_type == BICONJUGATE_GRADIENT) {
+      } else if (type == BICONJUGATE_GRADIENT) {
          solver = new ChSolverBiCG();
-      } else if (solver_type == BICONJUGATE_GRADIENT_STAB) {
+      } else if (type == BICONJUGATE_GRADIENT_STAB) {
          solver = new ChSolverBiCGStab();
-      } else if (solver_type == MINIMUM_RESIDUAL) {
+      } else if (type == MINIMUM_RESIDUAL) {
          solver = new ChSolverMinRes();
-      } else if (solver_type == QUASAI_MINIMUM_RESIDUAL) {
+      } else if (type == QUASAI_MINIMUM_RESIDUAL) {
          //         // This solver has not been implemented yet
          //         //SolveQMR(data_container->gpu_data.device_gam_data, rhs, max_iteration);
-      } else if (solver_type == APGD) {
+      } else if (type == APGD) {
          solver = new ChSolverAPGD();
-      } else if (solver_type == APGDRS) {
+      } else if (type == APGDRS) {
          solver = new ChSolverAPGDRS();
+      } else if (type == APGDBLAZE) {
+         solver = new ChSolverAPGDBlaze();
+      } else if (type == JACOBI) {
+         solver = new ChSolverJacobi();
+      } else if (type == GAUSS_SEIDEL) {
+         solver = new ChSolverPGS();
       }
 
    }
-   void SetMaxIterationNormal(uint max_iter) {
-      max_iter_normal = max_iter;
-   }
-   void SetMaxIterationSliding(uint max_iter) {
-      max_iter_sliding = max_iter;
-   }
-   void SetMaxIterationSpinning(uint max_iter) {
-      max_iter_spinning = max_iter;
-   }
+
    void SetMaxIteration(uint max_iter) {
-      max_iteration = max_iter;
-      max_iter_normal = max_iter_sliding = max_iter_spinning = max_iter_bilateral = max_iter;
+      data_container->settings.solver.max_iteration = max_iter;
+      data_container->settings.solver.max_iteration_normal = max_iter;
+      data_container->settings.solver.max_iteration_sliding = max_iter;
+      data_container->settings.solver.max_iteration_spinning = max_iter;
+      data_container->settings.solver.max_iteration_bilateral = max_iter;
    }
    void SetContactRecoverySpeed(real recovery_speed) {
-      data_container->contact_recovery_speed = fabs(recovery_speed);
+      data_container->settings.solver.contact_recovery_speed = fabs(recovery_speed);
    }
    void DoStabilization(bool stab) {
-      do_stab = stab;
+      data_container->settings.solver.perform_stabilization = stab;
    }
    void DoCollision(bool do_collision) {
-      collision_inside = do_collision;
+      data_container->settings.solver.collision_in_solver = do_collision;
    }
    void DoUpdateRHS(bool do_update_rhs) {
-      update_rhs = do_update_rhs;
+      data_container->settings.solver.update_rhs = do_update_rhs;
    }
    ChSolverParallel *solver;
 
  private:
-   GPUSOLVERTYPE solver_type;
-
-   real alpha;
-
-   real contact_recovery_speed;
-   bool do_stab;
-   bool collision_inside;
-   bool update_rhs;
-
-   uint max_iteration;
-   uint max_iter_normal;
-   uint max_iter_sliding;
-   uint max_iter_spinning;
 
    ChConstraintRigidRigid rigid_rigid;
 };
@@ -208,7 +184,7 @@ class CH_PARALLEL_API ChLcpSolverParallelDEM : public ChLcpSolverParallel {
    virtual void RunTimeStep(real step);
 
    void SetMaxIteration(uint max_iter) {
-      max_iter_bilateral = max_iter;
+      data_container->settings.solver.max_iteration_bilateral = max_iter;
    }
 
    void ProcessContacts();

@@ -58,12 +58,17 @@
 #include <thrust/random.h>
 #include <thrust/system/omp/execution_policy.h>
 //#include <thrust/system/tbb/execution_policy.h>
+#include <thrust/execution_policy.h>
 #include "chrono_parallel/ChApiParallel.h"
 //#include <mpi.h>
 #include <omp.h>
 #include <vector>
 #include <string.h>
-using namespace std;
+#ifdef _MSC_VER
+#define thrust_parallel thrust::cpp::par
+#else
+#define thrust_parallel thrust::omp::par
+#endif
 //using namespace thrust;
 typedef unsigned int uint;
 
@@ -163,7 +168,17 @@ enum GPUSOLVERTYPE {
    QUASAI_MINIMUM_RESIDUAL,
    APGD,
    APGDRS,
-   BLOCK_JACOBI
+   APGDBLAZE,
+   JACOBI,
+   GAUSS_SEIDEL
+};
+
+
+
+enum SOLVERMODE{
+   NORMAL,
+   SLIDING,
+   SPINNING,
 };
 
 #define shape_type int

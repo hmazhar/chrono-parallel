@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "ChCBroadphase.h"
 using namespace chrono::collision;
 
@@ -5,8 +6,8 @@ typedef thrust::pair<real3, real3> bbox;
 // reduce a pair of bounding boxes (a,b) to a bounding box containing a and b
 struct bbox_reduction: public thrust::binary_function<bbox, bbox, bbox> {
 	bbox __host__ __device__ operator()(bbox a, bbox b) {
-		real3 ll = R3(fmin(a.first.x, b.first.x), fmin(a.first.y, b.first.y), fmin(a.first.z, b.first.z));     // lower left corner
-		real3 ur = R3(fmax(a.second.x, b.second.x), fmax(a.second.y, b.second.y), fmax(a.second.z, b.second.z));     // upper right corner
+		real3 ll = R3(std::fmin(a.first.x, b.first.x), std::fmin(a.first.y, b.first.y), std::fmin(a.first.z, b.first.z));     // lower left corner
+		real3 ur = R3(std::fmax(a.second.x, b.second.x), std::fmax(a.second.y, b.second.y), std::fmax(a.second.z, b.second.z));     // upper right corner
 		return bbox(ll, ur);
 	}
 };
@@ -258,7 +259,7 @@ int ChCBroadphase::detectPossibleCollisions(custom_vector<real3> &aabb_data,cust
 		bbox init = bbox(aabb_data[0], aabb_data[0]);// create a zero volume bounding box using the first set of aabb_data (??)
 		bbox_transformation unary_op;
 		bbox_reduction binary_op;
-		bbox result = thrust::transform_reduce(thrust::omp::par,aabb_data.begin(), aabb_data.end(), unary_op, init, binary_op);
+		bbox result = thrust::transform_reduce(thrust_parallel,aabb_data.begin(), aabb_data.end(), unary_op, init, binary_op);
 		min_bounding_point = result.first;
 		max_bounding_point = result.second;
 		global_origin = (min_bounding_point);//CHANGED: removed abs
@@ -381,7 +382,7 @@ int ChCBroadphase::detectPossibleCollisions(custom_vector<real3> &aabb_data,cust
 		fam_data.data(),
 		potentialCollisions.data());
 #endif
-		thrust::stable_sort(thrust::omp::par,potentialCollisions.begin(), potentialCollisions.end());
+		thrust::stable_sort(thrust_parallel,potentialCollisions.begin(), potentialCollisions.end());
 		number_of_contacts_possible = thrust::unique(potentialCollisions.begin(),
 		potentialCollisions.end()) - potentialCollisions.begin();
 

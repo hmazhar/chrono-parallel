@@ -15,17 +15,23 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
    mMNp.resize(size, 0);
    mtmp.resize(size, 0);
 
+   mb.resize(size);
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      ml[i] = x[i];
+      mb[i] = b[i];
+   }
+
    real grad_diffstep = 0.01;
-   double rel_tol = tolerance;
-   double abs_tol = tolerance;
+   double rel_tol = data_container->settings.solver.tolerance;
+   double abs_tol = data_container->settings.solver.tolerance;
 
    double rel_tol_b = NormInf(b) * rel_tol;
    //ml = x;
-#pragma omp parallel
-   {
-      ShurProduct(ml, mr);
-   }
-   mr = b - mr;
+
+   mr = data_container->host_data.D_T * (data_container->host_data.M_invD * ml);
+
+   mr = mb - mr;
 
    mr = mr * grad_diffstep + ml;
 #pragma omp parallel
@@ -38,8 +44,9 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
    mz = mp;
 #pragma omp parallel
    {
-      ShurProduct(mz, mNMr);
-      ShurProduct(mp, mNp);
+      mNMr = data_container->host_data.D_T * (data_container->host_data.M_invD * mz);
+      mNp = data_container->host_data.D_T * (data_container->host_data.M_invD * mp);
+
    }
    for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
       mMNp = mNp;
@@ -47,21 +54,21 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
       double zNMr = Dot(mz, mNMr);
       double MNpNp = Dot(mMNp, mNp);
       if (fabs(MNpNp) < 10e-30) {
-         if (verbose) {
-            cout << "Iter=" << current_iteration << " Rayleygh quotient alpha breakdown: " << zNMr << " / " << MNpNp << "\n";
+         if (data_container->settings.solver.verbose) {
+            std::cout << "Iter=" << current_iteration << " Rayleygh quotient alpha breakdown: " << zNMr << " / " << MNpNp << "\n";
          }
          MNpNp = 10e-12;
       }
       double alpha = zNMr / MNpNp;
       mtmp = mp * alpha;
       ml = ml + mtmp;
-      double maxdeltalambda = Norm(mtmp);
 #pragma omp parallel
       {
          Project(ml.data());
-         ShurProduct(ml, mr);
+
+         mr = data_container->host_data.D_T * (data_container->host_data.M_invD * ml);
       }
-      mr = b - mr;
+      mr = mb - mr;
 
       mr = mr * grad_diffstep + ml;
 #pragma omp parallel
@@ -71,11 +78,11 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
 
       mr = (mr - ml) * (1.0 / grad_diffstep);
 
-      double r_proj_resid = Norm(mr);
+      residual = sqrt((mr, mr));
 
-      if (r_proj_resid < max(rel_tol_b, abs_tol)) {
-         if (verbose) {
-            cout << "Iter=" << current_iteration << " P(r)-converged!  |P(r)|=" << r_proj_resid << "\n";
+      if (residual < std::max(rel_tol_b, abs_tol)) {
+         if (data_container->settings.solver.verbose) {
+            std::cout << "Iter=" << current_iteration << " P(r)-converged!  |P(r)|=" << residual << "\n";
          }
          break;
       }
@@ -85,15 +92,16 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
       mNMr_old = mNMr;
 #pragma omp parallel
       {
-         ShurProduct(mz, mNMr);
+         mNMr = data_container->host_data.D_T * (data_container->host_data.M_invD * mz);
+
       }
-      double numerator = Dot(mz, mNMr - mNMr_old);
-      double denominator = Dot(mz_old, mNMr_old);
+      double numerator = (mz, mNMr - mNMr_old);
+      double denominator = (mz_old, mNMr_old);
       double beta = numerator / numerator;
 
       if (fabs(denominator) < 10e-30 || fabs(numerator) < 10e-30) {
-         if (verbose) {
-            cout << "Iter=" << current_iteration << " Ribiere quotient beta restart: " << numerator << " / " << denominator << "\n";
+         if (data_container->settings.solver.verbose) {
+            std::cout << "Iter=" << current_iteration << " Ribiere quotient beta restart: " << numerator << " / " << denominator << "\n";
          }
          beta = 0;
       }
@@ -102,10 +110,13 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter,
       mp = mz + mtmp;
       mNp = mNp * beta + mNMr;
 
-      AtIterationEnd(r_proj_resid, maxdeltalambda, current_iteration);
+      AtIterationEnd(residual, GetObjectiveBlaze(ml, mb), iter_hist.size());
 
    }
-   x = ml;
+#pragma omp parallel for
+   for (int i = 0; i < size; i++) {
+      x[i] = ml[i];
+   }
 
    //	uint N = b.size();
 //	custom_vector<real> v(N, 0), v_hat(size), w(N, 0), w_old, xMR, v_old, Av(size), w_oold;

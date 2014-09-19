@@ -42,6 +42,10 @@ class CH_PARALLEL_API ChSolverParallel : public ChBaseParallel {
    void Project(real* gamma  //Lagrange Multipliers
    );
 
+   // Project a single contact
+   void Project_Single(int index,
+                       real* gamma);
+
    // Compute the first half of the shur matrix vector multiplication (N*x)
    // Perform M_invDx=M^-1*D*x
    void shurA(real*x  //Vector that N is multiplied by
@@ -119,12 +123,39 @@ class CH_PARALLEL_API ChSolverParallel : public ChBaseParallel {
       return Dot(x, Nl);      // 3)  mf_p  = l_candidate'*(0.5*N*l_candidate-b_shur)
 
    }
+   real GetObjectiveBlaze(blaze::DynamicVector<real> & x,
+                          blaze::DynamicVector<real> & b) {
+      blaze::DynamicVector<real> Nl(x.size());
+      // f_p = 0.5*l_candidate'*N*l_candidate - l_candidate'*b  = l_candidate'*(0.5*Nl_candidate - b);
+      Nl = data_container->host_data.D_T * (data_container->host_data.M_invD * x);  // 1)  g_tmp = N*l_candidate ...        #### MATR.MULTIPLICATION!!!###
+      Nl = 0.5 * Nl - b;          // 2) 0.5*N*l_candidate-b_shur
+      return (x, Nl);            // 3)  mf_p  = l_candidate'*(0.5*N*l_candidate-b_shur)
+   }
    real GetObjective() {
       custom_vector<real> Nl(data_container->host_data.gamma_data.size());
       // f_p = 0.5*l_candidate'*N*l_candidate - l_candidate'*b  = l_candidate'*(0.5*Nl_candidate - b);
       ShurProduct(data_container->host_data.gamma_data, Nl);    // 1)  g_tmp = N*l_candidate ...        #### MATR.MULTIPLICATION!!!###
       SEAXMY(0.5, Nl, data_container->host_data.rhs_data, Nl);  // 2) 0.5*N*l_candidate-b_shur
       return Dot(data_container->host_data.gamma_data, Nl);     // 3)  obj  = l_candidate'*(0.5*N*l_candidate-b_shur)
+
+   }
+   real Res4Blaze(blaze::DynamicVector<real> & x,
+                  blaze::DynamicVector<real> & b) {
+      real gdiff = .1;
+      blaze::DynamicVector<real> inside = x - gdiff * (data_container->host_data.D_T * (data_container->host_data.M_invD * x) - b);
+      Project(inside.data());
+      blaze::DynamicVector<real> temp = (x - inside) / (x.size() * gdiff);
+      return sqrt((temp, temp));
+   }
+
+   real GetKE() {
+      real kinetic_energy = 0;
+
+      for (int i = 0; i < data_container->num_bodies; i++) {
+         real v = length(data_container->host_data.vel_data[i]);
+         kinetic_energy += 0.5 * 1.0 / data_container->host_data.mass_data[i] * v * v;
+      }
+      return kinetic_energy;
 
    }
 
@@ -136,29 +167,21 @@ class CH_PARALLEL_API ChSolverParallel : public ChBaseParallel {
       iter_hist.push_back(iter);
    }
 
-   // Set the tolerance for all solvers
-   void SetTolerance(const real tolerance_value) {
-      tolerance = tolerance_value;
-   }
 
    // Set the maximum number of iterations for all solvers
    void SetMaxIterations(const int max_iteration_value) {
       max_iteration = max_iteration_value;
    }
 
-   int current_iteration; // The current iteration number of the solver
+   int current_iteration;  // The current iteration number of the solver
    int max_iteration;     // The maximum number of iterations that the solver will perform
    int total_iteration;   // The total number of iterations performed, this variable accumulates
    real residual;         // Current residual for the solver
-   real tolerance;        // Solver tolerance
+   real objective_value;
 
    //These three variables are used to store the convergence history of the solver
    thrust::host_vector<real> maxd_hist, maxdeltalambda_hist, iter_hist;
 
-   bool do_stab;           //There is an alternative velocity stab that can be performed in APGD, this enables that.
-   bool collision_inside;
-   bool update_rhs;        //Updates the tilting term within the solve
-   bool verbose;
    ChConstraintRigidRigid *rigid_rigid;
    ChConstraintBilateral *bilateral;
 
