@@ -74,8 +74,7 @@ void ChLcpSolverParallelDVI::RunTimeStep(real step) {
       thrust::copy_n(data_container->host_data.gamma_bilateral.begin(), data_container->num_bilaterals,
                      data_container->host_data.gamma_data.begin() + data_container->num_unilaterals);
    }
-   if (data_container->settings.solver.solver_type != APGD || data_container->settings.solver.solver_type == APGDRS) {
-      //std::cout << "Compute N" << std::endl;
+   if (data_container->settings.solver.solver_type != APGD && data_container->settings.solver.solver_type != APGDRS) {
       ComputeN();
    }
 
@@ -92,7 +91,7 @@ void ChLcpSolverParallelDVI::RunTimeStep(real step) {
          data_container->system_timer.stop("ChLcpSolverParallel_Solve");
       }
    }
-   if (data_container->settings.solver.solver_mode == SLIDING || data_container->settings.solver.solver_mode == SPINNING) {
+   if (data_container->settings.solver.solver_mode != NORMAL) {
       if (data_container->settings.solver.max_iteration_sliding > 0) {
          solver->SetMaxIterations(data_container->settings.solver.max_iteration_sliding);
          rigid_rigid.solve_sliding = true;
@@ -385,7 +384,7 @@ void ChLcpSolverParallelDVI::RunWarmStartPreprocess() {
 }
 
 void ChLcpSolverParallelDVI::ComputeN() {
-   if (data_container->num_contacts > 0) {
+   if (data_container->num_constraints > 0) {
       data_container->host_data.D.reset();
       data_container->host_data.Nshur.reset();
       data_container->host_data.M_inv.reset();
