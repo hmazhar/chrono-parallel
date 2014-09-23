@@ -84,6 +84,7 @@ ELSEIF(USE_SSE)
     MESSAGE(STATUS "SSE version: ${SSE_VERSION}")
     SET(CHRONO_PARALLEL_HAS_SSE "#define CHRONO_PARALLEL_HAS_SSE")
     SET(CHRONO_PARALLEL_SSE_LEVEL "#define CHRONO_PARALLEL_SSE_LEVEL \"${SSE_VERSION}\"")
+    SET(CHRONO_PARALLEL_SSE_LEVEL "#define CHRONO_PARALLEL_SSE_${SSE_STR}")
   ELSE()
     MESSAGE("No SSE support")
   ENDIF()
@@ -207,8 +208,9 @@ INCLUDE_DIRECTORIES(
     ${CUDA_SDK_ROOT_DIR}/common/inc
     ${CUDA_TOOLKIT_INCLUDE}
     )
-
-
+    
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=compute_20,code=sm_20;-std=c++11 )
+SET( CUDA_PROPAGATE_HOST_FLAGS ON ) 
 
 # ------------------------------------------------------------------------------
 # BLAZE -- required for some parallel solvers
