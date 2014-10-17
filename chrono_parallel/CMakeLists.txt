@@ -8,31 +8,38 @@
 # LIST THE FILES in the ChronoEngine_Parallel LIBRARY
 # ------------------------------------------------------------------------------
 
-SET(ChronoEngine_Parallel_SOURCES
-    ChSystemParallel.cpp
-    ChSystemParallelDVI.cpp
-    ChSystemParallelDEM.cpp
-    ChLcpSolverParallel.cpp
-    ChLcpSolverParallelDVI.cpp
-    ChLcpSolverParallelDEM.cpp
+SET(ChronoEngine_Parallel_BASE
+    ChApiParallel.h
+    ChBaseParallel.h
+    ChParallelDefines.h
+    ChDataManager.h
+    ChTimerParallel.h
     ChBaseParallel.cpp
     ChDataManager.cpp
     )
 
-SET(ChronoEngine_Parallel_HEADERS
-    ChApiParallel.h
-    ChBaseParallel.h
-    ChParallelDefines.h
-    ChSystemParallel.h
-    ChDataManager.h
-    ChLcpSolverParallel.h
-    ChLcpSystemDescriptorParallel.h
-    ChTimerParallel.h
+SOURCE_GROUP("" FILES ${ChronoEngine_Parallel_BASE})
+
+SET(ChronoEngine_Parallel_PHYSICS
+    physics/ChSystemParallel.h
+    physics/ChNodeFluid.h
+    physics/ChSystemParallel.cpp
+    physics/ChSystemParallelDVI.cpp
+    physics/ChSystemParallelDEM.cpp
+    physics/ChNodeFluid.cpp
     )
 
-SOURCE_GROUP(core FILES
-    ${ChronoEngine_Parallel_SOURCES}
-    ${ChronoEngine_Parallel_HEADERS})
+SOURCE_GROUP(physics FILES ${ChronoEngine_Parallel_PHYSICS})
+
+SET(ChronoEngine_Parallel_LCP
+    lcp/ChLcpSolverParallel.h
+    lcp/ChLcpSystemDescriptorParallel.h
+    lcp/ChLcpSolverParallel.cpp
+    lcp/ChLcpSolverParallelDVI.cpp
+    lcp/ChLcpSolverParallelDEM.cpp
+    )
+
+SOURCE_GROUP(lcp FILES ${ChronoEngine_Parallel_LCP})
 
 SET(ChronoEngine_Parallel_MATH
     math/ChParallelMath.h
@@ -44,9 +51,7 @@ SET(ChronoEngine_Parallel_MATH
     math/real4.h
     )
 
-SOURCE_GROUP(math FILES
-    ${ChronoEngine_Parallel_MATH}
-    )
+SOURCE_GROUP(math FILES ${ChronoEngine_Parallel_MATH})
 
 SET(ChronoEngine_Parallel_SOLVER
     solver/ChSolverParallel.h
@@ -80,8 +85,7 @@ SET(ChronoEngine_Parallel_SOLVER
     solver/ChSolverPDIP.cpp
     )
 
-SOURCE_GROUP(solver FILES
-    ${ChronoEngine_Parallel_SOLVER})
+SOURCE_GROUP(solver FILES ${ChronoEngine_Parallel_SOLVER})
 
 SET(ChronoEngine_Parallel_CONSTRAINTS
     constraints/ChConstraintRigidRigid.cpp
@@ -90,8 +94,7 @@ SET(ChronoEngine_Parallel_CONSTRAINTS
     constraints/ChConstraintBilateral.h
     )
 
-SOURCE_GROUP(constraints FILES
-    ${ChronoEngine_Parallel_CONSTRAINTS})
+SOURCE_GROUP(constraints FILES ${ChronoEngine_Parallel_CONSTRAINTS})
 
 SET(ChronoEngine_Parallel_COLLISION
     collision/ChCAABBGenerator.h
@@ -113,6 +116,8 @@ SET(ChronoEngine_Parallel_COLLISION
     collision/ChCNarrowphaseR.cpp
     collision/ChCCollisionModelParallel.h
     collision/ChCCollisionModelParallel.cpp
+    collision/ChCCollisionModelSphere.h
+    collision/ChCCollisionModelSphere.cpp
     collision/ChCCollisionSystemParallel.h
     collision/ChCCollisionSystemParallel.cpp
     collision/ChCCollisionSystemBulletParallel.h
@@ -121,8 +126,7 @@ SET(ChronoEngine_Parallel_COLLISION
     collision/ChContactContainerParallel.cpp
     )
 
-SOURCE_GROUP(collision FILES
-    ${ChronoEngine_Parallel_COLLISION})
+SOURCE_GROUP(collision FILES ${ChronoEngine_Parallel_COLLISION})
 
 # Windows doesn't automatically pick up Bullet sources from Chrono
 IF (MSVC)
@@ -239,8 +243,7 @@ IF (MSVC)
         ${CH_CHRONO_SDKDIR}/collision/bullet/LinearMath/btQuickprof.cpp
         )
 
-    SOURCE_GROUP(collision\\bullet FILES
-        ${ChronoEngine_Parallel_COLLISION_BULLET})
+    SOURCE_GROUP(collision\\bullet FILES ${ChronoEngine_Parallel_COLLISION_BULLET})
 
     SET(ChronoEngine_Parallel_COLLISION
         ${ChronoEngine_Parallel_COLLISION}
@@ -254,12 +257,14 @@ ENDIF()
 # ------------------------------------------------------------------------------
 
 ADD_LIBRARY(ChronoEngine_Parallel SHARED
+            ${ChronoEngine_Parallel_BASE}
+            ${ChronoEngine_Parallel_PHYSICS}
+            ${ChronoEngine_Parallel_LCP}
             ${ChronoEngine_Parallel_COLLISION}
             ${ChronoEngine_Parallel_CONSTRAINTS}
             ${ChronoEngine_Parallel_SOLVER}
             ${ChronoEngine_Parallel_MATH}
-            ${ChronoEngine_Parallel_SOURCES}
-            ${ChronoEngine_Parallel_HEADERS})
+            )
 
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

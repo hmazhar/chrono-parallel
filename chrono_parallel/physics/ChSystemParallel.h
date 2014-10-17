@@ -34,8 +34,8 @@
 
 #include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/ChDataManager.h"
-#include "chrono_parallel/ChLcpSolverParallel.h"
-#include "chrono_parallel/ChLcpSystemDescriptorParallel.h"
+#include "chrono_parallel/lcp/ChLcpSolverParallel.h"
+#include "chrono_parallel/lcp/ChLcpSystemDescriptorParallel.h"
 #include "chrono_parallel/collision/ChCCollisionSystemParallel.h"
 #include "chrono_parallel/collision/ChCCollisionSystemBulletParallel.h"
 #include "chrono_parallel/collision/ChCNarrowphaseMPR.h"
@@ -54,8 +54,7 @@ CH_RTTI(ChSystemParallel, ChSystem)
 
    virtual int Integrate_Y();
    virtual void AddBody(ChSharedPtr<ChBody> newbody);
-   virtual void RemoveBody(ChSharedPtr<ChBody> mbody);
-   virtual void RemoveBody(int i);
+   virtual void AddOtherPhysicsItem (ChSharedPtr<ChPhysicsItem> newitem);
    virtual void Update();
    virtual void UpdateBilaterals();
    virtual void UpdateBodies() = 0;
