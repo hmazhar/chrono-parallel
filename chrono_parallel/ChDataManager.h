@@ -59,11 +59,12 @@ struct collision_settings {
 struct solver_settings {
 
    solver_settings() {
-      tolerance = 1e-6;
+      tolerance = 1e-4;
+      tolerance_objective = 1e-6;
       collision_in_solver = false;
       update_rhs = false;
       verbose = false;
-      tolerance_objective = false;
+      test_objective = false;
 
       alpha = .2;
       contact_recovery_speed = .6;
@@ -94,7 +95,7 @@ struct solver_settings {
    bool collision_in_solver;
    bool update_rhs;
    bool verbose;
-   bool tolerance_objective;
+   bool test_objective;
 
    uint max_iteration;
    uint max_iteration_normal;
@@ -105,6 +106,7 @@ struct solver_settings {
    //Solver variables
    real step_size;
    real tolerance;
+   real tolerance_objective;
 
 };
 

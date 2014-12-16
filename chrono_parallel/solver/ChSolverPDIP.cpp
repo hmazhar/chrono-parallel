@@ -161,7 +161,7 @@ void ChSolverPDIP::BiCGStab(blaze::DynamicVector<real> & x) {
       x = x + alpha_cg * p_cg;
       r_cg = r_cg - alpha_cg * Ap_cg;
       rsnew_cg = (r_cg, r_cg);
-      if (sqrt(rsnew_cg) < data_container->settings.solver.tolerance / 100.0) {
+      if (sqrt(rsnew_cg) < tol_speed / 100.0) {
          return;
       }
       p_cg = r_cg + rsnew_cg / rsold_cg * p_cg;
@@ -325,13 +325,13 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
       SchurComplementProduct(gamma, gamma_tmp);
       objective_value = 0.5 * (gamma_tmp, gamma) + (r, gamma);
       AtIterationEnd(residual, objective_value, iter_hist.size());
-      if (data_container->settings.solver.tolerance_objective) {
-         if (objective_value <= data_container->settings.solver.tolerance) {
+      if (data_container->settings.solver.test_objective) {
+         if (objective_value <= data_container->settings.solver.tolerance_objective) {
             break;
          }
       } else {
          // (21) if r < tau
-         if (residual < data_container->settings.solver.tolerance) {
+        if (residual < tol_speed) {
             // (22) break
             break;
 
