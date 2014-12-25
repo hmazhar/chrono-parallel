@@ -18,6 +18,7 @@
 #include "subsys/vehicle/Vehicle.h"
 #include "subsys/powertrain/SimplePowertrain.h"
 
+#undef CHRONO_PARALLEL_HAS_OPENGL
 
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
 #include "chrono_opengl/ChOpenGLWindow.h"
@@ -78,6 +79,7 @@ int out_fps = 60;
 
 // Continuous loop (only if OpenGL available)
 bool loop = false;
+
 
 // =============================================================================
 int main(int argc, char* argv[])
@@ -146,6 +148,55 @@ int main(int argc, char* argv[])
   SimplePowertrain powertrain(vehicle::GetDataFile(simplepowertrain_file));
   powertrain.Initialize();
 
+  // --------------------------------------------------------
+  // Add contact geometry to the vehicle wheel bodies
+  // --------------------------------------------------------
+  double radius = 0.47;
+  double width = 0.254;
+
+  int numAxles = vehicle.GetNumberAxles();
+  int numWheels = 2 * numAxles;
+
+  for (int i = 0; i < numWheels; i++) {
+    double radius = vehicle.GetWheel(i)->GetRadius();
+    double width = vehicle.GetWheel(i)->GetWidth();
+
+    ChSharedPtr<ChBody> wheelBody = vehicle.GetWheelBody(i);
+
+    wheelBody->ChangeCollisionModel(new collision::ChCollisionModelParallel);
+
+    wheelBody->GetCollisionModel()->ClearModel();
+    wheelBody->GetCollisionModel()->AddCylinder(radius, radius, width / 2);
+    wheelBody->GetCollisionModel()->BuildModel();
+
+    wheelBody->SetCollide(true);
+    wheelBody->GetMaterialSurface()->SetFriction(0.8f);
+  }
+
+  // --------------------------------------------------------
+  // Create the ground body and set contact geometry
+  // --------------------------------------------------------
+  double hdimX = 100;
+  double hdimY = 100;
+  double hdimZ = 5;
+
+  ChSharedPtr<ChBody> ground = ChSharedPtr<ChBody>(new ChBody(new collision::ChCollisionModelParallel));
+  ground->SetIdentifier(-1);
+  ground->SetBodyFixed(true);
+  ground->SetCollide(true);
+  ground->SetPos(ChVector<>(0, 0, -hdimZ));
+
+  ground->GetMaterialSurface()->SetFriction(0.8f);
+
+  ground->GetCollisionModel()->ClearModel();
+  ground->GetCollisionModel()->AddBox(hdimX, hdimY, hdimZ);
+  ground->GetCollisionModel()->BuildModel();
+
+  ChSharedPtr<ChBoxShape> box_ground(new ChBoxShape);
+  box_ground->GetBoxGeometry().Size = ChVector<>(hdimX, hdimY, hdimZ);
+  ground->AddAsset(box_ground);
+
+  system->AddBody(ground);
 
   // -----------------------
   // Perform the simulation.
