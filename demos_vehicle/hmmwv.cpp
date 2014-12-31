@@ -35,10 +35,6 @@ using std::endl;
 
 // JSON file for vehicle model
 std::string vehicle_file("hmmwv/vehicle/HMMWV_Vehicle.json");
-//std::string vehicle_file("generic/vehicle/Vehicle_DoubleWishbones.json");
-//std::string vehicle_file("generic/vehicle/Vehicle_MultiLinks.json");
-//std::string vehicle_file("generic/vehicle/Vehicle_SolidAxles.json");
-//std::string vehicle_file("generic/vehicle/Vehicle_ThreeAxles.json");
 
 // JSON files for powertrain (simple)
 std::string simplepowertrain_file("hmmwv/powertrain/HMMWV_SimplePowertrain.json");
@@ -79,6 +75,78 @@ int out_fps = 60;
 
 // Continuous loop (only if OpenGL available)
 bool loop = false;
+
+// =============================================================================
+
+class MyVehicle {
+public:
+  MyVehicle(ChSystem* system);
+
+  void Update(double time);
+
+  ChSharedPtr<Vehicle>          m_vehicle;
+  ChSharedPtr<SimplePowertrain> m_powertrain;
+  ChTireForces                  m_tire_forces;
+};
+
+
+MyVehicle::MyVehicle(ChSystem* system)
+{
+  // Create and initialize the vehicle system
+
+  m_vehicle = ChSharedPtr<Vehicle>(new Vehicle(system, vehicle::GetDataFile(vehicle_file)));
+  m_vehicle->Initialize(ChCoordsys<>(initLoc, initRot));
+
+  // Create and initialize the powertrain system
+  m_powertrain = ChSharedPtr<SimplePowertrain>(new SimplePowertrain(vehicle::GetDataFile(simplepowertrain_file)));
+  m_powertrain->Initialize();
+
+  // Add contact geometry to the vehicle wheel bodies
+  double radius = 0.47;
+  double width = 0.254;
+
+  int numAxles = m_vehicle->GetNumberAxles();
+  int numWheels = 2 * numAxles;
+
+  for (int i = 0; i < numWheels; i++) {
+    double radius = m_vehicle->GetWheel(i)->GetRadius();
+    double width = m_vehicle->GetWheel(i)->GetWidth();
+
+    ChSharedPtr<ChBody> wheelBody = m_vehicle->GetWheelBody(i);
+
+    wheelBody->ChangeCollisionModel(new collision::ChCollisionModelParallel);
+
+    wheelBody->GetCollisionModel()->ClearModel();
+    wheelBody->GetCollisionModel()->AddCylinder(radius, radius, width / 2);
+    wheelBody->GetCollisionModel()->BuildModel();
+
+    wheelBody->SetCollide(true);
+    wheelBody->GetMaterialSurface()->SetFriction(0.8f);
+  }
+
+  // The vector of tire forces is required by the ChronoVehicle API. Since we
+  // use rigid contact for tire-terrain interaction, these are always zero.
+  m_tire_forces.resize(numWheels);
+}
+
+void MyVehicle::Update(double time)
+{
+  // Calculate driver inputs at current time
+  double throttle = 0;
+  double steering = 0;
+  double braking = 0;
+
+  if (time > 1.5)
+    throttle = 0.5;
+  else if (time > 0.5)
+    throttle = 0.5 * (time - 0.5);
+
+  // Update the powertrain system
+  m_powertrain->Update(time, throttle, m_vehicle->GetDriveshaftSpeed());
+
+  // Update the vehicle system.
+  m_vehicle->Update(time, steering, braking, m_powertrain->GetOutputTorque(), m_tire_forces);
+}
 
 
 // =============================================================================
@@ -137,41 +205,10 @@ int main(int argc, char* argv[])
 
   system->GetSettings()->collision.bins_per_axis = I3(10, 10, 10);
 
-  // --------------------------------------------------------
-  // Create and initialize the vehicle and powertrain systems
-  // --------------------------------------------------------
-
-  Vehicle vehicle(system, vehicle::GetDataFile(vehicle_file));
-  vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
-
-  // Create and initialize the powertrain system
-  SimplePowertrain powertrain(vehicle::GetDataFile(simplepowertrain_file));
-  powertrain.Initialize();
-
-  // --------------------------------------------------------
-  // Add contact geometry to the vehicle wheel bodies
-  // --------------------------------------------------------
-  double radius = 0.47;
-  double width = 0.254;
-
-  int numAxles = vehicle.GetNumberAxles();
-  int numWheels = 2 * numAxles;
-
-  for (int i = 0; i < numWheels; i++) {
-    double radius = vehicle.GetWheel(i)->GetRadius();
-    double width = vehicle.GetWheel(i)->GetWidth();
-
-    ChSharedPtr<ChBody> wheelBody = vehicle.GetWheelBody(i);
-
-    wheelBody->ChangeCollisionModel(new collision::ChCollisionModelParallel);
-
-    wheelBody->GetCollisionModel()->ClearModel();
-    wheelBody->GetCollisionModel()->AddCylinder(radius, radius, width / 2);
-    wheelBody->GetCollisionModel()->BuildModel();
-
-    wheelBody->SetCollide(true);
-    wheelBody->GetMaterialSurface()->SetFriction(0.8f);
-  }
+  // -----------------------------------------
+  // Create and initialize the vehicle systems
+  // -----------------------------------------
+  MyVehicle vehicle(system);
 
   // --------------------------------------------------------
   // Create the ground body and set contact geometry
@@ -209,6 +246,9 @@ int main(int argc, char* argv[])
   gl_window.SetCamera(ChVector<>(0,-10,0), ChVector<>(0,0,0),ChVector<>(0,0,1));
 
   // Let the OpenGL manager run the simulation until interrupted.
+  // NOTE: we need to add a user callback to the OpenGL library to give back
+  // control to the user before advancing the simulation by one step (in this
+  // case to call the vehicle update function).
   if (loop) {
     gl_window.StartDrawLoop(time_step);
     return 0;
@@ -242,6 +282,9 @@ int main(int argc, char* argv[])
       next_out_frame += out_steps;
       num_contacts = 0;
     }
+
+    // Update vehicle
+    vehicle.Update(time);
 
     // Advance dynamics.
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
