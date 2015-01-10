@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
   system->GetSettings()->solver.max_iteration_spinning = max_iteration_spinning;
   system->GetSettings()->solver.alpha = 0;
   system->GetSettings()->solver.contact_recovery_speed = contact_recovery_speed;
-  system->ChangeSolverType(APGDRS);
+  system->ChangeSolverType(APGDREF);
 
   system->GetSettings()->collision.bins_per_axis = I3(10, 10, 10);
 
