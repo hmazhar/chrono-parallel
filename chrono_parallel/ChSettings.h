@@ -80,9 +80,11 @@ struct solver_settings {
   solver_settings() {
 
     tolerance = 1e-4;
+    tol_speed = 1e-4;
     tolerance_objective = 1e-6;
     collision_in_solver = false;
     update_rhs = false;
+    scale_mass_matrix = false;
     verbose = false;
     test_objective = false;
 
@@ -101,6 +103,7 @@ struct solver_settings {
 
     solver_type = APGD;
     solver_mode = SLIDING;
+    local_solver_mode = NORMAL;
   }
   //The solver type variable defines name of the solver that will be used to
   //solve the DVI problem
@@ -115,6 +118,11 @@ struct solver_settings {
   //when you know that you don't need spinning/rolling friction or want to solve
   //a problem frictionless
   SOLVERMODE solver_mode;
+
+  //This should not be set by the user, depending on how the iterations are set
+  //The variable is used to specify what type of solve is currently being done
+  SOLVERMODE local_solver_mode;
+
   //this parameter is a constant used when solving a problem with compliance
   real alpha;
   //The contact recovery speed parameter controls how "hard" a contact is
@@ -134,6 +142,7 @@ struct solver_settings {
   //Experimental options that probably don't work for all solvers
   bool collision_in_solver;
   bool update_rhs;
+  bool scale_mass_matrix;
   bool verbose;
   bool test_objective;
 

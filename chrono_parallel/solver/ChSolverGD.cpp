@@ -4,6 +4,7 @@ using namespace chrono;
 
 uint ChSolverGD::SolveGD(const uint max_iter, const uint size, blaze::DynamicVector<real>& mb, blaze::DynamicVector<real>& ml) {
   real& residual = data_container->measures.solver.residual;
+  real& objective_value = data_container->measures.solver.objective_value;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;
 
   real eps = data_container->settings.step_size;
@@ -18,11 +19,12 @@ uint ChSolverGD::SolveGD(const uint max_iter, const uint size, blaze::DynamicVec
   };
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     ml = ml + eps * r;
-    r = data_container->host_data.D_T * (data_container->host_data.M_invD * ml);
+    ShurProduct(ml, r);
     r = mb - r;
     resnew = sqrt((ml, ml));
     residual = std::abs(resnew - resold);
-    AtIterationEnd(residual, GetObjectiveBlaze(ml, mb), iter_hist.size());
+    objective_value = GetObjective(ml, mb);
+    AtIterationEnd(residual, objective_value);
     if (residual < data_container->settings.solver.tolerance) {
       break;
     }

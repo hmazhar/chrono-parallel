@@ -28,6 +28,8 @@
 
 // Chrono Includes
 #include "lcp/ChLcpSystemDescriptor.h"
+#include "physics/ChBody.h"
+#include "physics/ChLinksAll.h"
 
 // Chrono Parallel Includes
 #include "chrono_parallel/ChTimerParallel.h"
@@ -82,10 +84,10 @@ struct host_container {
    // Object data
    thrust::host_vector<real3> pos_data, pos_new_data;
    thrust::host_vector<real4> rot_data, rot_new_data;
-   thrust::host_vector<M33> inr_data;
+   //thrust::host_vector<M33> inr_data;
    thrust::host_vector<bool> active_data;
    thrust::host_vector<bool> collide_data;
-   thrust::host_vector<real> inv_mass_data;
+   //thrust::host_vector<real> inv_mass_data;
 
    // Bilateral constraint type (all supported constraints)
    thrust::host_vector<int> bilateral_type;
@@ -109,23 +111,33 @@ struct host_container {
    thrust::host_vector<real> alpha;            // Dissipation factor (Hunt-Crossley)
    thrust::host_vector<real> cr;               // Coefficient of restitution
 
+   //For the variables below the convention is:
+   //_n is normal
+   //_t is tangential
+   //_s is rolling and spinning
+   //_b is bilateral
+   //_T is transpose
+   //_inv is inverse
    //This matrix, if used will hold D^TxM^-1xD in sparse form
    CompressedMatrix<real> Nshur;
    //The D Matrix hold the Jacobian for the entire system
-   CompressedMatrix<real> D;
+   CompressedMatrix<real> D_n, D_t, D_s, D_b;
    //D_T is the transpose of the D matrix, note that D_T is actually computed
    //first and D is taken as the transpose. This is due to the way that blaze
    //handles sparse matrix allocation, it is easier to do it on a per row basis
-   CompressedMatrix<real> D_T;
+   CompressedMatrix<real> D_n_T, D_t_T, D_s_T, D_b_T;
    //M_inv is the inverse mass matrix, This matrix, if holding the full inertia
    //tensor is block diagonal
    CompressedMatrix<real> M_inv;
+   //M is the mass matrix, this is only computed in certain situations for some
+   //experimental features in the solver
+   CompressedMatrix<real> M;
    //Minv_D holds M_inv multiplied by D, this is done as a preprocessing step
    //so that later, when the full matrix vector product is needed it can be
    //performed in two steps, first R = Minv_D*x, and then D_T*R where R is just
    //a temporary variable used here for illustrative purposes. In reality the
    //entire operation happens inline without a temp variable.
-   CompressedMatrix<real> M_invD;
+   CompressedMatrix<real> M_invD_n, M_invD_t, M_invD_s, M_invD_b;
 
    DynamicVector<real> R; //The right hand side of the system
    DynamicVector<real> b; //Correction terms
@@ -152,6 +164,13 @@ class CH_PARALLEL_API ChParallelDataManager {
    //This pointer is used by the bilarerals for computing the jacobian and other
    //terms
    ChLcpSystemDescriptor* lcp_system_descriptor;
+
+   //These pointers are used to compute the mass matrix instead of filling a
+   //a temporary data structure
+   std::vector<ChBody*>* body_list;      //List of bodies
+   std::vector<ChLink*>* link_list;      //List of bilaterals
+   std::vector<ChPhysicsItem*>* other_physics_list; //List to other items
+
 
    // Indexing variables
    uint num_bodies;        // The number of rigid bodies in a system

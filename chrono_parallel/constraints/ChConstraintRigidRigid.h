@@ -18,8 +18,7 @@ void Compute_Jacobian_Rolling(const real4& quat, const real3& U, const real3& V,
 class CH_PARALLEL_API ChConstraintRigidRigid {
  public:
   ChConstraintRigidRigid() {
-    solve_sliding = false;
-    solve_spinning = false;
+    data_container = 0;
     offset = 3;
     inv_h = inv_hpa = inv_hhpa = 0;
   }
@@ -65,33 +64,28 @@ class CH_PARALLEL_API ChConstraintRigidRigid {
         data_container->host_data.fric_rigid_rigid[i] = mu;
       }
     }
-    solve_sliding = false;
-    solve_spinning = false;
   }
 
-  void host_Project_single(int index, int2* ids, real3* friction, real* cohesion, real* gamma);
-
-  void host_Project(int2* ids, real3* friction, real* cohesion, real* gamma);
 
   void Project(real* gamma);
-  void Project_NoPar(real* gamma);
   void Project_Single(int index, real* gamma);
+  void host_Project_single(int index, int2* ids, real3* friction, real* cohesion, real* gamma);
 
-  void func_Project(int& index, int2* ids, real3* fric, real* cohesion, real* gam);
+  void func_Project_normal(int index, const int2* ids, const real* cohesion, real* gam);
+  void func_Project_sliding(int index, const int2* ids, const real3* fric, const real* cohesion, real* gam);
+  void func_Project_spinning(int index, const int2* ids, const real3* fric, real* gam);
 
-  void func_Project_rolling(int& index, int2* ids, real3* fric, real* gam);
+  // Compute the vector of corrections
+  void Build_b();
+  // Compute the diagonal compliance matrix
+  void Build_E();
+  // Compute the jacobian matrix, no allocation is performed here,
+  // GenerateSparsity should take care of that
+  void Build_D();
+  // Fill-in the non zero entries in the bilateral jacobian with ones.
+  // This operation is sequential.
+  void GenerateSparsity();
 
-  void host_ComputeS(int2* ids, real3* mu, bool2* active, real3* norm, real3* vel, real3* omega, real3* ptA, real3* ptB, real4* rot, const real* rhs, real* b);
-
-  void ComputeS(const custom_vector<real>& rhs, custom_vector<real3>& vel_data, custom_vector<real3>& omg_data, custom_vector<real>& b);
-
-  void Build_D(SOLVERMODE solver_mode);
-  void Build_b(SOLVERMODE solver_mode);
-  void Build_E(SOLVERMODE solver_mode);
-  void GenerateSparsity(SOLVERMODE solver_mode);
-
-  bool solve_sliding;
-  bool solve_spinning;
   int offset;
 
  protected:
