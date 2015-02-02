@@ -18,7 +18,7 @@
 #include "subsys/vehicle/Vehicle.h"
 #include "subsys/powertrain/SimplePowertrain.h"
 
-#undef CHRONO_PARALLEL_HAS_OPENGL
+//#undef CHRONO_PARALLEL_HAS_OPENGL
 
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
 #include "chrono_opengl/ChOpenGLWindow.h"
@@ -34,7 +34,7 @@ using std::endl;
 // =============================================================================
 
 // JSON file for vehicle model
-std::string vehicle_file("hmmwv/vehicle/HMMWV_Vehicle.json");
+std::string vehicle_file("hmmwv/vehicle/HMMWV_Vehicle_simple.json");
 
 // JSON files for powertrain (simple)
 std::string simplepowertrain_file("hmmwv/powertrain/HMMWV_SimplePowertrain.json");
@@ -136,10 +136,10 @@ void MyVehicle::Update(double time)
   double steering = 0;
   double braking = 0;
 
-  if (time > 1.5)
-    throttle = 0.5;
-  else if (time > 0.5)
-    throttle = 0.5 * (time - 0.5);
+  if (time > 0.5)
+    throttle = 1.0;
+  else if (time > 0.25)
+    throttle = 4 * (time - 0.25);
 
   // Update the powertrain system
   m_powertrain->Update(time, throttle, m_vehicle->GetDriveshaftSpeed());
