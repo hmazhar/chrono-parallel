@@ -14,19 +14,19 @@
 // =============================================================================
 
 #include <iostream>
-#include "chrono_opengl/shapes/ChOpenGLCloud.h"
+#include "chrono_opengl/shapes/ChOpenGLWires.h"
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace glm;
 using namespace chrono::opengl;
 
-ChOpenGLCloud::ChOpenGLCloud() : ChOpenGLObject() {
+ChOpenGLWires::ChOpenGLWires() : ChOpenGLObject() {
   point_size = .04;
   point_size_handle = BAD_GL_VALUE;
   color_handle = BAD_GL_VALUE;
 }
 
-bool ChOpenGLCloud::Initialize(const std::vector<glm::vec3>& data, ChOpenGLMaterial mat, ChOpenGLShader* _shader) {
+bool ChOpenGLWires::Initialize(const std::vector<glm::vec3>& data, ChOpenGLMaterial mat, ChOpenGLShader* _shader) {
   if (this->GLReturnedError("Background::Initialize - on entry"))
     return false;
 
@@ -59,19 +59,19 @@ bool ChOpenGLCloud::Initialize(const std::vector<glm::vec3>& data, ChOpenGLMater
   color = glm::vec4(mat.diffuse_color, 1);
   return true;
 }
-void ChOpenGLCloud::Update(const std::vector<glm::vec3>& data) {
+void ChOpenGLWires::Update(const std::vector<glm::vec3>& data) {
   this->vertices = data;
   this->vertex_indices.resize(data.size());
   for (int i = 0; i < data.size(); i++) {
     this->vertex_indices[i] = i;
   }
 }
-void ChOpenGLCloud::TakeDown() {
+void ChOpenGLWires::TakeDown() {
   vertices.clear();
   super::TakeDown();
 }
 
-void ChOpenGLCloud::Draw(const mat4& projection, const mat4& view) {
+void ChOpenGLWires::Draw(const mat4& projection, const mat4& view) {
   if (this->GLReturnedError("ChOpenGLCloud::Draw - on entry"))
     return;
   glEnable(GL_DEPTH_TEST);
@@ -96,7 +96,7 @@ void ChOpenGLCloud::Draw(const mat4& projection, const mat4& view) {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_element_handle);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.size() * sizeof(GLuint), &vertex_indices[0], GL_DYNAMIC_DRAW);
 
-  glDrawElements(GL_POINTS, this->vertex_indices.size(), GL_UNSIGNED_INT, (void*)0);
+  glDrawElements(GL_LINES, this->vertex_indices.size(), GL_UNSIGNED_INT, (void*)0);
 
   this->GLReturnedError("ChOpenGLCloud::Draw - after draw");
   glBindVertexArray(0);
@@ -107,4 +107,4 @@ void ChOpenGLCloud::Draw(const mat4& projection, const mat4& view) {
     return;
 }
 
-void ChOpenGLCloud::SetPointSize(const float& pointsize) { point_size = pointsize; }
+void ChOpenGLWires::SetPointSize(const float& pointsize) { point_size = pointsize; }

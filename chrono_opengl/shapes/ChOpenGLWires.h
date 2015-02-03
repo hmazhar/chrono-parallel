@@ -13,17 +13,17 @@
 // Authors: Hammad Mazhar
 // =============================================================================
 
-#ifndef CHOPENGLCLOUD_H
-#define CHOPENGLCLOUD_H
+#ifndef CHOPENGLWIRES_H
+#define CHOPENGLWIRES_H
 
 #include "chrono_opengl/core/ChOpenGLObject.h"
 #include "chrono_opengl/core/ChOpenGLMaterial.h"
 
 namespace chrono {
 namespace opengl {
-class CH_OPENGL_API ChOpenGLCloud : public ChOpenGLObject {
+class CH_OPENGL_API ChOpenGLWires : public ChOpenGLObject {
  public:
-  ChOpenGLCloud();
+  ChOpenGLWires();
   virtual bool Initialize(const std::vector<glm::vec3>& data, ChOpenGLMaterial mat, ChOpenGLShader* shader);
   virtual void Draw(const glm::mat4& projection, const glm::mat4& view);
   void TakeDown();

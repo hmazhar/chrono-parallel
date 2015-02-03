@@ -82,10 +82,17 @@ class CH_PARALLEL_API ChConstraintRigidRigid {
   // Compute the jacobian matrix, no allocation is performed here,
   // GenerateSparsity should take care of that
   void Build_D();
+  void Build_s();
   // Fill-in the non zero entries in the bilateral jacobian with ones.
   // This operation is sequential.
   void GenerateSparsity();
 
+  // Solve the fourth order polynomial to get an approximate solution
+  void SolveQuartic();
+  // Solve each contact individually using a jacobi iteration
+  void SolveLocal();
+  // Solve each contact individually using a the inverse
+  void SolveInverse();
   int offset;
 
  protected:

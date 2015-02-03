@@ -4,6 +4,36 @@ using namespace chrono;
 
 ChSolverAPGD::ChSolverAPGD() : ChSolverParallel(), mg_tmp_norm(0), mb_tmp_norm(0), obj1(0), obj2(0), norm_ms(0), dot_g_temp(0), theta(1), theta_new(0), beta_new(0), t(0), L(0), g_diff(0) {}
 
+void ChSolverAPGD::UpdateR() {
+
+  if (data_container->num_constraints <= 0) {
+    return;
+  }
+
+  if (!data_container->settings.solver.update_rhs) {
+    return;
+  }
+
+  const CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
+  const DynamicVector<real>& M_invk = data_container->host_data.M_invk;
+  const DynamicVector<real>& b = data_container->host_data.b;
+  DynamicVector<real>& R = data_container->host_data.R;
+  DynamicVector<real>& s = data_container->host_data.s;
+
+  uint num_contacts = data_container->num_contacts;
+
+  s.resize(data_container->num_contacts);
+  reset(s);
+
+  rigid_rigid->Build_s();
+
+  blaze::DenseSubvector<const DynamicVector<real> > b_n = blaze::subvector(b, 0, num_contacts);
+  blaze::DenseSubvector<DynamicVector<real> > R_n = blaze::subvector(R, 0, num_contacts);
+  blaze::DenseSubvector<DynamicVector<real> > s_n = blaze::subvector(s, 0, num_contacts);
+
+  R_n = -b_n - D_n_T * M_invk + s_n;
+}
+
 uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::DynamicVector<real>& r, blaze::DynamicVector<real>& gamma) {
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;
@@ -82,7 +112,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::
     // Compute the residual
     temp = gamma_new - g_diff * (N_gamma_new - r);
     Project(temp.data());
-    temp = (1.0 / g_diff) * (gamma_new-temp);
+    temp = (1.0 / g_diff) * (gamma_new - temp);
     real res = sqrt((real)(temp, temp));
 
     if (res < residual) {
@@ -101,7 +131,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::
         break;
       }
     } else {
-      if (residual < data_container->settings.solver.tolerance) {
+      if (residual < data_container->settings.solver.tol_speed) {
         break;
       }
     }
@@ -116,6 +146,8 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::
     theta = theta_new;
 
     gamma = gamma_new;
+
+    UpdateR();
   }
 
   gamma = gamma_hat;

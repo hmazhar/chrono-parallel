@@ -9,6 +9,10 @@ ADD_EXECUTABLE(embedfile embedfile.cpp)
 SET(GLSL_SHADERS
   cloud_frag
   cloud_vert
+  dot_frag
+  dot_vert
+  sphere_frag
+  sphere_vert
   phong_frag
   phong_vert
   text_frag
@@ -56,6 +60,7 @@ SET(ChronoEngine_OpenGL_SOURCES
 	core/ChOpenGLVertexAttributes.cpp
 	shapes/ChOpenGLMesh.cpp
 	shapes/ChOpenGLCloud.cpp
+	shapes/ChOpenGLWires.cpp
 	shapes/ChOpenGLOBJ.cpp
 	shapes/obj/ChOpenGLOBJLoader.cpp
 	shapes/obj/tiny_obj_loader.cc
@@ -71,6 +76,7 @@ SET(ChronoEngine_OpenGL_HEADERS
 	core/ChOpenGLObject.h
 	core/ChOpenGLVertexAttributes.h
 	shapes/ChOpenGLCloud.h
+	shapes/ChOpenGLWires.h
 	shapes/ChOpenGLOBJ.h
 	shapes/obj/ChOpenGLOBJLoader.h
 	shapes/obj/tiny_obj_loader.h
@@ -83,6 +89,10 @@ SET(ChronoEngine_OpenGL_HEADERS
 	${CMAKE_BINARY_DIR}/resources/phong_vert.h
 	${CMAKE_BINARY_DIR}/resources/cloud_frag.h
 	${CMAKE_BINARY_DIR}/resources/cloud_vert.h
+	${CMAKE_BINARY_DIR}/resources/dot_frag.h
+    ${CMAKE_BINARY_DIR}/resources/dot_vert.h
+    ${CMAKE_BINARY_DIR}/resources/sphere_frag.h
+    ${CMAKE_BINARY_DIR}/resources/sphere_vert.h
 	)
 
 IF (MSVC)
