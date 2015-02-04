@@ -178,7 +178,8 @@ enum SOLVERTYPE {
    APGDREF,
    JACOBI,
    GAUSS_SEIDEL,
-   PDIP
+   PDIP,
+   MOSEK
 };
 
 enum SOLVERMODE {

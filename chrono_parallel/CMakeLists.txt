@@ -67,6 +67,7 @@ SET(ChronoEngine_Parallel_SOLVER
     solver/ChSolverBiCG.h
     solver/ChSolverBiCGStab.h
     solver/ChSolverPDIP.h
+    solver/ChSolverMosek.h
     solver/ChSolverParallel.cpp
     solver/ChSolverJacobi.cpp
     solver/ChSolverCG.cpp
@@ -81,6 +82,7 @@ SET(ChronoEngine_Parallel_SOLVER
     solver/ChSolverBiCG.cpp
     solver/ChSolverBiCGStab.cpp
     solver/ChSolverPDIP.cpp
+    solver/ChSolverMosek.cpp
     )
 
 SOURCE_GROUP(solver FILES ${ChronoEngine_Parallel_SOLVER})
@@ -275,7 +277,7 @@ SET_TARGET_PROPERTIES(ChronoEngine_Parallel PROPERTIES
                       LINK_FLAGS "${CH_LINKERFLAG_GPU}"
                       COMPILE_DEFINITIONS "CH_API_COMPILE_PARALLEL")
 
-TARGET_LINK_LIBRARIES(ChronoEngine_Parallel ${CHRONOENGINE_LIBRARY} ${CUDA_FRAMEWORK} ${MPI_LIBRARIES})
+TARGET_LINK_LIBRARIES(ChronoEngine_Parallel ${CHRONOENGINE_LIBRARY} ${CUDA_FRAMEWORK} ${MPI_LIBRARIES} ${MOSEK_LIB})
 
 INSTALL(TARGETS ChronoEngine_Parallel
         RUNTIME DESTINATION bin

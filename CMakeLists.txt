@@ -36,6 +36,7 @@ INCLUDE(CMakeDependentOption)
 
 OPTION(BUILD_UTILS "Build the ChronoEngine_Utils library" ON)
 OPTION(BUILD_OPENGL "Build the ChronoEngine_OpenGL library" ON)
+OPTION(MOSEK_SOLVER "Enable the Mosek solver" OFF)
 
 # If building the ChronoEngine_Utils library, provide an option to build demo
 # programs (default ON). Otherwise, do not build demo programs.
@@ -293,7 +294,17 @@ ELSE()
 
 ENDIF()
 
-
+# ------------------------------------------------------------------------------
+# Enable the mosek solver
+# ------------------------------------------------------------------------------
+IF(MOSEK_SOLVER)
+  # User specified path to Mosek Header
+  SET(MOSEK_INC_PATH           ""    CACHE   PATH    "Where is mosek.h located")
+  # User specified path to Mosek Libraries
+  SET(MOSEK_LIB_PATH           ""   CACHE    PATH    "Where is Mosek Lib located")
+  FIND_LIBRARY(MOSEK_LIB NAMES mosek64 PATHS ${MOSEK_LIB_PATH} REQUIRED)
+  INCLUDE_DIRECTORIES(${MOSEK_INC_PATH} )
+ENDIF()
 # ------------------------------------------------------------------------------
 # Automatically copy DLLs 
 # ------------------------------------------------------------------------------

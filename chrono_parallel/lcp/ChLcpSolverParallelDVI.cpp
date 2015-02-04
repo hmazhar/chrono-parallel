@@ -13,6 +13,7 @@
 #include "chrono_parallel/solver/ChSolverPGS.h"
 #include "chrono_parallel/solver/ChSolverJacobi.h"
 #include "chrono_parallel/solver/ChSolverPDIP.h"
+#include "chrono_parallel/solver/ChSolverMosek.h"
 using namespace chrono;
 
 void ChLcpSolverParallelDVI::RunTimeStep(real step)
@@ -443,6 +444,9 @@ void ChLcpSolverParallelDVI::ChangeSolverType(SOLVERTYPE type) {
       break;
     case PDIP:
       solver = new ChSolverPDIP();
+      break;
+    case MOSEK:
+      solver = new ChSolverMosek();
       break;
   }
 
