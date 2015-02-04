@@ -5,11 +5,6 @@ using namespace chrono;
 
 ChSolverMosek::ChSolverMosek() : ChSolverParallel() {}
 
-#define FIXED MSK_BK_FX    //...=l_j
-#define FREE MSK_BK_FR     // Free
-#define LOWER MSK_BK_LO    // l_j <=...
-#define UPPER MSK_BK_UP    //...>=u_j
-
 static void MSKAPI printstr(void* handle, MSKCONST char str[]) { printf("%s", str); } /* printstr */
 
 void ConvertCOO(const CompressedMatrix<real>& mat, std::vector<MSKint32t>& row, std::vector<MSKint32t>& col, std::vector<real>& val) {
@@ -83,6 +78,11 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   std::vector<MSKint32t> obj_col;
   std::vector<real> obj_val;
 
+
+
+
+
+
   // CompressedMatrix<real> N = data_container->host_data.D_n_T * data_container->host_data.M_invD_n;
   CompressedMatrix<real> N = D_T * M_invD;
 
@@ -96,6 +96,11 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
   const MSKint32t numvar = data_container->num_constraints;
   const MSKint32t numcon = data_container->num_contacts;
+
+
+  std::vector<MSKboundkey_enum> bound_free(numvar, MSK_BK_FR);
+  std::vector<real> bound_lo(numvar, -MSK_INFINITY);
+  std::vector<real> bound_up(numvar, +MSK_INFINITY);
 
   MSKenv_t env = NULL;      // Mosek Environment variable
   MSKtask_t task = NULL;    // Task that mosek will perform
@@ -127,10 +132,15 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
         res_code = MSK_putqobj(task, N.nonZeros(), obj_row.data(), obj_col.data(), obj_val.data());
       }
 
+      //Let them be FREE!
+      if (res_code == MSK_RES_OK) {
+        res_code = MSK_putvarboundslice(task, 0, numvar, bound_free.data(), bound_lo.data(), bound_up.data());
+      }
+
       for (int j = 0; j < numvar && res_code == MSK_RES_OK; ++j) {
         res_code = MSK_putcj(task, j, -rhs[j]);
-        //Let them be FREE!
-        res_code = MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY);
+
+//        res_code = MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY);
       }
 
       for (int index = 0; index < numcon && res_code == MSK_RES_OK; ++index) {
