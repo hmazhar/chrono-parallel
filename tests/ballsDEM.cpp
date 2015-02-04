@@ -12,7 +12,7 @@
 // Authors: Radu Serban
 // =============================================================================
 //
-// ChronoParallel test program using DVI method for frictional contact.
+// ChronoParallel test program using DEM method for frictional contact.
 //
 // The model simulated here consists of a number of spherical objects falling
 // in a fixed container.
@@ -40,10 +40,10 @@
 using namespace chrono;
 using namespace chrono::collision;
 
-const char* out_folder = "../BALLS_DVI/POVRAY";
+const char* out_folder = "../BALLS_DEM/POVRAY";
 
 // Tilt angle (about global Y axis) of the container.
-double tilt_angle = 1 * CH_C_PI / 20;
+double tilt_angle = 0 * CH_C_PI / 20;
 
 // Number of balls: (2 * count_X + 1) * (2 * count_Y + 1)
 int count_X = 2;
@@ -64,17 +64,19 @@ void OutputData(ChSystemParallel* sys,
 // -----------------------------------------------------------------------------
 // Create a bin consisting of five boxes attached to the ground.
 // -----------------------------------------------------------------------------
-void AddContainer(ChSystemParallelDVI* sys) {
+void AddContainer(ChSystemParallelDEM* sys) {
    // IDs for the two bodies
    int binId = -200;
 
    // Create a common material
-   ChSharedPtr<ChMaterialSurface> mat(new ChMaterialSurface);
+   ChSharedPtr<ChMaterialSurfaceDEM> mat(new ChMaterialSurfaceDEM);
+   mat->SetYoungModulus(2e5f);
    mat->SetFriction(0.4f);
+   mat->SetDissipationFactor(0.6f);
 
    // Create the containing bin (4 x 4 x 1)
-   ChSharedBodyPtr bin(new ChBody(new ChCollisionModelParallel));
-   bin->SetMaterialSurface(mat);
+   ChSharedPtr<ChBodyDEM> bin(new ChBodyDEM(new ChCollisionModelParallel));
+   bin->SetMaterialSurfaceDEM(mat);
    bin->SetIdentifier(binId);
    bin->SetMass(1);
    bin->SetPos(ChVector<>(0, 0, 0));
@@ -101,8 +103,10 @@ void AddContainer(ChSystemParallelDVI* sys) {
 // -----------------------------------------------------------------------------
 void AddFallingBalls(ChSystemParallel* sys) {
    // Common material
-   ChSharedPtr<ChMaterialSurface> ballMat(new ChMaterialSurface);
+   ChSharedPtr<ChMaterialSurfaceDEM> ballMat(new ChMaterialSurfaceDEM);
+   ballMat->SetYoungModulus(2e5f);
    ballMat->SetFriction(0.4f);
+   ballMat->SetDissipationFactor(0.6f);
 
    // Create the falling balls
    int ballId = 0;
@@ -114,8 +118,8 @@ void AddFallingBalls(ChSystemParallel* sys) {
       for (int iy = -count_Y; iy <= count_Y; iy++) {
          ChVector<> pos(0.4 * ix, 0.4 * iy, 1);
 
-         ChSharedBodyPtr ball(new ChBody(new ChCollisionModelParallel));
-         ball->SetMaterialSurface(ballMat);
+         ChSharedPtr<ChBodyDEM> ball(new ChBodyDEM(new ChCollisionModelParallel));
+         ball->SetMaterialSurfaceDEM(ballMat);
 
          ball->SetIdentifier(ballId++);
          ball->SetMass(mass);
@@ -150,13 +154,13 @@ int main(int argc,
 
    double out_fps = 50;
 
-   uint max_iteration = 300;
+   uint max_iteration = 100;
    real tolerance = 1e-3;
 
    // Create system
    // -------------
 
-   ChSystemParallelDVI msystem;
+   ChSystemParallelDEM msystem;
 
    // Set number of threads.
    int max_threads = msystem.GetParallelThreadNumber();
@@ -169,18 +173,10 @@ int main(int argc,
    msystem.Set_G_acc(ChVector<>(0, 0, -gravity));
 
    // Set solver parameters
-   msystem.GetSettings()->solver.solver_mode = SLIDING;
-   msystem.GetSettings()->solver.max_iteration_normal = max_iteration / 3;
-   msystem.GetSettings()->solver.max_iteration_sliding = max_iteration / 3;
-   msystem.GetSettings()->solver.max_iteration_spinning = 0;
-   msystem.GetSettings()->solver.max_iteration_bilateral = max_iteration / 3;
+   msystem.GetSettings()->solver.max_iteration_bilateral = max_iteration;
    msystem.GetSettings()->solver.tolerance = tolerance;
-   msystem.GetSettings()->solver.alpha = 0;
-   msystem.GetSettings()->solver.contact_recovery_speed = 10000;
-   msystem.ChangeSolverType(APGDREF);
-   msystem.GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_HYBRID_MPR;
 
-   msystem.GetSettings()->collision.collision_envelope = 0.01;
+   msystem.GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_HYBRID_MPR;
    msystem.GetSettings()->collision.bins_per_axis = I3(10, 10, 10);
 
    // Create the fixed and moving bodies
@@ -194,7 +190,7 @@ int main(int argc,
 
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
    opengl::ChOpenGLWindow &gl_window = opengl::ChOpenGLWindow::getInstance();
-   gl_window.Initialize(1280, 720, "ballsDVI", &msystem);
+   gl_window.Initialize(1280, 720, "ballsDEM", &msystem);
    gl_window.SetCamera(ChVector<>(0, -10, 0), ChVector<>(0, 0, 0), ChVector<>(0, 0, 1));
 
    // Uncomment the following two lines for the OpenGL manager to automatically
@@ -207,7 +203,6 @@ int main(int argc,
        gl_window.DoStepDynamics(time_step);
        gl_window.Render();
        ////if (gl_window.Running()) {
-       ////  msystem.CalculateContactForces();
        ////  real3 frc = msystem.GetBodyContactForce(0);
        ////  std::cout << frc.x << "  " << frc.y << "  " << frc.z << std::endl;
        ////}
