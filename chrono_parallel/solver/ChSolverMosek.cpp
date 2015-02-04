@@ -83,24 +83,20 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
   ConvertCOO(N, obj_row, obj_col, obj_val);
 
-  //  for (int i = 0; i < obj_val.size(); i++) {
-  //    std::cout << "N" << obj_val[i] << std::endl;
-  //  }
-
   MSKrescodee res_code;    // Variable for holding the error code
 
-  const MSKint32t numvar = data_container->num_constraints;
-  const MSKint32t numcon = data_container->num_contacts;
+  const MSKint32t num_variables = num_constraints;
+  const MSKint32t num_constr = num_contacts + num_bilaterals;
 
-  std::vector<MSKboundkey_enum> bound_free(numvar, MSK_BK_FR);
-  std::vector<real> bound_lo(numvar, -MSK_INFINITY);
-  std::vector<real> bound_up(numvar, +MSK_INFINITY);
+  std::vector<MSKboundkey_enum> bound_free(num_variables, MSK_BK_FR);
+  std::vector<real> bound_lo(num_variables, -MSK_INFINITY);
+  std::vector<real> bound_up(num_variables, +MSK_INFINITY);
 
-  std::vector<MSKint32t> cone_size(numcon, 3);
-  std::vector<MSKconetypee> cone_type(numcon, MSK_CT_QUAD);
-  std::vector<MSKrealt> cone_par(numcon, 0.0);
-
-  std::vector<MSKint32t> cone_index(numcon * 3);
+  //  std::vector<MSKint32t> cone_size(num_contacts, 3);
+  //  std::vector<MSKconetypee> cone_type(num_contacts, MSK_CT_QUAD);
+  //  std::vector<MSKrealt> cone_par(num_contacts, 0.0);
+  //
+  //  std::vector<MSKint32t> cone_index(num_contacts * 3);
 
   MSKenv_t env = NULL;      // Mosek Environment variable
   MSKtask_t task = NULL;    // Task that mosek will perform
@@ -112,7 +108,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
   // Create the optimization task.
   if (res_code == MSK_RES_OK) {
-    res_code = MSK_maketask(env, numcon, numvar, &task);
+    res_code = MSK_maketask(env, num_constr, num_variables, &task);
   }
   if (res_code == MSK_RES_OK) {
 
@@ -121,11 +117,11 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
     // Append 'numcon' empty constraints. The constraints will initially have no bounds.
     if (res_code == MSK_RES_OK) {
-      res_code = MSK_appendcons(task, numcon);
+      res_code = MSK_appendcons(task, num_constr);
     }
     // Append 'numvar' variables. The variables will be fixed at zero initially.
     if (res_code == MSK_RES_OK) {
-      res_code = MSK_appendvars(task, numvar);
+      res_code = MSK_appendvars(task, num_variables);
     }
     // Add the Q matrix for the quadratic objective
     if (res_code == MSK_RES_OK) {
@@ -134,18 +130,18 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
     // Let them be FREE!
     if (res_code == MSK_RES_OK) {
-      res_code = MSK_putvarboundslice(task, 0, numvar, bound_free.data(), bound_lo.data(), bound_up.data());
+      res_code = MSK_putvarboundslice(task, 0, num_variables, bound_free.data(), bound_lo.data(), bound_up.data());
     }
 
     // Supply the linear term in the objective
     if (res_code == MSK_RES_OK) {
-      res_code = MSK_putcslice(task, 0, numvar, rhs_neg.data());
+      res_code = MSK_putcslice(task, 0, num_variables, rhs_neg.data());
     }
-
-    for (int index = 0; index < numcon && res_code == MSK_RES_OK; ++index) {
+    // Add all of the conic constraints, note that this cannot be done in parallel
+    for (int index = 0; index < num_contacts && res_code == MSK_RES_OK; ++index) {
       csub[0] = index * 1 + 0;
-      csub[1] = data_container->num_contacts + index * 2 + 0;
-      csub[2] = data_container->num_contacts + index * 2 + 1;
+      csub[1] = num_contacts + index * 2 + 0;
+      csub[2] = num_contacts + index * 2 + 1;
       res_code = MSK_appendcone(task, MSK_CT_QUAD, 0.0, 3, csub);
     }
   }
@@ -165,14 +161,10 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
     // Print a summary containing information about the solution for debugging purposes
     // MSK_solutionsummary(task, MSK_STREAM_MSG);
 
-    MSK_getxxslice(task, MSK_SOL_ITR, 0, numvar, gamma.data());
+    MSK_getxxslice(task, MSK_SOL_ITR, 0, num_variables, gamma.data());
   }
-
-  //  for (int i = 0; i < numvar; i++) {
-  //    std::cout << gamma[i] << std::endl;
-  //  }
+  // Cleanup
   MSK_deletetask(&task);
-
   MSK_deleteenv(&env);
   // Usually exit when saving model so that it does not get overwritten
   //  exit(1);
