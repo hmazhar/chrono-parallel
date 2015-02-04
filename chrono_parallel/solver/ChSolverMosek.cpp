@@ -78,11 +78,6 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   std::vector<MSKint32t> obj_col;
   std::vector<real> obj_val;
 
-
-
-
-
-
   // CompressedMatrix<real> N = data_container->host_data.D_n_T * data_container->host_data.M_invD_n;
   CompressedMatrix<real> N = D_T * M_invD;
 
@@ -97,60 +92,64 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   const MSKint32t numvar = data_container->num_constraints;
   const MSKint32t numcon = data_container->num_contacts;
 
-
   std::vector<MSKboundkey_enum> bound_free(numvar, MSK_BK_FR);
   std::vector<real> bound_lo(numvar, -MSK_INFINITY);
   std::vector<real> bound_up(numvar, +MSK_INFINITY);
 
+  std::vector<MSKint32t> cone_size(numcon, 3);
+  std::vector<MSKconetypee> cone_type(numcon, MSK_CT_QUAD);
+  std::vector<MSKrealt> cone_par(numcon, 0.0);
+
+  std::vector<MSKint32t> cone_index(numcon * 3);
+
   MSKenv_t env = NULL;      // Mosek Environment variable
   MSKtask_t task = NULL;    // Task that mosek will perform
   MSKint32t csub[3];
+  blaze::DynamicVector<real> rhs_neg = -rhs;
 
   // Create the Mosek environment
   res_code = MSK_makeenv(&env, NULL);
 
+  // Create the optimization task.
+  if (res_code == MSK_RES_OK) {
+    res_code = MSK_maketask(env, numcon, numvar, &task);
+  }
   if (res_code == MSK_RES_OK) {
 
-    // Create the optimization task.
-    res_code = MSK_maketask(env, numcon, numvar, &task);
+    // Connects a user-defined function to a task stream.
+    // MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
 
+    // Append 'numcon' empty constraints. The constraints will initially have no bounds.
     if (res_code == MSK_RES_OK) {
+      res_code = MSK_appendcons(task, numcon);
+    }
+    // Append 'numvar' variables. The variables will be fixed at zero initially.
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_appendvars(task, numvar);
+    }
+    // Add the Q matrix for the quadratic objective
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_putqobj(task, N.nonZeros(), obj_row.data(), obj_col.data(), obj_val.data());
+    }
 
-      // Connects a user-defined function to a task stream.
-      // MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
+    // Let them be FREE!
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_putvarboundslice(task, 0, numvar, bound_free.data(), bound_lo.data(), bound_up.data());
+    }
 
-      // Append 'numcon' empty constraints. The constraints will initially have no bounds.
-      if (res_code == MSK_RES_OK) {
-        res_code = MSK_appendcons(task, numcon);
-      }
-      // Append 'numvar' variables. The variables will be fixed at zero initially.
-      if (res_code == MSK_RES_OK) {
-        res_code = MSK_appendvars(task, numvar);
-      }
-      // Add the Q matrix for the quadratic objective
-      if (res_code == MSK_RES_OK) {
-        res_code = MSK_putqobj(task, N.nonZeros(), obj_row.data(), obj_col.data(), obj_val.data());
-      }
+    // Supply the linear term in the objective
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_putcslice(task, 0, numvar, rhs_neg.data());
+    }
 
-      //Let them be FREE!
-      if (res_code == MSK_RES_OK) {
-        res_code = MSK_putvarboundslice(task, 0, numvar, bound_free.data(), bound_lo.data(), bound_up.data());
-      }
-
-      for (int j = 0; j < numvar && res_code == MSK_RES_OK; ++j) {
-        res_code = MSK_putcj(task, j, -rhs[j]);
-
-//        res_code = MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY);
-      }
-
-      for (int index = 0; index < numcon && res_code == MSK_RES_OK; ++index) {
-        csub[0] = index * 1 + 0;
-        csub[1] = data_container->num_contacts + index * 2 + 0;
-        csub[2] = data_container->num_contacts + index * 2 + 1;
-        res_code = MSK_appendcone(task, MSK_CT_QUAD, 0.0, 3, csub);
-      }
+    for (int index = 0; index < numcon && res_code == MSK_RES_OK; ++index) {
+      csub[0] = index * 1 + 0;
+      csub[1] = data_container->num_contacts + index * 2 + 0;
+      csub[2] = data_container->num_contacts + index * 2 + 1;
+      res_code = MSK_appendcone(task, MSK_CT_QUAD, 0.0, 3, csub);
     }
   }
+
   // Model created, lets solve!
   if (res_code == MSK_RES_OK) {
     MSKrescodee trmcode;
