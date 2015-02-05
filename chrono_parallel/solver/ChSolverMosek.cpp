@@ -42,35 +42,22 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   D_T.reserve(nnz_total);
   D_T.resize(num_constraints, num_dof, false);
 
-  D.reserve(nnz_total);
-  D.resize(num_dof, num_constraints, false);
-
   M_invD.reserve(nnz_total);
   M_invD.resize(num_dof, num_constraints, false);
 
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_n_T = blaze::submatrix(D_T, 0, 0, num_contacts, num_dof);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_t_T = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_b_T = blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof);
+  CompressedMatrix<real> N(num_constraints,num_constraints);
 
-  D_n_T = data_container->host_data.D_n_T;
-  D_t_T = data_container->host_data.D_t_T;
-  D_b_T = data_container->host_data.D_b_T;
+  blaze::submatrix(D_T, 0, 0, num_contacts, num_dof) = data_container->host_data.D_n_T;
+  blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof) = data_container->host_data.D_t_T;
+  blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof) = data_container->host_data.D_b_T;
 
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_n = blaze::submatrix(D, 0, 0, num_dof, num_contacts);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_t = blaze::submatrix(D, 0, num_contacts, num_dof, 2 * num_contacts);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_b = blaze::submatrix(D, 0, num_unilaterals, num_dof, num_bilaterals);
+//  blaze::submatrix(D, 0, 0, num_dof, num_contacts) = data_container->host_data.D_n;
+//  blaze::submatrix(D, 0, num_contacts, num_dof, 2 * num_contacts) = data_container->host_data.D_t;
+//  blaze::submatrix(D, 0, num_unilaterals, num_dof, num_bilaterals) = data_container->host_data.D_b;
 
-  D_n = data_container->host_data.D_n;
-  D_t = data_container->host_data.D_t;
-  D_b = data_container->host_data.D_b;
-
-  blaze::SparseSubmatrix<CompressedMatrix<real> > M_invD_n = blaze::submatrix(M_invD, 0, 0, num_dof, num_contacts);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > M_invD_t = blaze::submatrix(M_invD, 0, num_contacts, num_dof, 2 * num_contacts);
-  blaze::SparseSubmatrix<CompressedMatrix<real> > M_invD_b = blaze::submatrix(M_invD, 0, num_unilaterals, num_dof, num_bilaterals);
-
-  M_invD_n = data_container->host_data.M_invD_n;
-  M_invD_t = data_container->host_data.M_invD_t;
-  M_invD_b = data_container->host_data.M_invD_b;
+  blaze::submatrix(M_invD, 0, 0, num_dof, num_contacts) = data_container->host_data.M_invD_n;
+  blaze::submatrix(M_invD, 0, num_contacts, num_dof, 2 * num_contacts) = data_container->host_data.M_invD_t;
+  blaze::submatrix(M_invD, 0, num_unilaterals, num_dof, num_bilaterals) = data_container->host_data.M_invD_b;
 
   // int2* ids = data_container->host_data.bids_rigid_rigid.data();
 
@@ -79,7 +66,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   std::vector<real> obj_val;
 
   // CompressedMatrix<real> N = data_container->host_data.D_n_T * data_container->host_data.M_invD_n;
-  CompressedMatrix<real> N = D_T * M_invD;
+  N = D_T * M_invD;
 
   ConvertCOO(N, obj_row, obj_col, obj_val);
 
@@ -113,7 +100,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   if (res_code == MSK_RES_OK) {
 
     // Connects a user-defined function to a task stream.
-    // MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
+     MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
 
     // Append 'numcon' empty constraints. The constraints will initially have no bounds.
     if (res_code == MSK_RES_OK) {
@@ -150,22 +137,35 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   if (res_code == MSK_RES_OK) {
     MSKrescodee trmcode;
     // convert the QCQP to a QCP
-    res_code = MSK_toconic(task);
-
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_toconic(task);
+    }
     // Output the model to a file
-    // res_code = MSK_writedata(task, "taskdump.opf");
-
+    if (res_code == MSK_RES_OK) {
+      // res_code = MSK_writedata(task, "taskdump.opf");
+    }
     // Run optimizer
-    res_code = MSK_optimizetrm(task, &trmcode);
-
+    if (res_code == MSK_RES_OK) {
+      res_code = MSK_optimizetrm(task, &trmcode);
+    }
     // Print a summary containing information about the solution for debugging purposes
-    // MSK_solutionsummary(task, MSK_STREAM_MSG);
-
-    MSK_getxxslice(task, MSK_SOL_ITR, 0, num_variables, gamma.data());
+    //
+    if (res_code == MSK_RES_OK) {
+      MSK_getxxslice(task, MSK_SOL_ITR, 0, num_variables, gamma.data());
+    }
   }
+
+  if(!res_code){
+    res_code = MSK_solutionsummary(task, MSK_STREAM_MSG);
+  }
+
   // Cleanup
-  MSK_deletetask(&task);
-  MSK_deleteenv(&env);
+  if (res_code == MSK_RES_OK) {
+    res_code = MSK_deletetask(&task);
+  }
+  if (res_code == MSK_RES_OK) {
+    MSK_deleteenv(&env);
+  }
   // Usually exit when saving model so that it does not get overwritten
   //  exit(1);
   return current_iteration;

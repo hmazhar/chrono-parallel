@@ -49,7 +49,7 @@ class CH_PARALLEL_API ChSolverMosek : public ChSolverParallel {
                   );
 
   // PDIP specific vectors
-  blaze::CompressedMatrix<real> D_T, D, M_invD;
+  blaze::CompressedMatrix<real> D_T, M_invD;
 };
 }
 
