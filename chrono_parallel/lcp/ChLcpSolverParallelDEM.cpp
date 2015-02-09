@@ -31,11 +31,7 @@ using namespace chrono;
 // in the 'extended' output arrays. The calculated force and torque vectors are
 // therefore duplicated in the output arrays, once for each body involved in the
 // contact (with opposite signs for the two bodies).
-//
-// TODO(Radu):
-//   Currently hard-coded for Hunt-Crossley with simple sliding friction.
 // -----------------------------------------------------------------------------
-__host__ __device__
 void
 function_CalcContactForces(
     int          index,            // index of this contact pair
@@ -441,7 +437,7 @@ void ChLcpSolverParallelDEM::ComputeR()
   reset(data_container->host_data.b);
   bilateral.Build_b();
 
-  data_container->host_data.R = -data_container->host_data.b - data_container->host_data.D_b_T * data_container->host_data.M_invk;
+  data_container->host_data.R_full = -data_container->host_data.b - data_container->host_data.D_b_T * data_container->host_data.M_invk;
 }
 
 
@@ -452,19 +448,11 @@ void ChLcpSolverParallelDEM::ComputeR()
 // generalized velocities, then enforces the velocity-level constraints for any
 // bilateral (joint) constraints present in the system.
 // -----------------------------------------------------------------------------
-void
-ChLcpSolverParallelDEM::RunTimeStep(real step)
+void ChLcpSolverParallelDEM::RunTimeStep()
 {
-  // Setup constants and other values for system
-  data_container->settings.step_size = step;
-  data_container->settings.solver.tol_speed = step * data_container->settings.solver.tolerance;
-
   // This is the total number of constraints, note that there are no contacts
   data_container->num_constraints = data_container->num_bilaterals;
   data_container->num_unilaterals = 0;
-
-  // This is the total number of degrees of freedom in the system
-  data_container->num_dof = data_container->num_bodies  * 6 + data_container->num_shafts;
 
   // Calculate contact forces (impulses) and append them to the body forces
   data_container->host_data.ct_body_map.resize(data_container->num_bodies);

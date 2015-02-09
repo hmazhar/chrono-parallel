@@ -4,12 +4,12 @@
 using namespace chrono;
 using namespace chrono::collision;
 
-ChSystemParallelDEM::ChSystemParallelDEM(unsigned int                       max_objects)
+ChSystemParallelDEM::ChSystemParallelDEM(unsigned int max_objects)
 : ChSystemParallel(max_objects)
 {
   LCP_solver_speed = new ChLcpSolverParallelDEM(data_manager);
 
-  ((ChCollisionSystemParallel *) collision_system)->SetCollisionEnvelope(0);
+  data_manager->settings.collision.collision_envelope = 0;
 
   //Set this so that the CD can check what type of system it is (needed for narrowphase)
   data_manager->settings.system_type = SYSTEM_DEM;
@@ -59,12 +59,19 @@ void ChSystemParallelDEM::UpdateMaterialSurfaceData(int index, ChBody* body)
   }
 }
 
+void ChSystemParallelDEM::Prepare()
+{
+  // First, invoke the base class method
+  ChSystemParallel::Prepare();
+
+  // Ensure that the collision envelope is zero.
+  data_manager->settings.collision.collision_envelope = 0;
+}
+
 void ChSystemParallelDEM::ChangeCollisionSystem(COLLISIONSYSTEMTYPE type)
 {
   ChSystemParallel::ChangeCollisionSystem(type);
-
-  if (ChCollisionSystemParallel* coll_sys = dynamic_cast<ChCollisionSystemParallel*>(collision_system))
-    coll_sys->SetCollisionEnvelope(0);
+  data_manager->settings.collision.collision_envelope = 0;
 }
 
 real3 ChSystemParallelDEM::GetBodyContactForce(uint body_id) const
