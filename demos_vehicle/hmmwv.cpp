@@ -57,7 +57,7 @@ bool thread_tuning = true;
 double time_end = 5;
 
 // Solver parameters
-double time_step = 1e-4;
+double time_step = 1e-3;
 
 double tolerance = 1e-3;
 
@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
       sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(), out_frame + 1);
       utils::WriteShapesPovray(system, filename);
 
-      cout << "------------ Output frame:   " << out_frame << endl;
+      cout << "------------ Output frame:   " << out_frame + 1 << endl;
       cout << "             Sim frame:      " << sim_frame << endl;
       cout << "             Time:           " << time << endl;
       cout << "             Avg. contacts:  " << num_contacts / out_steps << endl;
@@ -291,7 +291,8 @@ int main(int argc, char* argv[])
     if (gl_window.Active()) {
        gl_window.DoStepDynamics(time_step);
        gl_window.Render();
-    }
+    } else
+      break;
 #else
     system->DoStepDynamics(time_step);
 #endif
