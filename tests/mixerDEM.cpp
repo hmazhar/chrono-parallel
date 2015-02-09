@@ -68,7 +68,7 @@ void AddContainer(ChSystemParallelDEM* sys) {
    ChSharedPtr<ChMaterialSurfaceDEM> mat(new ChMaterialSurfaceDEM);
    mat->SetYoungModulus(2e5f);
    mat->SetFriction(0.4f);
-   mat->SetDissipationFactor(0.6f);
+   mat->SetRestitution(0.1f);
 
    // Create the containing bin (2 x 2 x 1)
    ChSharedBodyDEMPtr bin(new ChBodyDEM(new ChCollisionModelParallel));
@@ -136,7 +136,7 @@ void AddFallingBalls(ChSystemParallelDEM* sys) {
    ChSharedPtr<ChMaterialSurfaceDEM> ballMat(new ChMaterialSurfaceDEM);
    ballMat->SetYoungModulus(2e5f);
    ballMat->SetFriction(0.4f);
-   ballMat->SetDissipationFactor(0.6f);
+   ballMat->SetRestitution(0.1f);
 
    // Create the falling balls
    int ballId = 0;
@@ -179,7 +179,7 @@ int main(int argc,
    // ---------------------
 
    double gravity = 9.81;
-   double time_step = 1e-5;
+   double time_step = 1e-4;
    double time_end = 1;
 
    double out_fps = 50;

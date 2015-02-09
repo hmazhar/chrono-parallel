@@ -61,9 +61,13 @@ SET(ChronoEngine_OpenGL_SOURCES
 	shapes/ChOpenGLMesh.cpp
 	shapes/ChOpenGLCloud.cpp
 	shapes/ChOpenGLWires.cpp
+	shapes/ChOpenGLText.cpp
 	shapes/ChOpenGLOBJ.cpp
 	shapes/obj/ChOpenGLOBJLoader.cpp
 	shapes/obj/tiny_obj_loader.cc
+	UI/ChOpenGLContacts.cpp
+	UI/ChOpenGLHUD.cpp
+	UI/ChOpenGLGraphs.cpp
 	ChOpenGLViewer.cpp 
 	ChOpenGLCamera.cpp
 	ChOpenGLWindow.cpp
@@ -77,12 +81,17 @@ SET(ChronoEngine_OpenGL_HEADERS
 	core/ChOpenGLVertexAttributes.h
 	shapes/ChOpenGLCloud.h
 	shapes/ChOpenGLWires.h
+	shapes/ChOpenGLText.h
 	shapes/ChOpenGLOBJ.h
 	shapes/obj/ChOpenGLOBJLoader.h
 	shapes/obj/tiny_obj_loader.h
+	UI/ChOpenGLContacts.h
+	UI/ChOpenGLHUD.h
+	UI/ChOpenGLGraphs.h
 	ChOpenGLViewer.h 
 	ChOpenGLCamera.h
 	ChOpenGLWindow.h
+	ChOpenGLMaterials.h
 	${CMAKE_BINARY_DIR}/resources/text_frag.h
 	${CMAKE_BINARY_DIR}/resources/text_vert.h
 	${CMAKE_BINARY_DIR}/resources/phong_frag.h

@@ -155,6 +155,7 @@ enum SOLVERMODE {
    NORMAL,
    SLIDING,
    SPINNING,
+   BILATERAL
 };
 
 enum COLLISIONSYSTEMTYPE {
@@ -186,6 +187,13 @@ enum BILATERALTYPE {
   UNKNOWN
 };
 
+// DEM contact force model
+enum CONTACTFORCEMODEL {
+  HOOKE,
+  HOOKE_HISTORY,
+  HERTZ,
+  HERTZ_HISTORY
+};
 
 #endif
 

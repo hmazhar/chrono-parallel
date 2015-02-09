@@ -16,12 +16,8 @@
 #include "chrono_parallel/solver/ChSolverMosek.h"
 using namespace chrono;
 
-void ChLcpSolverParallelDVI::RunTimeStep(real step)
+void ChLcpSolverParallelDVI::RunTimeStep()
 {
-  // Setup constants and other values for system
-  data_container->settings.step_size = step;
-  data_container->settings.solver.tol_speed = step * data_container->settings.solver.tolerance;
-
   // Compute the offsets and number of constrains depending on the solver mode
   if (data_container->settings.solver.solver_mode == NORMAL) {
     rigid_rigid.offset = 1;
@@ -35,8 +31,6 @@ void ChLcpSolverParallelDVI::RunTimeStep(real step)
   }
   // This is the total number of constraints
   data_container->num_constraints = data_container->num_unilaterals + data_container->num_bilaterals;
-  // This is the total number of degrees of freedom in the system
-  data_container->num_dof = data_container->num_bodies * 6 + data_container->num_shafts;
 
   // Generate the mass matrix and compute M_inv_k
   ComputeMassMatrix();
@@ -66,21 +60,28 @@ void ChLcpSolverParallelDVI::RunTimeStep(real step)
 
   data_container->system_timer.start("ChLcpSolverParallel_Solve");
 
+//  if (data_container->settings.solver.max_iteration_bilateral > 0) {
+//    solver->SetMaxIterations(data_container->settings.solver.max_iteration_bilateral);
+//    data_container->settings.solver.local_solver_mode = BILATERAL;
+//    SetR();
+//    solver->Solve();
+//  }
+
+  PerformStabilization();
+
   if (data_container->settings.solver.solver_mode == NORMAL || data_container->settings.solver.solver_mode == SLIDING || data_container->settings.solver.solver_mode == SPINNING) {
     if (data_container->settings.solver.max_iteration_normal > 0) {
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_normal);
       data_container->settings.solver.local_solver_mode = NORMAL;
       SetR();
-      PerformStabilization();
       solver->Solve();
     }
   }
-  if (data_container->settings.solver.solver_mode != NORMAL) {
+  if (data_container->settings.solver.solver_mode == SLIDING || data_container->settings.solver.solver_mode == SPINNING) {
     if (data_container->settings.solver.max_iteration_sliding > 0) {
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_sliding);
       data_container->settings.solver.local_solver_mode = SLIDING;
       SetR();
-      PerformStabilization();
       solver->Solve();
     }
   }
@@ -89,7 +90,6 @@ void ChLcpSolverParallelDVI::RunTimeStep(real step)
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_spinning);
       data_container->settings.solver.local_solver_mode = SPINNING;
       SetR();
-      PerformStabilization();
       solver->Solve();
     }
   }
@@ -302,30 +302,29 @@ void ChLcpSolverParallelDVI::SetR() {
   uint num_contacts = data_container->num_contacts;
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
-
-  R = R_full;
+  R.resize(data_container->num_constraints);
+  reset(R);
 
   switch (data_container->settings.solver.local_solver_mode) {
-    case NORMAL: {
-      if (data_container->settings.solver.solver_mode == SLIDING || data_container->settings.solver.solver_mode == SPINNING) {
-        blaze::DenseSubvector<DynamicVector<real> > R_t = blaze::subvector(R, num_contacts, num_contacts * 2);
-        R_t = 0;
-      }
-      if (data_container->settings.solver.solver_mode == SPINNING) {
-        blaze::DenseSubvector<DynamicVector<real> > R_s = blaze::subvector(R, num_contacts * 3, num_contacts * 3);
-        R_s = 0;
-      }
+    case BILATERAL:{
+      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
     } break;
 
+    case NORMAL: {
+      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
+      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
+    } break;
     case SLIDING: {
-      if (data_container->settings.solver.solver_mode == SPINNING) {
-        blaze::DenseSubvector<DynamicVector<real> > R_s = blaze::subvector(R, num_contacts * 3, num_contacts * 3);
-        R_s = 0;
-      }
-
+      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
+      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
+      blaze::subvector(R, num_contacts, num_contacts * 2) = blaze::subvector(R_full, num_contacts, num_contacts * 2);
     } break;
 
     case SPINNING: {
+      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
+      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
+      blaze::subvector(R, num_contacts, num_contacts * 2) = blaze::subvector(R_full, num_contacts, num_contacts * 2);
+      blaze::subvector(R, num_contacts * 3, num_contacts * 3) = blaze::subvector(R_full, num_contacts * 3, num_contacts * 3);
     } break;
   }
 }

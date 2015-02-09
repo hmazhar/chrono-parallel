@@ -70,7 +70,7 @@ CH_RTTI(ChSystemParallel, ChSystem);
 
    virtual void AddMaterialSurfaceData(ChSharedPtr<ChBody> newbody) = 0;
    virtual void UpdateMaterialSurfaceData(int index, ChBody* body) = 0;
-
+   virtual void Prepare();
    virtual void ChangeCollisionSystem(COLLISIONSYSTEMTYPE type);
 
    virtual void PrintStepStats() {
@@ -148,12 +148,11 @@ class CH_PARALLEL_API ChSystemParallelDEM : public ChSystemParallel {
 CH_RTTI(ChSystemParallelDEM, ChSystemParallel);
 
  public:
-   ChSystemParallelDEM(unsigned int max_objects = 1000,
-                       ChContactDEM::NormalForceModel normal_model = ChContactDEM::HuntCrossley,
-                       ChContactDEM::TangentialForceModel tangential_model = ChContactDEM::SimpleCoulombSliding);
+   ChSystemParallelDEM(unsigned int max_objects = 1000);
 
    virtual void AddMaterialSurfaceData(ChSharedPtr<ChBody> newbody);
    virtual void UpdateMaterialSurfaceData(int index, ChBody* body);
+   virtual void Prepare();
    virtual void ChangeCollisionSystem(COLLISIONSYSTEMTYPE type);
 
    virtual real3 GetBodyContactForce(uint body_id) const;
@@ -164,9 +163,6 @@ CH_RTTI(ChSystemParallelDEM, ChSystemParallel);
    double GetTimerProcessContact() const {
       return data_manager->system_timer.GetTime("ChLcpSolverParallelDEM_ProcessContact");
    }
-
-   ChContactDEM::NormalForceModel normal_force_model;
-   ChContactDEM::TangentialForceModel tangential_force_model;
 };
 
 }  // end namespace chrono
