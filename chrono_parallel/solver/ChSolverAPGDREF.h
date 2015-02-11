@@ -43,18 +43,18 @@ public:
   // Solve using the APGD method
   uint SolveAPGDREF(const uint max_iter,                    // Maximum number of iterations
                     const uint size,                        // Number of unknowns
-                    const blaze::DynamicVector<real>& r,    // Rhs vector
-                    blaze::DynamicVector<real>& gamma       // The vector of unknowns
+                    const DenseVector& r,    // Rhs vector
+                    DenseVector& gamma       // The vector of unknowns
                     );
 
   // Compute the residual for the solver
-  real Res4(blaze::DynamicVector<real>& gamma,
-            const blaze::DynamicVector<real>& r,
-            blaze::DynamicVector<real>& tmp);
+  real Res4(DenseVector& gamma,
+            const DenseVector& r,
+            DenseVector& tmp);
 
   // APGD specific vectors
-  blaze::DynamicVector<real> gamma_hat;
-  blaze::DynamicVector<real> gammaNew, g, y, yNew, tmp;
+  DenseVector gamma_hat;
+  DenseVector gammaNew, g, y, yNew, tmp;
 };
 
 }

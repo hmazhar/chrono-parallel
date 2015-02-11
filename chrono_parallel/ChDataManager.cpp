@@ -15,7 +15,7 @@ ChParallelDataManager::ChParallelDataManager() :
 
 ChParallelDataManager::~ChParallelDataManager() {}
 
-int ChParallelDataManager::OutputBlazeVector(blaze::DynamicVector<real> src, std::string filename) {
+int ChParallelDataManager::OutputBlazeVector(DenseVector src, std::string filename) {
 
   const char* numformat = "%.16g";
   ChStreamOutAsciiFile stream(filename.c_str());
@@ -27,7 +27,7 @@ int ChParallelDataManager::OutputBlazeVector(blaze::DynamicVector<real> src, std
   return 0;
 }
 
-int ChParallelDataManager::OutputBlazeMatrix(blaze::CompressedMatrix<real> src, std::string filename) {
+int ChParallelDataManager::OutputBlazeMatrix(SparseMatrix src, std::string filename) {
 
   const char* numformat = "%.16g";
   ChStreamOutAsciiFile stream(filename.c_str());
@@ -35,7 +35,7 @@ int ChParallelDataManager::OutputBlazeMatrix(blaze::CompressedMatrix<real> src, 
 
   stream << src.rows() << " " << src.columns() << "\n";
   for (int i = 0; i < src.rows(); ++i) {
-    for (CompressedMatrix<real>::Iterator it = src.begin(i); it != src.end(i); ++it) {
+    for (SparseMatrix::Iterator it = src.begin(i); it != src.end(i); ++it) {
       stream << i << " " << it->index() << " " << it->value() << "\n";
     }
   }
@@ -55,7 +55,7 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
 
 
   // fill in the information for constraints and friction
-  blaze::DynamicVector<real> fric(num_constraints, -2.0);
+  DenseVector fric(num_constraints, -2.0);
   for (int i = 0; i < num_contacts; i++) {
     if (settings.solver.solver_mode == NORMAL) {
       fric[i] = host_data.fric_rigid_rigid[i].x;
@@ -95,7 +95,7 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
   int num_tangential = 2 * num_contacts;
   int num_spinning = 3 * num_contacts;
 
-  blaze::CompressedMatrix<real> D_T;
+  SparseMatrix D_T;
   uint nnz_total = nnz_bilaterals;
 
   switch (settings.solver.solver_mode) {
@@ -103,14 +103,14 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
       nnz_total += nnz_normal;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof, false);
-      blaze::SparseSubmatrix<CompressedMatrix<real> > D_n_T_sub = blaze::submatrix(D_T, 0, 0, num_contacts, num_dof);
+      blaze::SparseSubmatrix<SparseMatrix > D_n_T_sub = blaze::submatrix(D_T, 0, 0, num_contacts, num_dof);
       D_n_T_sub = host_data.D_n_T;
     } break;
     case SLIDING: {
       nnz_total += nnz_normal + num_tangential;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof, false);
-      blaze::SparseSubmatrix<CompressedMatrix<real> > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
+      blaze::SparseSubmatrix<SparseMatrix > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
       D_t_T_sub = host_data.D_t_T;
     } break;
     case SPINNING: {
@@ -118,15 +118,15 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof, false);
 
-      blaze::SparseSubmatrix<CompressedMatrix<real> > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
+      blaze::SparseSubmatrix<SparseMatrix > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
       D_t_T_sub = host_data.D_t_T;
 
-      blaze::SparseSubmatrix<CompressedMatrix<real> > D_s_T_sub = blaze::submatrix(D_T, 3 * num_contacts, 0, 3 * num_contacts, num_dof);
+      blaze::SparseSubmatrix<SparseMatrix > D_s_T_sub = blaze::submatrix(D_T, 3 * num_contacts, 0, 3 * num_contacts, num_dof);
       D_s_T_sub = host_data.D_t_T;
     } break;
   }
 
-  blaze::SparseSubmatrix<CompressedMatrix<real> > D_b_T = blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof);
+  blaze::SparseSubmatrix<SparseMatrix > D_b_T = blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof);
   D_b_T = host_data.D_b_T;
 
   filename = output_dir + "dump_D.dat";

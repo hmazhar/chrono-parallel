@@ -31,11 +31,11 @@ void ChLcpSolverParallel::ComputeMassMatrix()
   const std::vector<ChLink*> *link_list= data_container->link_list;
   const std::vector<ChPhysicsItem*> *other_physics_list= data_container->other_physics_list;
 
-  const DynamicVector<real>& hf = data_container->host_data.hf;
-  const DynamicVector<real>& v = data_container->host_data.v;
+  const DenseVector& hf = data_container->host_data.hf;
+  const DenseVector& v = data_container->host_data.v;
 
-  DynamicVector<real>& M_invk = data_container->host_data.M_invk;
-  CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
+  DenseVector& M_invk = data_container->host_data.M_invk;
+  SparseMatrix& M_inv = data_container->host_data.M_inv;
 
   clear(M_inv);
 
@@ -89,7 +89,7 @@ void ChLcpSolverParallel::ComputeMassMatrix()
   //If this experimental feature is requested compute the real mass matrix
   if(data_container->settings.solver.scale_mass_matrix){
 
-    CompressedMatrix<real>& M = data_container->host_data.M;
+    SparseMatrix& M = data_container->host_data.M;
     clear(M);
 
       // Each rigid object has 3 mass entries and 9 inertia entries
@@ -144,8 +144,8 @@ void ChLcpSolverParallel::ComputeMassMatrix()
 }
 
 void ChLcpSolverParallel::PerformStabilization() {
-  const DynamicVector<real>& R_full = data_container->host_data.R_full;
-  DynamicVector<real>& gamma = data_container->host_data.gamma;
+  const DenseVector& R_full = data_container->host_data.R_full;
+  DenseVector& gamma = data_container->host_data.gamma;
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
 
@@ -153,8 +153,8 @@ void ChLcpSolverParallel::PerformStabilization() {
     return;
   }
 
-  blaze::DenseSubvector<const DynamicVector<real> > R_b = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<DynamicVector<real> > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
+  blaze::DenseSubvector<const DenseVector > R_b = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
+  blaze::DenseSubvector<DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
 
   data_container->system_timer.start("ChLcpSolverParallel_Stab");
   solver->SolveStab(data_container->settings.solver.max_iteration_bilateral, num_bilaterals, R_b, gamma_b);

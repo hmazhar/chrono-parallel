@@ -14,11 +14,11 @@ void ChSolverAPGD::UpdateR() {
     return;
   }
 
-  const CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  const DynamicVector<real>& M_invk = data_container->host_data.M_invk;
-  const DynamicVector<real>& b = data_container->host_data.b;
-  DynamicVector<real>& R = data_container->host_data.R;
-  DynamicVector<real>& s = data_container->host_data.s;
+  const SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  const DenseVector& M_invk = data_container->host_data.M_invk;
+  const DenseVector& b = data_container->host_data.b;
+  DenseVector& R = data_container->host_data.R;
+  DenseVector& s = data_container->host_data.s;
 
   uint num_contacts = data_container->num_contacts;
 
@@ -27,19 +27,19 @@ void ChSolverAPGD::UpdateR() {
 
   rigid_rigid->Build_s();
 
-  blaze::DenseSubvector<const DynamicVector<real> > b_n = blaze::subvector(b, 0, num_contacts);
-  blaze::DenseSubvector<DynamicVector<real> > R_n = blaze::subvector(R, 0, num_contacts);
-  blaze::DenseSubvector<DynamicVector<real> > s_n = blaze::subvector(s, 0, num_contacts);
+  blaze::DenseSubvector<const DenseVector > b_n = blaze::subvector(b, 0, num_contacts);
+  blaze::DenseSubvector<DenseVector > R_n = blaze::subvector(R, 0, num_contacts);
+  blaze::DenseSubvector<DenseVector > s_n = blaze::subvector(s, 0, num_contacts);
 
   R_n = -b_n - D_n_T * M_invk + s_n;
 }
 
-uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::DynamicVector<real>& r, blaze::DynamicVector<real>& gamma) {
+uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVector& r, DenseVector& gamma) {
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;
 
-  blaze::DynamicVector<real> one(size, 1.0);
+  DenseVector one(size, 1.0);
   data_container->system_timer.start("ChSolverParallel_Solve");
 
   N_gamma_new.resize(size);

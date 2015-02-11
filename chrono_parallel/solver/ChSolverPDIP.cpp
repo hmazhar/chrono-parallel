@@ -12,8 +12,8 @@ unsigned int offset = 3;
 
 #define _index_ i*offset
 
-real ChSolverPDIP::Res4(blaze::DynamicVector<real> & gamma,
-                        blaze::DynamicVector<real> & tmp)
+real ChSolverPDIP::Res4(DenseVector & gamma,
+                        DenseVector & tmp)
 {
   real gdiff = 1e-6;
   SchurComplementProduct(gamma, tmp);
@@ -25,14 +25,14 @@ real ChSolverPDIP::Res4(blaze::DynamicVector<real> & gamma,
   return sqrt((double) (tmp, tmp));
 }
 
-void ChSolverPDIP::SchurComplementProduct(blaze::DynamicVector<real> & src,
-                                          blaze::DynamicVector<real> & dst)
+void ChSolverPDIP::SchurComplementProduct(DenseVector & src,
+                                          DenseVector & dst)
 {
   dst = D_T * (M_invD * src);
 }
 
-void ChSolverPDIP::getConstraintVector(blaze::DynamicVector<real> & src,
-                                       blaze::DynamicVector<real> & dst, const uint size)
+void ChSolverPDIP::getConstraintVector(DenseVector & src,
+                                       DenseVector & dst, const uint size)
 {
 #pragma omp parallel for
   for (int i = 0; i < data_container->num_contacts; i++) {
@@ -41,7 +41,7 @@ void ChSolverPDIP::getConstraintVector(blaze::DynamicVector<real> & src,
 }
 }
 
-void ChSolverPDIP::initializeConstraintGradient(blaze::DynamicVector<real> & src,
+void ChSolverPDIP::initializeConstraintGradient(DenseVector & src,
                                                 const uint size)
 {
   //#pragma omp parallel for
@@ -57,7 +57,7 @@ void ChSolverPDIP::initializeConstraintGradient(blaze::DynamicVector<real> & src
   }
 }
 
-void ChSolverPDIP::updateConstraintGradient(blaze::DynamicVector<real> & src,
+void ChSolverPDIP::updateConstraintGradient(DenseVector & src,
                                             const uint size)
 {
 #pragma omp parallel for
@@ -72,9 +72,9 @@ void ChSolverPDIP::updateConstraintGradient(blaze::DynamicVector<real> & src,
 }
 }
 
-void ChSolverPDIP::initializeNewtonStepMatrix(blaze::DynamicVector<real> & gamma,
-                                              blaze::DynamicVector<real> & lambda,
-                                              blaze::DynamicVector<real> & f,
+void ChSolverPDIP::initializeNewtonStepMatrix(DenseVector & gamma,
+                                              DenseVector & lambda,
+                                              DenseVector & f,
                                               const uint size)
 {
   for (int i = 0; i < data_container->num_contacts; i++) {
@@ -97,9 +97,9 @@ void ChSolverPDIP::initializeNewtonStepMatrix(blaze::DynamicVector<real> & gamma
   }
 }
 
-void ChSolverPDIP::updateNewtonStepMatrix(blaze::DynamicVector<real> & gamma,
-                                          blaze::DynamicVector<real> & lambda,
-                                          blaze::DynamicVector<real> & f,
+void ChSolverPDIP::updateNewtonStepMatrix(DenseVector & gamma,
+                                          DenseVector & lambda,
+                                          DenseVector & f,
                                           const uint size)
 {
 #pragma omp parallel for
@@ -119,9 +119,9 @@ void ChSolverPDIP::updateNewtonStepMatrix(blaze::DynamicVector<real> & gamma,
   }
 }
 
-void ChSolverPDIP::MultiplyByDiagMatrix(blaze::DynamicVector<real> & diagVec,
-                                        blaze::DynamicVector<real> & src,
-                                        blaze::DynamicVector<real> & dst)
+void ChSolverPDIP::MultiplyByDiagMatrix(DenseVector & diagVec,
+                                        DenseVector & src,
+                                        DenseVector & dst)
 {
 #pragma omp parallel for
   for (int i = 0; i < 2 * data_container->num_contacts; i++) {
@@ -129,9 +129,9 @@ void ChSolverPDIP::MultiplyByDiagMatrix(blaze::DynamicVector<real> & diagVec,
   }
 }
 
-void ChSolverPDIP::updateNewtonStepVector(blaze::DynamicVector<real> & gamma,
-                                          blaze::DynamicVector<real> & lambda,
-                                          blaze::DynamicVector<real> & f,
+void ChSolverPDIP::updateNewtonStepVector(DenseVector & gamma,
+                                          DenseVector & lambda,
+                                          DenseVector & f,
                                           real t,
                                           const uint size)
 {
@@ -141,7 +141,7 @@ void ChSolverPDIP::updateNewtonStepVector(blaze::DynamicVector<real> & gamma,
   r_g = - (1 / t) * ones - r_g;
 }
 
-void ChSolverPDIP::conjugateGradient(blaze::DynamicVector<real> & x)
+void ChSolverPDIP::conjugateGradient(DenseVector & x)
 {
   real rsold_cg = 0;
   real rsnew_cg = 0;
@@ -167,7 +167,7 @@ void ChSolverPDIP::conjugateGradient(blaze::DynamicVector<real> & x)
 void ChSolverPDIP::buildPreconditioner(const uint size)
 {
   prec_cg.resize(size);
-  blaze::CompressedMatrix<real> A = D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f;
+  SparseMatrix A = D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f;
 #pragma omp parallel for
   for(int i=0; i<prec_cg.size(); i++)
   {
@@ -175,8 +175,8 @@ void ChSolverPDIP::buildPreconditioner(const uint size)
   }
 }
 
-void ChSolverPDIP::applyPreconditioning(blaze::DynamicVector<real> & src,
-                                        blaze::DynamicVector<real> & dst)
+void ChSolverPDIP::applyPreconditioning(DenseVector & src,
+                                        DenseVector & dst)
 {
 #pragma omp parallel for
   for(int i=0; i<prec_cg.size(); i++)
@@ -185,7 +185,7 @@ void ChSolverPDIP::applyPreconditioning(blaze::DynamicVector<real> & src,
   }
 }
 
-int ChSolverPDIP::preconditionedConjugateGradient(blaze::DynamicVector<real> & x,
+int ChSolverPDIP::preconditionedConjugateGradient(DenseVector & x,
                                                   const uint size)
 {
   buildPreconditioner(size);
@@ -218,8 +218,8 @@ int ChSolverPDIP::preconditionedConjugateGradient(blaze::DynamicVector<real> & x
 
 uint ChSolverPDIP::SolvePDIP(const uint max_iter,
                              const uint size,
-                             const blaze::DynamicVector<real>& b,
-                             blaze::DynamicVector<real>& x)
+                             const DenseVector& b,
+                             DenseVector& x)
 {
   bool verbose = false;
   if(verbose) std::cout << "Number of constraints: " << size << "\nNumber of variables  : " << data_container->num_bodies << std::endl;

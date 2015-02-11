@@ -3,9 +3,9 @@
 
 using namespace chrono;
 
-real ChSolverAPGDREF::Res4(blaze::DynamicVector<real> & gamma,
-    const blaze::DynamicVector<real> & r,
-    blaze::DynamicVector<real> & tmp) {
+real ChSolverAPGDREF::Res4(DenseVector & gamma,
+    const DenseVector & r,
+    DenseVector & tmp) {
 
   real gdiff = 1.0 / pow(data_container->num_constraints, 2.0);
   ShurProduct(gamma, tmp);
@@ -18,8 +18,8 @@ real ChSolverAPGDREF::Res4(blaze::DynamicVector<real> & gamma,
 }
 
 uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
-    const blaze::DynamicVector<real>& r,
-    blaze::DynamicVector<real>& gamma) {
+    const DenseVector& r,
+    DenseVector& gamma) {
 
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;

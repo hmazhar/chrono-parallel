@@ -43,12 +43,12 @@ public:
   // Solve using the conjugate gradient squared method
   uint SolveCGS(const uint max_iter,              // Maximum number of iterations
                 const uint size,                  // Number of unknowns
-                blaze::DynamicVector<real>& b,    // Rhs vector
-                blaze::DynamicVector<real>& x     // The vector of unknowns
+                DenseVector& b,    // Rhs vector
+                DenseVector& x     // The vector of unknowns
                 );
 
   real rho_1, rho_2, alpha, beta;
-  blaze::DynamicVector<real> p, phat, q, qhat, vhat, u, uhat, r, rtilde, mb;
+  DenseVector p, phat, q, qhat, vhat, u, uhat, r, rtilde, mb;
 };
 
 }

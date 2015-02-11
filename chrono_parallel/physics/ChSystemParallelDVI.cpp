@@ -56,7 +56,7 @@ void ChSystemParallelDVI::UpdateMaterialSurfaceData(int index, ChBody* body)
 void ChSystemParallelDVI::CalculateContactForces()
 {
   uint num_contacts = data_manager->num_contacts;
-  DynamicVector<real>& Fc = data_manager->host_data.Fc;
+  DenseVector& Fc = data_manager->host_data.Fc;
 
   data_manager->Fc_current = true;
 
@@ -66,28 +66,28 @@ void ChSystemParallelDVI::CalculateContactForces()
     return;
   }
 
-  DynamicVector<real>& gamma = data_manager->host_data.gamma;
+  DenseVector& gamma = data_manager->host_data.gamma;
 
   switch (data_manager->settings.solver.solver_mode) {
   case NORMAL: {
-    const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-    blaze::DenseSubvector<DynamicVector<real> > gamma_n = blaze::subvector(gamma, 0, num_contacts);
+    const SparseMatrix& D_n = data_manager->host_data.D_n;
+    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
     Fc = D_n * gamma_n;
   } break;
   case SLIDING: {
-    const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-    const CompressedMatrix<real>& D_t = data_manager->host_data.D_t;
-    blaze::DenseSubvector<DynamicVector<real> > gamma_n = blaze::subvector(gamma, 0, num_contacts);
-    blaze::DenseSubvector<DynamicVector<real> > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
+    const SparseMatrix& D_n = data_manager->host_data.D_n;
+    const SparseMatrix& D_t = data_manager->host_data.D_t;
+    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
+    blaze::DenseSubvector<DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
     Fc = D_n * gamma_n + D_t * gamma_t;
   } break;
   case SPINNING: {
-    const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-    const CompressedMatrix<real>& D_t = data_manager->host_data.D_t;
-    const CompressedMatrix<real>& D_s = data_manager->host_data.D_s;
-    blaze::DenseSubvector<DynamicVector<real> > gamma_n = blaze::subvector(gamma, 0, num_contacts);
-    blaze::DenseSubvector<DynamicVector<real> > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
-    blaze::DenseSubvector<DynamicVector<real> > gamma_s = blaze::subvector(gamma, 3 * num_contacts, 3 * num_contacts);
+    const SparseMatrix& D_n = data_manager->host_data.D_n;
+    const SparseMatrix& D_t = data_manager->host_data.D_t;
+    const SparseMatrix& D_s = data_manager->host_data.D_s;
+    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
+    blaze::DenseSubvector<DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
+    blaze::DenseSubvector<DenseVector > gamma_s = blaze::subvector(gamma, 3 * num_contacts, 3 * num_contacts);
     Fc = D_n * gamma_n + D_t * gamma_t + D_s * gamma_s;
   } break;
   }

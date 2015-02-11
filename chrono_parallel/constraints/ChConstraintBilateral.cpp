@@ -44,7 +44,7 @@ void ChConstraintBilateral::Build_D()
 
   // Loop over the active constraints and fill in the rows of the Jacobian,
   // taking into account the type of each constraint.
-  CompressedMatrix<real>& D_b_T = data_container->host_data.D_b_T;
+  SparseMatrix& D_b_T = data_container->host_data.D_b_T;
 
 //#pragma omp parallel for
   for (int index = 0; index < data_container->num_bilaterals; index++) {
@@ -170,7 +170,7 @@ void ChConstraintBilateral::GenerateSparsity()
   // Note that the data for a Blaze compressed matrix must be filled in increasing
   // order of the column index for each row. Recall that body states are always
   // before shaft states.
-  CompressedMatrix<real>& D_b_T = data_container->host_data.D_b_T;
+  SparseMatrix& D_b_T = data_container->host_data.D_b_T;
 
   for (int index = 0; index < data_container->num_bilaterals; index++) {
     int cntr = data_container->host_data.bilateral_mapping[index];

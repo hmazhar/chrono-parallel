@@ -43,12 +43,12 @@ public:
   // Solve using the Jacobi method
   uint SolveJacobi(const uint max_iter,              // Maximum number of iterations
                    const uint size,                  // Number of unknowns
-                   blaze::DynamicVector<real>& b,    // Rhs vector
-                   blaze::DynamicVector<real>& x     // The vector of unknowns
+                   DenseVector& b,    // Rhs vector
+                   DenseVector& x     // The vector of unknowns
                    );
 
   custom_vector<real> r, p, Ap;
-  blaze::DynamicVector<real> diagonal, ml_old;
+  DenseVector diagonal, ml_old;
 };
 
 }

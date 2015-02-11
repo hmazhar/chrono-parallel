@@ -89,7 +89,7 @@ int ChSystemParallel::Integrate_Y() {
 
    // Scatter the states to the Chrono objects (bodies and shafts) and update
    // all physics items at the end of the step.
-   DynamicVector<real>& velocities = data_manager->host_data.v;
+   DenseVector& velocities = data_manager->host_data.v;
    custom_vector<real3>& pos_pointer = data_manager->host_data.pos_data;
    custom_vector<real4>& rot_pointer = data_manager->host_data.rot_data;
 

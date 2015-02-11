@@ -401,7 +401,7 @@ void ChLcpSolverParallelDEM::ComputeD()
   uint num_bilaterals = data_container->num_bilaterals;
   uint nnz_bilaterals = data_container->nnz_bilaterals;
 
-  CompressedMatrix<real>& D_b_T = data_container->host_data.D_b_T;
+  SparseMatrix& D_b_T = data_container->host_data.D_b_T;
   clear(D_b_T);
   D_b_T.reserve(nnz_bilaterals );
 
@@ -509,16 +509,16 @@ void ChLcpSolverParallelDEM::RunTimeStep()
 }
 
 void ChLcpSolverParallelDEM::ComputeImpulses() {
-  DynamicVector<real>& v = data_container->host_data.v;
-  const DynamicVector<real>& M_invk = data_container->host_data.M_invk;
-  const DynamicVector<real>& gamma = data_container->host_data.gamma;
-  const CompressedMatrix<real>& M_invD_b = data_container->host_data.M_invD_b;
+  DenseVector& v = data_container->host_data.v;
+  const DenseVector& M_invk = data_container->host_data.M_invk;
+  const DenseVector& gamma = data_container->host_data.gamma;
+  const SparseMatrix& M_invD_b = data_container->host_data.M_invD_b;
 
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
 
   if (data_container->num_constraints > 0) {
-    blaze::DenseSubvector<const DynamicVector<real> > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
+    blaze::DenseSubvector<const DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
     v = M_invk + M_invD_b * gamma_b;
   } else {
     v = M_invk;

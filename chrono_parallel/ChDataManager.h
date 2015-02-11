@@ -129,41 +129,41 @@ struct host_container {
    //_T is transpose
    //_inv is inverse
    //This matrix, if used will hold D^TxM^-1xD in sparse form
-   CompressedMatrix<real> Nshur;
+   SparseMatrix Nshur;
    //The D Matrix hold the Jacobian for the entire system
-   CompressedMatrix<real> D_n, D_t, D_s, D_b;
+   SparseMatrix D_n, D_t, D_s, D_b;
    //D_T is the transpose of the D matrix, note that D_T is actually computed
    //first and D is taken as the transpose. This is due to the way that blaze
    //handles sparse matrix allocation, it is easier to do it on a per row basis
-   CompressedMatrix<real> D_n_T, D_t_T, D_s_T, D_b_T;
+   SparseMatrix D_n_T, D_t_T, D_s_T, D_b_T;
    //M_inv is the inverse mass matrix, This matrix, if holding the full inertia
    //tensor is block diagonal
-   CompressedMatrix<real> M_inv;
+   SparseMatrix M_inv;
    //M is the mass matrix, this is only computed in certain situations for some
    //experimental features in the solver
-   CompressedMatrix<real> M;
+   SparseMatrix M;
    //Minv_D holds M_inv multiplied by D, this is done as a preprocessing step
    //so that later, when the full matrix vector product is needed it can be
    //performed in two steps, first R = Minv_D*x, and then D_T*R where R is just
    //a temporary variable used here for illustrative purposes. In reality the
    //entire operation happens inline without a temp variable.
-   CompressedMatrix<real> M_invD_n, M_invD_t, M_invD_s, M_invD_b;
+   SparseMatrix M_invD_n, M_invD_t, M_invD_s, M_invD_b;
 
-   DynamicVector<real> R_full; //The right hand side of the system
-   DynamicVector<real> R; //The rhs of the system, changes during solve
-   DynamicVector<real> b; //Correction terms
-   DynamicVector<real> s;
-   DynamicVector<real> M_invk; //result of M_inv multiplied by vector of forces
-   DynamicVector<real> gamma; //THe unknowns we are solving for
-   DynamicVector<real> v; //This vector holds the velocities for all objects
-   DynamicVector<real> hf;//This vector holds h*forces, h is time step
-   DynamicVector<real> rhs_bilateral;
+   DenseVector R_full; //The right hand side of the system
+   DenseVector R; //The rhs of the system, changes during solve
+   DenseVector b; //Correction terms
+   DenseVector s;
+   DenseVector M_invk; //result of M_inv multiplied by vector of forces
+   DenseVector gamma; //THe unknowns we are solving for
+   DenseVector v; //This vector holds the velocities for all objects
+   DenseVector hf;//This vector holds h*forces, h is time step
+   DenseVector rhs_bilateral;
    //While E is the compliance matrix, in reality it is completely diagonal
    //therefore it is stored in a vector for performance reasons
-   DynamicVector<real> E;
+   DenseVector E;
 
    // Contact forces (DVI)
-   DynamicVector<real> Fc;
+   DenseVector Fc;
 };
 
 class CH_PARALLEL_API ChParallelDataManager {
@@ -210,9 +210,9 @@ class CH_PARALLEL_API ChParallelDataManager {
    measures_container measures;
 
    //Output a vector (one dimensional matrix) from blaze to a file
-   int OutputBlazeVector(blaze::DynamicVector<real> src, std::string filename);
+   int OutputBlazeVector(DenseVector src, std::string filename);
    //Output a sparse blaze matrix to a file
-   int OutputBlazeMatrix(blaze::CompressedMatrix<real> src,std::string filename);
+   int OutputBlazeMatrix(SparseMatrix src,std::string filename);
    //Convenience function that outputs all of the data associated for a system
    //This is useful when debugging
    int ExportCurrentSystem(std::string output_dir);

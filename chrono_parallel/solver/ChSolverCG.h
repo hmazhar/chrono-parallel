@@ -43,11 +43,11 @@ public:
   // Solve using the conjugate gradient method
   uint SolveCG(const uint max_iter,              // Maximum number of iterations
                const uint size,                  // Number of unknowns
-               blaze::DynamicVector<real>& b,    // Rhs vector
-               blaze::DynamicVector<real>& x     // The vector of unknowns
+               DenseVector& b,    // Rhs vector
+               DenseVector& x     // The vector of unknowns
                );
 
-  blaze::DynamicVector<real> r, p, Ap;
+  DenseVector r, p, Ap;
 };
 
 }

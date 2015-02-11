@@ -3,7 +3,7 @@
 #include <blaze/math/CompressedVector.h>
 using namespace chrono;
 
-uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, blaze::DynamicVector<real>& mb, blaze::DynamicVector<real>& ml) {
+uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DenseVector& mb, DenseVector& ml) {
 //  real& residual = data_container->measures.solver.residual;
 //  real& objective_value = data_container->measures.solver.objective_value;
 //  custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;

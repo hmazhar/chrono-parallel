@@ -3,7 +3,7 @@
 #include <blaze/math/CompressedVector.h>
 using namespace chrono;
 
-uint ChSolverJacobi::SolveJacobi(const uint max_iter, const uint size, blaze::DynamicVector<real>& mb, blaze::DynamicVector<real>& ml) {
+uint ChSolverJacobi::SolveJacobi(const uint max_iter, const uint size, DenseVector& mb, DenseVector& ml) {
 
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;
@@ -11,8 +11,8 @@ uint ChSolverJacobi::SolveJacobi(const uint max_iter, const uint size, blaze::Dy
   uint num_contacts = data_container->num_contacts;
   diagonal.resize(size, false);
   ml_old = ml;
-  CompressedMatrix<real> Nshur_n = data_container->host_data.D_n_T * data_container->host_data.M_invD_n;
-  CompressedMatrix<real> Nshur_t = data_container->host_data.D_t_T * data_container->host_data.M_invD_t;
+  SparseMatrix Nshur_n = data_container->host_data.D_n_T * data_container->host_data.M_invD_n;
+  SparseMatrix Nshur_t = data_container->host_data.D_t_T * data_container->host_data.M_invD_t;
 
   for (size_t i = 0; i < num_contacts; ++i) {
     diagonal[i * 1 + 0] =  Nshur_n(i, i);

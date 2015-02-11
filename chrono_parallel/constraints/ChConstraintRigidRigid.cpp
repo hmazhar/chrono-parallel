@@ -265,23 +265,23 @@ void ChConstraintRigidRigid::Build_s() {
   }
 
   int2* ids = data_container->host_data.bids_rigid_rigid.data();
-  const CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  DynamicVector<real> v_new;
+  const SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  DenseVector v_new;
 
-  const DynamicVector<real>& M_invk = data_container->host_data.M_invk;
-  const DynamicVector<real>& gamma = data_container->host_data.gamma;
+  const DenseVector& M_invk = data_container->host_data.M_invk;
+  const DenseVector& gamma = data_container->host_data.gamma;
 
-  const CompressedMatrix<real>& M_invD_n = data_container->host_data.M_invD_n;
-  const CompressedMatrix<real>& M_invD_t = data_container->host_data.M_invD_t;
-  const CompressedMatrix<real>& M_invD_s = data_container->host_data.M_invD_s;
-  const CompressedMatrix<real>& M_invD_b = data_container->host_data.M_invD_b;
+  const SparseMatrix& M_invD_n = data_container->host_data.M_invD_n;
+  const SparseMatrix& M_invD_t = data_container->host_data.M_invD_t;
+  const SparseMatrix& M_invD_s = data_container->host_data.M_invD_s;
+  const SparseMatrix& M_invD_b = data_container->host_data.M_invD_b;
 
   uint num_contacts = data_container->num_contacts;
     uint num_unilaterals = data_container->num_unilaterals;
     uint num_bilaterals = data_container->num_bilaterals;
 
-  blaze::DenseSubvector<const DynamicVector<real> > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<const DynamicVector<real> > gamma_n = blaze::subvector(gamma, 0, num_contacts);
+  blaze::DenseSubvector<const DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
+  blaze::DenseSubvector<const DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
 
   // Compute new velocity based on the lagrange multipliers
   switch (data_container->settings.solver.solver_mode) {
@@ -290,15 +290,15 @@ void ChConstraintRigidRigid::Build_s() {
     } break;
 
     case SLIDING: {
-      blaze::DenseSubvector<const DynamicVector<real> > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
+      blaze::DenseSubvector<const DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
 
       v_new = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_b * gamma_b;
 
     } break;
 
     case SPINNING: {
-      blaze::DenseSubvector<const DynamicVector<real> > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<const DynamicVector<real> > gamma_s = blaze::subvector(gamma, num_contacts * 3, num_contacts * 3);
+      blaze::DenseSubvector<const DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
+      blaze::DenseSubvector<const DenseVector > gamma_s = blaze::subvector(gamma, num_contacts * 3, num_contacts * 3);
 
       v_new = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_s * gamma_s + M_invD_b * gamma_b;
 
@@ -336,7 +336,7 @@ void ChConstraintRigidRigid::Build_E()
     return;
   }
   SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
-  DynamicVector<real>& E = data_container->host_data.E;
+  DenseVector& E = data_container->host_data.E;
   uint num_contacts = data_container->num_contacts;
 
 #pragma omp parallel for
@@ -373,9 +373,9 @@ void ChConstraintRigidRigid::Build_D()
   int2* ids = data_container->host_data.bids_rigid_rigid.data();
   real4* rot = data_container->host_data.rot_data.data();
 
-  CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
+  SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  SparseMatrix& D_s_T = data_container->host_data.D_s_T;
 
   SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
 
@@ -480,9 +480,9 @@ void ChConstraintRigidRigid::GenerateSparsity()
 {
   SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
 
-  CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
+  SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  SparseMatrix& D_s_T = data_container->host_data.D_s_T;
 
   const int2* ids = data_container->host_data.bids_rigid_rigid.data();
 
@@ -580,7 +580,7 @@ void ChConstraintRigidRigid::GenerateSparsity()
   }
 }
 
-typedef blaze::CompressedMatrix<real>  SpMat;
+typedef SparseMatrix  SpMat;
 
 using blaze::SparseSubmatrix;
 
@@ -636,18 +636,18 @@ void solve2x2(real& a, real& b, real& c, real& a1, real& b1, real& c1, real& x, 
 
 void ChConstraintRigidRigid::SolveQuartic() {
   const int2* ids = data_container->host_data.bids_rigid_rigid.data();
-  const CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  const CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  const CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
-  const CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
+  const SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  const SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  const SparseMatrix& D_s_T = data_container->host_data.D_s_T;
+  const SparseMatrix& M_inv = data_container->host_data.M_inv;
 
-  const DynamicVector<real>& R_full = data_container->host_data.R_full;
+  const DenseVector& R_full = data_container->host_data.R_full;
   const thrust::host_vector<real3>& friction = data_container->host_data.fric_rigid_rigid;
 
   for (int index = 0; index < data_container->num_contacts; index++) {
-    CompressedMatrix<real> D_T(3, 12), Minv(12, 12), D;
-    DynamicVector<real> R(3);    // rhs
-    DynamicVector<real> g(3);    // lagrange multipliers
+    SparseMatrix D_T(3, 12), Minv(12, 12), D;
+    DenseVector R(3);    // rhs
+    DenseVector g(3);    // lagrange multipliers
 
     int2 body_id = ids[index];
     real f_mu = friction[index].x;
@@ -662,7 +662,7 @@ void ChConstraintRigidRigid::SolveQuartic() {
     SparseSubmatrix<SpMat>(Minv, 0, 0, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.x * 6, body_id.x * 6, 6, 6);
     SparseSubmatrix<SpMat>(Minv, 6, 6, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.y * 6, body_id.y * 6, 6, 6);
 
-    CompressedMatrix<real> N = D_T * Minv * D;
+    SparseMatrix N = D_T * Minv * D;
 
     R[0] = R_full[index * 1 + 0];
     R[1] = R_full[data_container->num_contacts + index * 2 + 0];
@@ -741,7 +741,7 @@ void ChConstraintRigidRigid::SolveQuartic() {
 }
 
 
-void local_project(DynamicVector<real> & gamma, real coh, real mu) {
+void local_project(DenseVector & gamma, real coh, real mu) {
   gamma[0] += coh;
   if (mu == 0) {
     gamma[0] = gamma[0]< 0 ? 0 : gamma[0] - coh;
@@ -759,13 +759,13 @@ void local_project(DynamicVector<real> & gamma, real coh, real mu) {
 
 void ChConstraintRigidRigid::SolveLocal() {
   const int2* ids = data_container->host_data.bids_rigid_rigid.data();
-  const CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  const CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  const CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
-  const CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
+  const SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  const SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  const SparseMatrix& D_s_T = data_container->host_data.D_s_T;
+  const SparseMatrix& M_inv = data_container->host_data.M_inv;
 
-  const DynamicVector<real>& R_full = data_container->host_data.R_full;
-  DynamicVector<real>& gamma = data_container->host_data.gamma;
+  const DenseVector& R_full = data_container->host_data.R_full;
+  DenseVector& gamma = data_container->host_data.gamma;
   const thrust::host_vector<real3>& friction = data_container->host_data.fric_rigid_rigid;
   const thrust::host_vector<real>& cohesion = data_container->host_data.coh_rigid_rigid;
 //#pragma omp parallel for
@@ -773,11 +773,11 @@ void ChConstraintRigidRigid::SolveLocal() {
     //BLAZE_SERIAL_SECTION
     {
 
-      CompressedMatrix<real> D_T(3, 12), Minv(12, 12), D;
-      DynamicVector<real> mb(3, 0);    // rhs
-      DynamicVector<real> ml(3, 0);    // lagrange multipliers
-      DynamicVector<real> ml_old(3, 0), ml_k(3, 0);
-      DynamicVector<real> resid(3, 0);
+      SparseMatrix D_T(3, 12), Minv(12, 12), D;
+      DenseVector mb(3, 0);    // rhs
+      DenseVector ml(3, 0);    // lagrange multipliers
+      DenseVector ml_old(3, 0), ml_k(3, 0);
+      DenseVector resid(3, 0);
       int2 body_id = ids[index];
       real mu = friction[index].x;
       real c = cohesion[index];
@@ -792,7 +792,7 @@ void ChConstraintRigidRigid::SolveLocal() {
       SparseSubmatrix<SpMat>(Minv, 0, 0, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.x * 6, body_id.x * 6, 6, 6);
       SparseSubmatrix<SpMat>(Minv, 6, 6, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.y * 6, body_id.y * 6, 6, 6);
 
-      CompressedMatrix<real> N = D_T * Minv * D;
+      SparseMatrix N = D_T * Minv * D;
 
       mb[0] = R_full[index * 1 + 0];
       mb[1] = R_full[data_container->num_contacts + index * 2 + 0];
@@ -836,19 +836,19 @@ void ChConstraintRigidRigid::SolveLocal() {
 
 void ChConstraintRigidRigid::SolveInverse() {
   const int2* ids = data_container->host_data.bids_rigid_rigid.data();
-  const CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
-  const CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
-  const CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
-  const CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
+  const SparseMatrix& D_n_T = data_container->host_data.D_n_T;
+  const SparseMatrix& D_t_T = data_container->host_data.D_t_T;
+  const SparseMatrix& D_s_T = data_container->host_data.D_s_T;
+  const SparseMatrix& M_inv = data_container->host_data.M_inv;
 
-  const DynamicVector<real>& R_full = data_container->host_data.R_full;
+  const DenseVector& R_full = data_container->host_data.R_full;
   const thrust::host_vector<real3>& friction = data_container->host_data.fric_rigid_rigid;
   const thrust::host_vector<real>& cohesion = data_container->host_data.coh_rigid_rigid;
 
   for (int index = 0; index < data_container->num_contacts; index++) {
-    CompressedMatrix<real> D_T(3, 12), Minv(12, 12), D;
-    DynamicVector<real> mb(3);    // rhs
-    DynamicVector<real> ml(3);    // lagrange multipliers
+    SparseMatrix D_T(3, 12), Minv(12, 12), D;
+    DenseVector mb(3);    // rhs
+    DenseVector ml(3);    // lagrange multipliers
 
     int2 body_id = ids[index];
     real mu = friction[index].x;
@@ -864,7 +864,7 @@ void ChConstraintRigidRigid::SolveInverse() {
     SparseSubmatrix<SpMat>(Minv, 0, 0, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.x * 6, body_id.x * 6, 6, 6);
     SparseSubmatrix<SpMat>(Minv, 6, 6, 6, 6) = SparseSubmatrix<const SpMat>(M_inv, body_id.y * 6, body_id.y * 6, 6, 6);
 
-    CompressedMatrix<real> N = D_T * Minv * D;
+    SparseMatrix N = D_T * Minv * D;
 
     mb[0] = R_full[index * 1 + 0];
     mb[1] = R_full[data_container->num_contacts + index * 2 + 0];
@@ -873,7 +873,7 @@ void ChConstraintRigidRigid::SolveInverse() {
 
     real det = N(0, 0) * (N(1, 1) * N(2, 2) - N(2, 1) * N(1, 2)) - N(0, 1) * (N(1, 0) * N(2, 2) - N(1, 2) * N(2, 0)) + N(0, 2) * (N(1, 0) * N(2, 1) - N(1, 1) * N(2, 0));
     real invdet = 1.0 / det;
-    CompressedMatrix<real> minv;
+    SparseMatrix minv;
 
     minv(0, 0) = (N(1, 1) * N(2, 2) - N(2, 1) * N(1, 2)) * invdet;
     minv(0, 1) = (N(0, 2) * N(2, 1) - N(0, 1) * N(2, 2)) * invdet;
