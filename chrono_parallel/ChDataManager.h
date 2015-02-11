@@ -40,13 +40,12 @@
 #include "chrono_parallel/ChSettings.h"
 #include "chrono_parallel/ChMeasures.h"
 
-// Blaze Includes
-#include <blaze/math/CompressedMatrix.h>
-#include <blaze/math/DynamicVector.h>
-#include <blaze/math/DenseSubvector.h>
+// Eigen Includes
+#include <Eigen/Eigen>
 
-using blaze::CompressedMatrix;
-using blaze::DynamicVector;
+typedef Eigen::SparseMatrix<real> SparseMatrix;
+typedef Eigen::Matrix< real , Eigen::Dynamic , 1> DenseVector;
+
 namespace chrono {
 
 struct host_container {
