@@ -33,10 +33,9 @@ int ChParallelDataManager::OutputBlazeMatrix(SparseMatrix src, std::string filen
   ChStreamOutAsciiFile stream(filename.c_str());
   stream.SetNumFormat(numformat);
 
-  stream << src.rows() << " " << src.columns() << "\n";
-  for (int i = 0; i < src.rows(); ++i) {
-    for (SparseMatrix::Iterator it = src.begin(i); it != src.end(i); ++it) {
-      stream << i << " " << it->index() << " " << it->value() << "\n";
+  for (int k = 0; k < src.outerSize(); ++k){
+    for (Eigen::SparseMatrix<real,Eigen::RowMajor>::InnerIterator it(src, k); it; ++it){
+      stream << it.row() << " " << it.col() << " " << it.value() << "\n";
     }
   }
 
@@ -102,31 +101,32 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
     case NORMAL: {
       nnz_total += nnz_normal;
       D_T.reserve(nnz_total);
-      D_T.resize(num_constraints, num_dof, false);
-      blaze::SparseSubmatrix<SparseMatrix > D_n_T_sub = blaze::submatrix(D_T, 0, 0, num_contacts, num_dof);
+      D_T.resize(num_constraints, num_dof);
+
+      Eigen::Block<SparseMatrix> D_n_T_sub = D_T.block(0, 0, num_contacts, num_dof);
       D_n_T_sub = host_data.D_n_T;
     } break;
     case SLIDING: {
       nnz_total += nnz_normal + num_tangential;
       D_T.reserve(nnz_total);
-      D_T.resize(num_constraints, num_dof, false);
-      blaze::SparseSubmatrix<SparseMatrix > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
+      D_T.resize(num_constraints, num_dof);
+      Eigen::Block<SparseMatrix> D_t_T_sub = D_T.block( num_contacts, 0, 2 * num_contacts, num_dof);
       D_t_T_sub = host_data.D_t_T;
     } break;
     case SPINNING: {
       nnz_total += nnz_normal + num_tangential + num_spinning;
       D_T.reserve(nnz_total);
-      D_T.resize(num_constraints, num_dof, false);
+      D_T.resize(num_constraints, num_dof);
 
-      blaze::SparseSubmatrix<SparseMatrix > D_t_T_sub = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
+      Eigen::Block<SparseMatrix> D_t_T_sub = D_T.block( num_contacts, 0, 2 * num_contacts, num_dof);
       D_t_T_sub = host_data.D_t_T;
 
-      blaze::SparseSubmatrix<SparseMatrix > D_s_T_sub = blaze::submatrix(D_T, 3 * num_contacts, 0, 3 * num_contacts, num_dof);
+      Eigen::Block<SparseMatrix> D_s_T_sub = D_T.block( 3 * num_contacts, 0, 3 * num_contacts, num_dof);
       D_s_T_sub = host_data.D_t_T;
     } break;
   }
 
-  blaze::SparseSubmatrix<SparseMatrix > D_b_T = blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof);
+  Eigen::Block<SparseMatrix> D_b_T = D_T.block( num_unilaterals, 0, num_bilaterals, num_dof);
   D_b_T = host_data.D_b_T;
 
   filename = output_dir + "dump_D.dat";

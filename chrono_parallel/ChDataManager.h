@@ -42,6 +42,7 @@
 
 // Eigen Includes
 #include <Eigen/Eigen>
+#include <Eigen/Sparse>
 
 typedef Eigen::SparseMatrix<real> SparseMatrix;
 typedef Eigen::Matrix< real , Eigen::Dynamic , 1> DenseVector;
