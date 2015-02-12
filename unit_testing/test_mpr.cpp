@@ -22,12 +22,13 @@
 #include <stdio.h>
 #include <vector>
 #include <cmath>
-#include "unit_testing.h"
+
 #include "chrono_parallel/collision/ChCNarrowphaseMPR.h"
 #include "chrono_parallel/collision/ChCNarrowphaseGJK_EPA.h"
 #include "chrono_parallel/collision/ChCNarrowphaseMPRUtils.h"
 #include "collision/ChCCollisionModel.h"
 #include "core/ChMathematics.h"
+#include "unit_testing.h"
 //
 #include "BulletCollision/CollisionShapes/btCollisionMargin.h"
 #include "BulletCollision/CollisionShapes/btSphereShape.h"

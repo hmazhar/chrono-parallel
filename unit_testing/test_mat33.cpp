@@ -21,12 +21,12 @@
 #include <stdio.h>
 #include <vector>
 #include <cmath>
-#include "unit_testing.h"
+
 #include "chrono_parallel/constraints/ChConstraintRigidRigid.h"
 #include "collision/ChCCollisionModel.h"
 #include "core/ChMathematics.h"
 #include "chrono_parallel/math/mat33.h"
-
+#include "unit_testing.h"
 #include "chrono_utils/ChUtilsCreators.h"
 #include "chrono_utils/ChUtilsInputOutput.h"
 

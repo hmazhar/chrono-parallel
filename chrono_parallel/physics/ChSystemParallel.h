@@ -33,8 +33,8 @@
 #include "physics/ChGlobal.h"
 #include "physics/ChContactContainer.h"
 
-#include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/ChDataManager.h"
+#include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/lcp/ChLcpSolverParallel.h"
 #include "chrono_parallel/lcp/ChLcpSystemDescriptorParallel.h"
 #include "chrono_parallel/collision/ChCCollisionSystemParallel.h"

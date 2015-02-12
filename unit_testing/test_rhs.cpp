@@ -20,13 +20,13 @@
 #include <stdio.h>
 #include <vector>
 #include <cmath>
-#include "unit_testing.h"
+
 #include "chrono_parallel/collision/ChCNarrowphaseMPR.h"
 #include "chrono_parallel/collision/ChCNarrowphaseMPRUtils.h"
 #include "chrono_parallel/constraints/ChConstraintRigidRigid.h"
 #include "collision/ChCCollisionModel.h"
 #include "core/ChMathematics.h"
-
+#include "unit_testing.h"
 #include "chrono_utils/ChUtilsCreators.h"
 #include "chrono_utils/ChUtilsInputOutput.h"
 

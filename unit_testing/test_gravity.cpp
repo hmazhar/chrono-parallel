@@ -22,17 +22,15 @@
 #include <stdio.h>
 #include <vector>
 #include <cmath>
-#include "unit_testing.h"
+
 #include "collision/ChCCollisionModel.h"
 #include "core/ChMathematics.h"
 
-#include "chrono_utils/ChUtilsCreators.h"
-#include "chrono_utils/ChUtilsInputOutput.h"
-
+#include "chrono_parallel/physics/ChSystemParallel.h"
+#include "unit_testing.h"
 
 using namespace chrono;
 using namespace chrono::collision;
-using namespace chrono::utils;
 int main(
       int argc,
       char* argv[]) {

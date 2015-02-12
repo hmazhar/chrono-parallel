@@ -49,7 +49,7 @@ using std::endl;
 // Global problem definitions
 // -----------------------------------------------------------------------------
 // Tolerance for test
-double test_tolerance = 1e-5;
+double test_tolerance = 1e-8;
 
 // Save PovRay post-processing data?
 bool write_povray_data = true;
@@ -187,7 +187,7 @@ void SetupSystem(ChSystemParallelDVI* msystem) {
   msystem->GetSettings()->solver.contact_recovery_speed = contact_recovery_speed;
   msystem->SetMaxPenetrationRecoverySpeed(contact_recovery_speed);
   msystem->ChangeSolverType(APGD);
-  msystem->GetSettings()->collision.collision_envelope = 0;
+  msystem->GetSettings()->collision.collision_envelope = 0.01;
   msystem->GetSettings()->collision.bins_per_axis = I3(10, 10, 10);
 
   // Create the mechanism bodies (all fixed).
@@ -255,34 +255,34 @@ bool CompareContacts(ChSystemParallel* msystem_A, ChSystemParallel* msystem_B) {
       }
     }
   }
-//  if (passing) {
-//    cout << "Compare Contact Points" << endl;
-//    for (int i = 0; i < num_contacts_A; i++) {
-//      real3 pta_A = msystem_A->data_manager->host_data.cpta_rigid_rigid[i];
-//      real3 pta_B = msystem_B->data_manager->host_data.cpta_rigid_rigid[i];
-//      WeakEqual(pta_A, pta_B, test_tolerance);
-//      real3 ptb_A = msystem_A->data_manager->host_data.cptb_rigid_rigid[i];
-//      real3 ptb_B = msystem_B->data_manager->host_data.cptb_rigid_rigid[i];
-//      WeakEqual(ptb_A, ptb_B, test_tolerance);
-//    }
-//  }
-//  if (!passing) {
-//
-//    cout << "MPR:" << endl;
-//    for (int i = 0; i < num_contacts_A; i++) {
-//      int2 id = msystem_A->data_manager->host_data.bids_rigid_rigid[i];
-//      real depth = msystem_A->data_manager->host_data.dpth_rigid_rigid[i];
-//      cout << id.x << " " << id.y << " " << depth << endl;
-//    }
-//    cout << "R:" << endl;
-//    for (int i = 0; i < num_contacts_B; i++) {
-//      int2 id = msystem_B->data_manager->host_data.bids_rigid_rigid[i];
-//      real depth = msystem_B->data_manager->host_data.dpth_rigid_rigid[i];
-//      cout << id.x << " " << id.y << " " << depth << endl;
-//    }
-//
-//    // exit(1);
-//  }
+  if (passing) {
+    cout << "Compare Contact Points" << endl;
+    for (int i = 0; i < num_contacts_A; i++) {
+      real3 pta_A = msystem_A->data_manager->host_data.cpta_rigid_rigid[i];
+      real3 pta_B = msystem_B->data_manager->host_data.cpta_rigid_rigid[i];
+      WeakEqual(pta_A, pta_B, test_tolerance);
+      real3 ptb_A = msystem_A->data_manager->host_data.cptb_rigid_rigid[i];
+      real3 ptb_B = msystem_B->data_manager->host_data.cptb_rigid_rigid[i];
+      WeakEqual(ptb_A, ptb_B, test_tolerance);
+    }
+  }
+  if (!passing) {
+
+    cout << "MPR:" << endl;
+    for (int i = 0; i < num_contacts_A; i++) {
+      int2 id = msystem_A->data_manager->host_data.bids_rigid_rigid[i];
+      real depth = msystem_A->data_manager->host_data.dpth_rigid_rigid[i];
+      cout << id.x << " " << id.y << " " << depth << endl;
+    }
+    cout << "R:" << endl;
+    for (int i = 0; i < num_contacts_B; i++) {
+      int2 id = msystem_B->data_manager->host_data.bids_rigid_rigid[i];
+      real depth = msystem_B->data_manager->host_data.dpth_rigid_rigid[i];
+      cout << id.x << " " << id.y << " " << depth << endl;
+    }
+
+    // exit(1);
+  }
 
   return true;
 }
@@ -324,7 +324,7 @@ int main(int argc, char* argv[]) {
     // Loop until reaching the end time...
     while (time < time_end) {
       if (gl_window.Active()) {
-        gl_window.DoStepDynamics(time_step);
+        //gl_window.DoStepDynamics(time_step);
         gl_window.Render();
       }
       msystem_mpr->DoStepDynamics(time_step);
