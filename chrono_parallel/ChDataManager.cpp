@@ -110,16 +110,20 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
       nnz_total += nnz_normal + num_tangential;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof);
+
+      D_T.middleRows(0, num_contacts) = host_data.D_n_T;
       D_T.middleRows(num_contacts, 2 * num_contacts) = host_data.D_t_T;
+
     } break;
     case SPINNING: {
       nnz_total += nnz_normal + num_tangential + num_spinning;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof);
 
+      D_T.middleRows(0, num_contacts) = host_data.D_n_T;
       D_T.middleRows(num_contacts, 2 * num_contacts) = host_data.D_t_T;
       D_T.middleRows(3 * num_contacts, 3 * num_contacts) = host_data.D_s_T;
-
+      
     } break;
   }
   D_T.middleRows(num_unilaterals, num_bilaterals) = host_data.D_b_T;
