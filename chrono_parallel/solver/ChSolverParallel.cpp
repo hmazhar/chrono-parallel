@@ -48,14 +48,15 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
 
-  blaze::DenseSubvector<DenseVector > o_b = blaze::subvector(output, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<const DenseVector > x_b = blaze::subvector(x, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<const DenseVector > E_b = blaze::subvector(E, num_unilaterals, num_bilaterals);
 
+  Eigen::VectorBlock<DenseVector> o_b =  output.segment(num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<const DenseVector> x_b = x.segment(num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<const DenseVector> E_b = E.segment(num_unilaterals, num_bilaterals);
 
-  blaze::DenseSubvector<DenseVector > o_n = blaze::subvector(output, 0, num_contacts);
-  blaze::DenseSubvector<const DenseVector > x_n = blaze::subvector(x, 0, num_contacts);
-  blaze::DenseSubvector<const DenseVector > E_n = blaze::subvector(E, 0, num_contacts);
+  Eigen::VectorBlock<DenseVector> o_n =  output.segment( 0, num_contacts);
+  Eigen::VectorBlock<const DenseVector> x_n = x.segment( 0, num_contacts);
+  Eigen::VectorBlock<const DenseVector> E_n = E.segment( 0, num_contacts);
+
 
 
 
@@ -71,9 +72,9 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
 
     case SLIDING: {
 
-      blaze::DenseSubvector<DenseVector > o_t = blaze::subvector(output, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<const DenseVector > x_t = blaze::subvector(x, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<const DenseVector > E_t = blaze::subvector(E, num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<DenseVector> o_t =  output.segment(num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<const DenseVector> x_t = x.segment(num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<const DenseVector> E_t = E.segment(num_contacts, num_contacts * 2);
 
       o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
       o_n = D_n_T * (M_invD_n * x_n) + E_n * x_n;
@@ -82,13 +83,15 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
 
     case SPINNING: {
 
-      blaze::DenseSubvector<DenseVector > o_t = blaze::subvector(output, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<const DenseVector > x_t = blaze::subvector(x, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<const DenseVector > E_t = blaze::subvector(E, num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<DenseVector> o_t =  output.segment(num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<const DenseVector> x_t = x.segment(num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<const DenseVector> E_t = E.segment(num_contacts, num_contacts * 2);
 
-      blaze::DenseSubvector<DenseVector > o_s = blaze::subvector(output, num_contacts * 3, num_contacts * 3);
-      blaze::DenseSubvector<const DenseVector > x_s = blaze::subvector(x, num_contacts * 3, num_contacts * 3);
-      blaze::DenseSubvector<const DenseVector > E_s = blaze::subvector(E, num_contacts * 3, num_contacts * 3);
+
+      Eigen::VectorBlock<DenseVector> o_s =  output.segment(num_contacts * 3, num_contacts * 3);
+      Eigen::VectorBlock<const DenseVector> x_s = x.segment(num_contacts * 3, num_contacts * 3);
+      Eigen::VectorBlock<const DenseVector> E_s = E.segment(num_contacts * 3, num_contacts * 3);
+
       o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
       o_n = D_n_T * (M_invD_n * x_n) + E_n * x_n;
       o_t = D_t_T * (M_invD_t * x_t) + E_t * x_t;
@@ -177,7 +180,7 @@ uint ChSolverParallel::SolveStab(const uint max_iter,
   real beta, c = 1, eta, norm_rMR, norm_r0, c_old = 1, s_old = 0, s = 0, alpha, beta_old, c_oold, s_oold, r1_hat, r1, r2, r3;
   ShurBilaterals(x, v_hat);
   v_hat = mb - v_hat;
-  beta = sqrt((v_hat, v_hat));
+  beta = sqrt(v_hat.dot(v_hat));
   w_old = w;
   eta = beta;
   xMR = x;
@@ -193,10 +196,10 @@ uint ChSolverParallel::SolveStab(const uint max_iter,
     v_old = v;
     v = 1.0 / beta * v_hat;
     ShurBilaterals(v, Av);
-    alpha = (v, Av);
+    alpha = v.dot( Av);
     v_hat = Av - alpha * v - beta * v_old;
     beta_old = beta;
-    beta = sqrt((v_hat, v_hat));
+    beta = sqrt(v_hat.dot( v_hat));
     //// QR factorization
     c_oold = c_old;
     c_old = c;

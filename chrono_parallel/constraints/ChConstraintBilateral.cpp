@@ -13,8 +13,7 @@
 
 using namespace chrono;
 
-using blaze::DenseSubvector;
-using blaze::subvector;
+
 
 void ChConstraintBilateral::Build_b()
 {
@@ -63,21 +62,21 @@ void ChConstraintBilateral::Build_D()
       int colA = idA * 6;
       int colB = idB * 6;
 
-      D_b_T(row, colA + 0) = mbilateral->Get_Cq_a()->GetElementN(0);
-      D_b_T(row, colA + 1) = mbilateral->Get_Cq_a()->GetElementN(1);
-      D_b_T(row, colA + 2) = mbilateral->Get_Cq_a()->GetElementN(2);
+      D_b_T.coeffRef(row, colA + 0) = mbilateral->Get_Cq_a()->GetElementN(0);
+      D_b_T.coeffRef(row, colA + 1) = mbilateral->Get_Cq_a()->GetElementN(1);
+      D_b_T.coeffRef(row, colA + 2) = mbilateral->Get_Cq_a()->GetElementN(2);
 
-      D_b_T(row, colA + 3) = mbilateral->Get_Cq_a()->GetElementN(3);
-      D_b_T(row, colA + 4) = mbilateral->Get_Cq_a()->GetElementN(4);
-      D_b_T(row, colA + 5) = mbilateral->Get_Cq_a()->GetElementN(5);
+      D_b_T.coeffRef(row, colA + 3) = mbilateral->Get_Cq_a()->GetElementN(3);
+      D_b_T.coeffRef(row, colA + 4) = mbilateral->Get_Cq_a()->GetElementN(4);
+      D_b_T.coeffRef(row, colA + 5) = mbilateral->Get_Cq_a()->GetElementN(5);
 
-      D_b_T(row, colB + 0) = mbilateral->Get_Cq_b()->GetElementN(0);
-      D_b_T(row, colB + 1) = mbilateral->Get_Cq_b()->GetElementN(1);
-      D_b_T(row, colB + 2) = mbilateral->Get_Cq_b()->GetElementN(2);
+      D_b_T.coeffRef(row, colB + 0) = mbilateral->Get_Cq_b()->GetElementN(0);
+      D_b_T.coeffRef(row, colB + 1) = mbilateral->Get_Cq_b()->GetElementN(1);
+      D_b_T.coeffRef(row, colB + 2) = mbilateral->Get_Cq_b()->GetElementN(2);
 
-      D_b_T(row, colB + 3) = mbilateral->Get_Cq_b()->GetElementN(3);
-      D_b_T(row, colB + 4) = mbilateral->Get_Cq_b()->GetElementN(4);
-      D_b_T(row, colB + 5) = mbilateral->Get_Cq_b()->GetElementN(5);
+      D_b_T.coeffRef(row, colB + 3) = mbilateral->Get_Cq_b()->GetElementN(3);
+      D_b_T.coeffRef(row, colB + 4) = mbilateral->Get_Cq_b()->GetElementN(4);
+      D_b_T.coeffRef(row, colB + 5) = mbilateral->Get_Cq_b()->GetElementN(5);
     }
       break;
 
@@ -90,8 +89,8 @@ void ChConstraintBilateral::Build_D()
       int colA = data_container->num_bodies * 6 + idA;
       int colB = data_container->num_bodies * 6 + idB;
 
-      D_b_T(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
-      D_b_T(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
+      D_b_T.coeffRef(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
+      D_b_T.coeffRef(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
     }
       break;
 
@@ -104,15 +103,15 @@ void ChConstraintBilateral::Build_D()
       int colA = data_container->num_bodies * 6 + idA;
       int colB = idB * 6;
 
-      D_b_T(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
+      D_b_T.coeffRef(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
 
-      D_b_T(row, colB + 0) = mbilateral->Get_Cq_b()->GetElementN(0);
-      D_b_T(row, colB + 1) = mbilateral->Get_Cq_b()->GetElementN(1);
-      D_b_T(row, colB + 2) = mbilateral->Get_Cq_b()->GetElementN(2);
+      D_b_T.coeffRef(row, colB + 0) = mbilateral->Get_Cq_b()->GetElementN(0);
+      D_b_T.coeffRef(row, colB + 1) = mbilateral->Get_Cq_b()->GetElementN(1);
+      D_b_T.coeffRef(row, colB + 2) = mbilateral->Get_Cq_b()->GetElementN(2);
 
-      D_b_T(row, colB + 3) = mbilateral->Get_Cq_b()->GetElementN(3);
-      D_b_T(row, colB + 4) = mbilateral->Get_Cq_b()->GetElementN(4);
-      D_b_T(row, colB + 5) = mbilateral->Get_Cq_b()->GetElementN(5);
+      D_b_T.coeffRef(row, colB + 3) = mbilateral->Get_Cq_b()->GetElementN(3);
+      D_b_T.coeffRef(row, colB + 4) = mbilateral->Get_Cq_b()->GetElementN(4);
+      D_b_T.coeffRef(row, colB + 5) = mbilateral->Get_Cq_b()->GetElementN(5);
     }
       break;
 
@@ -126,9 +125,9 @@ void ChConstraintBilateral::Build_D()
       int colB = data_container->num_bodies * 6 + idB;
       int colC = data_container->num_bodies * 6 + idC;
 
-      D_b_T(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
-      D_b_T(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
-      D_b_T(row, colC) = mbilateral->Get_Cq_c()->GetElementN(0);
+      D_b_T.coeffRef(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
+      D_b_T.coeffRef(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
+      D_b_T.coeffRef(row, colC) = mbilateral->Get_Cq_c()->GetElementN(0);
     }
       break;
 
@@ -142,16 +141,16 @@ void ChConstraintBilateral::Build_D()
       int colB = data_container->num_bodies * 6 + idB;
       int colC = idC * 6;
 
-      D_b_T(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
-      D_b_T(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
+      D_b_T.coeffRef(row, colA) = mbilateral->Get_Cq_a()->GetElementN(0);
+      D_b_T.coeffRef(row, colB) = mbilateral->Get_Cq_b()->GetElementN(0);
 
-      D_b_T(row, colC + 0) = mbilateral->Get_Cq_c()->GetElementN(0);
-      D_b_T(row, colC + 1) = mbilateral->Get_Cq_c()->GetElementN(1);
-      D_b_T(row, colC + 2) = mbilateral->Get_Cq_c()->GetElementN(2);
+      D_b_T.coeffRef(row, colC + 0) = mbilateral->Get_Cq_c()->GetElementN(0);
+      D_b_T.coeffRef(row, colC + 1) = mbilateral->Get_Cq_c()->GetElementN(1);
+      D_b_T.coeffRef(row, colC + 2) = mbilateral->Get_Cq_c()->GetElementN(2);
 
-      D_b_T(row, colC + 3) = mbilateral->Get_Cq_c()->GetElementN(3);
-      D_b_T(row, colC + 4) = mbilateral->Get_Cq_c()->GetElementN(4);
-      D_b_T(row, colC + 5) = mbilateral->Get_Cq_c()->GetElementN(5);
+      D_b_T.coeffRef(row, colC + 3) = mbilateral->Get_Cq_c()->GetElementN(3);
+      D_b_T.coeffRef(row, colC + 4) = mbilateral->Get_Cq_c()->GetElementN(4);
+      D_b_T.coeffRef(row, colC + 5) = mbilateral->Get_Cq_c()->GetElementN(5);
     }
       break;
 
@@ -196,11 +195,11 @@ void ChConstraintBilateral::GenerateSparsity()
         col2 = idA * 6;
       }
 
-      D_b_T.append(row, col1 + 0, 1); D_b_T.append(row, col1 + 1, 1); D_b_T.append(row, col1 + 2, 1);
-      D_b_T.append(row, col1 + 3, 1); D_b_T.append(row, col1 + 4, 1); D_b_T.append(row, col1 + 5, 1);
+      D_b_T.insert(row, col1 + 0)= 1; D_b_T.insert(row, col1 + 1)= 1; D_b_T.insert(row, col1 + 2)= 1;
+      D_b_T.insert(row, col1 + 3)= 1; D_b_T.insert(row, col1 + 4)= 1; D_b_T.insert(row, col1 + 5)= 1;
 
-      D_b_T.append(row, col2 + 0, 1); D_b_T.append(row, col2 + 1, 1); D_b_T.append(row, col2 + 2, 1);
-      D_b_T.append(row, col2 + 3, 1); D_b_T.append(row, col2 + 4, 1); D_b_T.append(row, col2 + 5, 1);
+      D_b_T.insert(row, col2 + 0)= 1; D_b_T.insert(row, col2 + 1)= 1; D_b_T.insert(row, col2 + 2)= 1;
+      D_b_T.insert(row, col2 + 3)= 1; D_b_T.insert(row, col2 + 4)= 1; D_b_T.insert(row, col2 + 5)= 1;
     }
       break;
 
@@ -218,8 +217,8 @@ void ChConstraintBilateral::GenerateSparsity()
         col2 = data_container->num_bodies * 6 + idA;
       }
 
-      D_b_T.append(row, col1, 1);
-      D_b_T.append(row, col2, 1);
+      D_b_T.insert(row, col1)= 1;
+      D_b_T.insert(row, col2)= 1;
     }
       break;
 
@@ -232,10 +231,10 @@ void ChConstraintBilateral::GenerateSparsity()
       col1 = idB * 6;
       col2 = data_container->num_bodies * 6 + idA;
 
-      D_b_T.append(row, col1 + 0, 1); D_b_T.append(row, col1 + 1, 1); D_b_T.append(row, col1 + 2, 1);
-      D_b_T.append(row, col1 + 3, 1); D_b_T.append(row, col1 + 4, 1); D_b_T.append(row, col1 + 5, 1);
+      D_b_T.insert(row, col1 + 0)= 1; D_b_T.insert(row, col1 + 1)= 1; D_b_T.insert(row, col1 + 2)= 1;
+      D_b_T.insert(row, col1 + 3)= 1; D_b_T.insert(row, col1 + 4)= 1; D_b_T.insert(row, col1 + 5)= 1;
 
-      D_b_T.append(row, col2, 1);
+      D_b_T.insert(row, col2)= 1;
     }
       break;
 
@@ -251,9 +250,9 @@ void ChConstraintBilateral::GenerateSparsity()
       col2 = data_container->num_bodies * 6 + ids[1];
       col3 = data_container->num_bodies * 6 + ids[2];
 
-      D_b_T.append(row, col1, 1);
-      D_b_T.append(row, col2, 1);
-      D_b_T.append(row, col3, 1);
+      D_b_T.insert(row, col1)= 1;
+      D_b_T.insert(row, col2)= 1;
+      D_b_T.insert(row, col3)= 1;
     }
       break;
 
@@ -272,17 +271,16 @@ void ChConstraintBilateral::GenerateSparsity()
         col3 = data_container->num_bodies * 6 + idA;
       }
 
-      D_b_T.append(row, col1 + 0, 1); D_b_T.append(row, col1 + 1, 1); D_b_T.append(row, col1 + 2, 1);
-      D_b_T.append(row, col1 + 3, 1); D_b_T.append(row, col1 + 4, 1); D_b_T.append(row, col1 + 5, 1);
+      D_b_T.insert(row, col1 + 0)= 1; D_b_T.insert(row, col1 + 1)= 1; D_b_T.insert(row, col1 + 2)= 1;
+      D_b_T.insert(row, col1 + 3)= 1; D_b_T.insert(row, col1 + 4)= 1; D_b_T.insert(row, col1 + 5)= 1;
 
-      D_b_T.append(row, col2, 1);
-      D_b_T.append(row, col3, 1);
+      D_b_T.insert(row, col2)= 1;
+      D_b_T.insert(row, col3)= 1;
     }
       break;
 
     }
 
-    D_b_T.finalize(row);
   }
 }
 

@@ -4,9 +4,8 @@
 #include <thrust/transform.h>
 
 #include "collision/ChCCollisionModel.h"
-
-#include "chrono_parallel/math/ChParallelMath.h"
 #include "chrono_parallel/collision/ChCNarrowphaseMPR.h"
+#include "chrono_parallel/math/ChParallelMath.h"
 #include "chrono_parallel/collision/ChCNarrowphaseMPRUtils.h"
 
 using namespace chrono::collision;

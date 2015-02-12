@@ -1,9 +1,9 @@
 #ifndef CHC_BROADPHASE_H
 #define CHC_BROADPHASE_H
 
+#include "chrono_parallel/ChDataManager.h"
 #include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/math/ChParallelMath.h"
-#include "chrono_parallel/ChDataManager.h"
 #include "chrono_parallel/collision/ChCAABBGenerator.h"
 
 namespace chrono {

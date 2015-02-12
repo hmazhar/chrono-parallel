@@ -129,10 +129,10 @@ void ChLcpSolverParallel::PerformStabilization() {
     return;
   }
 
-  Eigen::VectorBlock<DenseVector> R_b = R_full.segment( num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<const DenseVector> R_b = R_full.segment( num_unilaterals, num_bilaterals);
   Eigen::VectorBlock<DenseVector> gamma_b = gamma.segment( num_unilaterals, num_bilaterals);
 
   data_container->system_timer.start("ChLcpSolverParallel_Stab");
-  solver->SolveStab(data_container->settings.solver.max_iteration_bilateral, num_bilaterals, R_b, gamma_b);
+  //solver->SolveStab(data_container->settings.solver.max_iteration_bilateral, num_bilaterals, R_b, gamma_b);
   data_container->system_timer.stop("ChLcpSolverParallel_Stab");
 }

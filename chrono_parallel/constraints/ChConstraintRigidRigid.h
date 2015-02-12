@@ -85,11 +85,11 @@ class CH_PARALLEL_API ChConstraintRigidRigid {
   void GenerateSparsity();
 
   // Solve the fourth order polynomial to get an approximate solution
-  void SolveQuartic();
+  //void SolveQuartic();
   // Solve each contact individually using a jacobi iteration
-  void SolveLocal();
+  //void SolveLocal();
   // Solve each contact individually using a the inverse
-  void SolveInverse();
+  //void SolveInverse();
   int offset;
 
  protected:

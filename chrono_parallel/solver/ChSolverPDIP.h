@@ -47,37 +47,23 @@ public:
     int nnz_total = nnz_unilaterals + nnz_bilaterals;
 
     D_T.reserve(nnz_total);
-    D_T.resize(num_constraints, num_dof, false);
+    D_T.resize(num_constraints, num_dof);
 
     D.reserve(nnz_total);
-    D.resize(num_dof, num_constraints, false);
+    D.resize(num_dof, num_constraints);
 
     M_invD.reserve(nnz_total);
-    M_invD.resize(num_dof, num_constraints, false);
+    M_invD.resize(num_dof, num_constraints);
 
-    blaze::SparseSubmatrix<SparseMatrix > D_n_T = blaze::submatrix(D_T, 0, 0, num_contacts, num_dof);
-    blaze::SparseSubmatrix<SparseMatrix > D_t_T = blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof);
-    blaze::SparseSubmatrix<SparseMatrix > D_b_T = blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof);
 
-    D_n_T = data_container->host_data.D_n_T;
-    D_t_T = data_container->host_data.D_t_T;
-    D_b_T = data_container->host_data.D_b_T;
+    D_T.middleRows(0, num_contacts) = data_container->host_data.D_n_T;
+    D_T.middleRows(num_contacts, 2 * num_contacts) = data_container->host_data.D_t_T;
+    D_T.middleRows(num_unilaterals, num_bilaterals) = data_container->host_data.D_b_T;
 
-    blaze::SparseSubmatrix<SparseMatrix > D_n = blaze::submatrix(D, 0, 0, num_dof, num_contacts );
-    blaze::SparseSubmatrix<SparseMatrix > D_t = blaze::submatrix(D, 0, num_contacts, num_dof, 2 * num_contacts);
-    blaze::SparseSubmatrix<SparseMatrix > D_b = blaze::submatrix(D, 0, num_unilaterals, num_dof, num_bilaterals);
 
-    D_n = data_container->host_data.D_n;
-    D_t = data_container->host_data.D_t;
-    D_b = data_container->host_data.D_b;
-
-    blaze::SparseSubmatrix<SparseMatrix > M_invD_n = blaze::submatrix(M_invD, 0, 0, num_dof, num_contacts );
-    blaze::SparseSubmatrix<SparseMatrix > M_invD_t = blaze::submatrix(M_invD, 0, num_contacts, num_dof, 2 * num_contacts);
-    blaze::SparseSubmatrix<SparseMatrix > M_invD_b = blaze::submatrix(M_invD, 0, num_unilaterals, num_dof, num_bilaterals);
-
-    M_invD_n = data_container->host_data.M_invD_n;
-    M_invD_t = data_container->host_data.M_invD_t;
-    M_invD_b = data_container->host_data.M_invD_b;
+    //Eigen is not able to to set a subset of columns for a rowmajor matrix. Therefore recompute
+    D = D_T.transpose();
+    M_invD = data_container->host_data.M_inv*D;
 
     data_container->measures.solver.total_iteration +=
       SolvePDIP(max_iteration,
