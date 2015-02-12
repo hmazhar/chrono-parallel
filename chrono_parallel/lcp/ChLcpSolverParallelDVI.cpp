@@ -35,7 +35,7 @@ void ChLcpSolverParallelDVI::RunTimeStep()
   ComputeMassMatrix();
 
   data_container->host_data.gamma.resize(data_container->num_constraints);
-  data_container->host_data.gamma.reset();
+  data_container->host_data.gamma.setZero();
 
   // Perform any setup tasks for all constraint types
   rigid_rigid.Setup(data_container);
@@ -149,40 +149,40 @@ void ChLcpSolverParallelDVI::ComputeD()
 
   switch (data_container->settings.solver.solver_mode) {
     case NORMAL:
-      clear(D_n_T);
+      D_n_T.setZero();
 
       D_n_T.reserve(nnz_normal);
 
-      D_n_T.resize(num_normal, num_dof, false);
+      D_n_T.resize(num_normal, num_dof);
       break;
     case SLIDING:
-      clear(D_n_T);
-      clear(D_t_T);
+      D_n_T.setZero();
+      D_t_T.setZero();
 
       D_n_T.reserve(nnz_normal);
       D_t_T.reserve(nnz_tangential);
 
-      D_n_T.resize(num_normal, num_dof, false);
-      D_t_T.resize(num_tangential, num_dof, false);
+      D_n_T.resize(num_normal, num_dof);
+      D_t_T.resize(num_tangential, num_dof);
       break;
     case SPINNING:
-      clear(D_n_T);
-      clear(D_t_T);
-      clear(D_s_T);
+      D_n_T.setZero();
+      D_t_T.setZero();
+      D_s_T.setZero();
 
       D_n_T.reserve(nnz_normal);
       D_t_T.reserve(nnz_tangential);
       D_s_T.reserve(nnz_spinning);
 
-      D_n_T.resize(num_normal, num_dof, false);
-      D_t_T.resize(num_tangential, num_dof, false);
-      D_s_T.resize(num_spinning, num_dof, false);
+      D_n_T.resize(num_normal, num_dof );
+      D_t_T.resize(num_tangential, num_dof);
+      D_s_T.resize(num_spinning, num_dof);
       break;
   }
 
-  clear(D_b_T);
+  D_b_T.setZero();
   D_b_T.reserve(nnz_bilaterals);
-  D_b_T.resize(num_bilaterals, num_dof, false);
+  D_b_T.resize(num_bilaterals, num_dof);
 
   rigid_rigid.GenerateSparsity();
   bilateral.GenerateSparsity();
@@ -191,26 +191,26 @@ void ChLcpSolverParallelDVI::ComputeD()
 
   switch (data_container->settings.solver.solver_mode) {
     case NORMAL:
-      D_n = trans(D_n_T);
+      D_n = D_n_T.transpose();
       M_invD_n = M_inv * D_n;
       break;
     case SLIDING:
-      D_n = trans(D_n_T);
-      D_t = trans(D_t_T);
+      D_n = D_n_T.transpose();
+      D_t = D_t_T.transpose();
       M_invD_n = M_inv * D_n;
       M_invD_t = M_inv * D_t;
       break;
     case SPINNING:
-      D_n = trans(D_n_T);
-      D_t = trans(D_t_T);
-      D_s = trans(D_s_T);
+      D_n = D_n_T.transpose();
+      D_t = D_t_T.transpose();
+      D_s = D_s_T.transpose();
       M_invD_n = M_inv * D_n;
       M_invD_t = M_inv * D_t;
       M_invD_s = M_inv * D_s;
       break;
   }
 
-  D_b = trans(D_b_T);
+  D_b = D_b_T.transpose();
   M_invD_b = M_inv * D_b;
 }
 
@@ -221,7 +221,6 @@ void ChLcpSolverParallelDVI::ComputeE()
   }
 
   data_container->host_data.E.resize(data_container->num_constraints);
-  reset(data_container->host_data.E);
 
   rigid_rigid.Build_E();
   bilateral.Build_E();
@@ -247,19 +246,16 @@ void ChLcpSolverParallelDVI::ComputeR() {
   uint num_bilaterals = data_container->num_bilaterals;
 
   b.resize(data_container->num_constraints);
-  reset(b);
-
   R.resize(data_container->num_constraints);
-  reset(R);
 
   rigid_rigid.Build_b();
   bilateral.Build_b();
 
-  blaze::DenseSubvector<DenseVector > b_n = blaze::subvector(b, 0, num_contacts);
-  blaze::DenseSubvector<DenseVector > R_n = blaze::subvector(R, 0, num_contacts);
+  Eigen::VectorBlock<DenseVector> b_n = b.segment(0, num_contacts);
+  Eigen::VectorBlock<DenseVector> R_n = R.segment( 0, num_contacts);
 
-  blaze::DenseSubvector<DenseVector > b_b = blaze::subvector(b, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<DenseVector > R_b = blaze::subvector(R, num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<DenseVector> b_b = b.segment( num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<DenseVector> R_b = R.segment( num_unilaterals, num_bilaterals);
 
   R_b = -b_b - D_b_T * M_invk;
   switch (data_container->settings.solver.solver_mode) {
@@ -270,7 +266,7 @@ void ChLcpSolverParallelDVI::ComputeR() {
     case SLIDING: {
 
       //blaze::DenseSubvector<DenseVector > b_t = blaze::subvector(b, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<DenseVector > R_t = blaze::subvector(R, num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<DenseVector> R_t = R.segment( num_contacts, num_contacts * 2);
 
       R_n = -b_n - D_n_T * M_invk;
       R_t = - D_t_T * M_invk;
@@ -278,10 +274,10 @@ void ChLcpSolverParallelDVI::ComputeR() {
 
     case SPINNING: {
       //blaze::DenseSubvector<DenseVector > b_t = blaze::subvector(b, num_contacts, num_contacts * 2);
-      blaze::DenseSubvector<DenseVector > R_t = blaze::subvector(R, num_contacts, num_contacts * 2);
+      Eigen::VectorBlock<DenseVector> R_t = R.segment( num_contacts, num_contacts * 2);
 
       //blaze::DenseSubvector<DenseVector > b_s = blaze::subvector(b, num_contacts * 3, num_contacts * 3);
-      blaze::DenseSubvector<DenseVector > R_s = blaze::subvector(R, num_contacts * 3, num_contacts * 3);
+      Eigen::VectorBlock<DenseVector> R_s = R.segment( num_contacts * 3, num_contacts * 3);
 
       R_n = -b_n - D_n_T * M_invk;
       R_t =  - D_t_T * M_invk;

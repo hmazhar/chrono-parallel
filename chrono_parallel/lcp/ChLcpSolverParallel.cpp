@@ -37,7 +37,7 @@ void ChLcpSolverParallel::ComputeMassMatrix()
   DenseVector& M_invk = data_container->host_data.M_invk;
   SparseMatrix& M_inv = data_container->host_data.M_inv;
 
-  clear(M_inv);
+  M_inv.setZero();
 
   // Each rigid object has 3 mass entries and 9 inertia entries
   // Each shaft has one inertia entry
@@ -52,45 +52,33 @@ void ChLcpSolverParallel::ComputeMassMatrix()
       real inv_mass = 1.0/body_list->at(i)->GetMass();
       ChMatrix33<>&   body_inv_inr = body_list->at(i)->VariablesBody().GetBodyInvInertia();
 
-      M_inv.append(i * 6 + 0, i * 6 + 0, inv_mass);
-      M_inv.finalize(i * 6 + 0);
-      M_inv.append(i * 6 + 1, i * 6 + 1, inv_mass);
-      M_inv.finalize(i * 6 + 1);
-      M_inv.append(i * 6 + 2, i * 6 + 2, inv_mass);
-      M_inv.finalize(i * 6 + 2);
+      M_inv.insert(i * 6 + 0, i * 6 + 0)= inv_mass;
+      M_inv.insert(i * 6 + 1, i * 6 + 1)= inv_mass;
+      M_inv.insert(i * 6 + 2, i * 6 + 2)= inv_mass;
 
-      M_inv.append(i * 6 + 3, i * 6 + 3, body_inv_inr.GetElement(0, 0));
-      M_inv.append(i * 6 + 3, i * 6 + 4, body_inv_inr.GetElement(0, 1));
-      M_inv.append(i * 6 + 3, i * 6 + 5, body_inv_inr.GetElement(0, 2));
-      M_inv.finalize(i * 6 + 3);
-      M_inv.append(i * 6 + 4, i * 6 + 3, body_inv_inr.GetElement(1, 0));
-      M_inv.append(i * 6 + 4, i * 6 + 4, body_inv_inr.GetElement(1, 1));
-      M_inv.append(i * 6 + 4, i * 6 + 5, body_inv_inr.GetElement(1, 2));
-      M_inv.finalize(i * 6 + 4);
-      M_inv.append(i * 6 + 5, i * 6 + 3, body_inv_inr.GetElement(2, 0));
-      M_inv.append(i * 6 + 5, i * 6 + 4, body_inv_inr.GetElement(2, 1));
-      M_inv.append(i * 6 + 5, i * 6 + 5, body_inv_inr.GetElement(2, 2));
-      M_inv.finalize(i * 6 + 5);
+      M_inv.insert(i * 6 + 3, i * 6 + 3)= body_inv_inr.GetElement(0, 0);
+      M_inv.insert(i * 6 + 3, i * 6 + 4)= body_inv_inr.GetElement(0, 1);
+      M_inv.insert(i * 6 + 3, i * 6 + 5)= body_inv_inr.GetElement(0, 2);
+      M_inv.insert(i * 6 + 4, i * 6 + 3)= body_inv_inr.GetElement(1, 0);
+      M_inv.insert(i * 6 + 4, i * 6 + 4)= body_inv_inr.GetElement(1, 1);
+      M_inv.insert(i * 6 + 4, i * 6 + 5)= body_inv_inr.GetElement(1, 2);
+      M_inv.insert(i * 6 + 5, i * 6 + 3)= body_inv_inr.GetElement(2, 0);
+      M_inv.insert(i * 6 + 5, i * 6 + 4)= body_inv_inr.GetElement(2, 1);
+      M_inv.insert(i * 6 + 5, i * 6 + 5)= body_inv_inr.GetElement(2, 2);
     } else {
-      M_inv.finalize(i * 6 + 0);
-      M_inv.finalize(i * 6 + 1);
-      M_inv.finalize(i * 6 + 2);
-      M_inv.finalize(i * 6 + 3);
-      M_inv.finalize(i * 6 + 4);
-      M_inv.finalize(i * 6 + 5);
+
     }
   }
 
   for (int i = 0; i < num_shafts; i++) {
-    M_inv.append(num_bodies * 6 + i, num_bodies * 6 + i, shaft_inr[i]);
-    M_inv.finalize(num_bodies * 6 + i);
+    M_inv.insert(num_bodies * 6 + i, num_bodies * 6 + i)= shaft_inr[i];
   }
 
   //If this experimental feature is requested compute the real mass matrix
   if(data_container->settings.solver.scale_mass_matrix){
 
     SparseMatrix& M = data_container->host_data.M;
-    clear(M);
+    M.setZero();
 
       // Each rigid object has 3 mass entries and 9 inertia entries
       // Each shaft has one inertia entry
@@ -104,38 +92,26 @@ void ChLcpSolverParallel::ComputeMassMatrix()
           real mass = body_list->at(i)->GetMass();
           ChMatrix33<>&   body_inr = body_list->at(i)->VariablesBody().GetBodyInertia();
 
-          M.append(i * 6 + 0, i * 6 + 0, mass);
-          M.finalize(i * 6 + 0);
-          M.append(i * 6 + 1, i * 6 + 1, mass);
-          M.finalize(i * 6 + 1);
-          M.append(i * 6 + 2, i * 6 + 2, mass);
-          M.finalize(i * 6 + 2);
+          M.insert(i * 6 + 0, i * 6 + 0)= mass;
+          M.insert(i * 6 + 1, i * 6 + 1)= mass;
+          M.insert(i * 6 + 2, i * 6 + 2)= mass;
 
-          M.append(i * 6 + 3, i * 6 + 3, body_inr.GetElement(0, 0));
-          M.append(i * 6 + 3, i * 6 + 4, body_inr.GetElement(0, 1));
-          M.append(i * 6 + 3, i * 6 + 5, body_inr.GetElement(0, 2));
-          M.finalize(i * 6 + 3);
-          M.append(i * 6 + 4, i * 6 + 3, body_inr.GetElement(1, 0));
-          M.append(i * 6 + 4, i * 6 + 4, body_inr.GetElement(1, 1));
-          M.append(i * 6 + 4, i * 6 + 5, body_inr.GetElement(1, 2));
-          M.finalize(i * 6 + 4);
-          M.append(i * 6 + 5, i * 6 + 3, body_inr.GetElement(2, 0));
-          M.append(i * 6 + 5, i * 6 + 4, body_inr.GetElement(2, 1));
-          M.append(i * 6 + 5, i * 6 + 5, body_inr.GetElement(2, 2));
-          M.finalize(i * 6 + 5);
+          M.insert(i * 6 + 3, i * 6 + 3)= body_inr.GetElement(0, 0);
+          M.insert(i * 6 + 3, i * 6 + 4)= body_inr.GetElement(0, 1);
+          M.insert(i * 6 + 3, i * 6 + 5)= body_inr.GetElement(0, 2);
+          M.insert(i * 6 + 4, i * 6 + 3)= body_inr.GetElement(1, 0);
+          M.insert(i * 6 + 4, i * 6 + 4)= body_inr.GetElement(1, 1);
+          M.insert(i * 6 + 4, i * 6 + 5)= body_inr.GetElement(1, 2);
+          M.insert(i * 6 + 5, i * 6 + 3)= body_inr.GetElement(2, 0);
+          M.insert(i * 6 + 5, i * 6 + 4)= body_inr.GetElement(2, 1);
+          M.insert(i * 6 + 5, i * 6 + 5)= body_inr.GetElement(2, 2);
         } else {
-          M.finalize(i * 6 + 0);
-          M.finalize(i * 6 + 1);
-          M.finalize(i * 6 + 2);
-          M.finalize(i * 6 + 3);
-          M.finalize(i * 6 + 4);
-          M.finalize(i * 6 + 5);
+
         }
       }
 
       for (int i = 0; i < num_shafts; i++) {
-        M.append(num_bodies * 6 + i, num_bodies * 6 + i, 1.0/shaft_inr[i]);
-        M.finalize(num_bodies * 6 + i);
+        M.insert(num_bodies * 6 + i, num_bodies * 6 + i)= 1.0/shaft_inr[i];
       }
   }
 
@@ -153,8 +129,8 @@ void ChLcpSolverParallel::PerformStabilization() {
     return;
   }
 
-  blaze::DenseSubvector<const DenseVector > R_b = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
-  blaze::DenseSubvector<DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<DenseVector> R_b = R_full.segment( num_unilaterals, num_bilaterals);
+  Eigen::VectorBlock<DenseVector> gamma_b = gamma.segment( num_unilaterals, num_bilaterals);
 
   data_container->system_timer.start("ChLcpSolverParallel_Stab");
   solver->SolveStab(data_container->settings.solver.max_iteration_bilateral, num_bilaterals, R_b, gamma_b);

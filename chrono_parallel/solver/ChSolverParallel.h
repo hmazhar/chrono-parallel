@@ -76,14 +76,14 @@ class CH_PARALLEL_API ChSolverParallel {
   // Perform velocity stabilization on bilateral constraints
   uint SolveStab(const uint max_iter,                                     // Maximum number of iterations
                  const uint size,                                         // Number of unknowns
-                 const blaze::DenseSubvector<const DenseVector >& b,    // Rhs vector
-                 blaze::DenseSubvector<DenseVector >& x);         // The vector of unknowns
+                 const Eigen::VectorBlock<DenseVector>& b,    // Rhs vector
+                 Eigen::VectorBlock<DenseVector>& x);         // The vector of unknowns
 
   real GetObjective(const DenseVector& x, const DenseVector& b) {
     DenseVector Nl(x.size());
     ShurProduct(x,Nl);// 1)  g_tmp = N*l_candidate
     Nl = 0.5 * Nl - b;// 2) 0.5*N*l_candidate-b_shur
-    return (x, Nl);   // 3)  mf_p  = l_candidate'*(0.5*N*l_candidate-b_shur)
+    return x.dot(Nl);   // 3)  mf_p  = l_candidate'*(0.5*N*l_candidate-b_shur)
   }
 
   real Res4Blaze(DenseVector& x, DenseVector& b) {
@@ -94,7 +94,7 @@ class CH_PARALLEL_API ChSolverParallel {
     DenseVector inside = x - gdiff * (temp - b);
     Project(inside.data());
     temp = (1.0 / gdiff) * (x - inside);
-    return sqrt( (real) (temp, temp));
+    return sqrt( (real) temp.dot( temp));
   }
 
   void AtIterationEnd(real maxd, real maxdeltalambda) {

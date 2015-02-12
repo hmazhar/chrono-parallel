@@ -21,6 +21,10 @@
 #ifndef CH_DATAMANAGER_H
 #define CH_DATAMANAGER_H
 
+// Eigen Includes
+//#include <Eigen/Eigen>
+#include <Eigen/Sparse>
+
 // Thrust Includes
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
@@ -40,11 +44,9 @@
 #include "chrono_parallel/ChSettings.h"
 #include "chrono_parallel/ChMeasures.h"
 
-// Eigen Includes
-#include <Eigen/Eigen>
-#include <Eigen/Sparse>
 
-typedef Eigen::SparseMatrix<real> SparseMatrix;
+
+typedef Eigen::SparseMatrix<real, Eigen::RowMajor> SparseMatrix;
 typedef Eigen::Matrix< real , Eigen::Dynamic , 1> DenseVector;
 
 namespace chrono {

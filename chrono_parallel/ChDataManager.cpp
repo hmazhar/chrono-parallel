@@ -54,7 +54,7 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
 
 
   // fill in the information for constraints and friction
-  DenseVector fric(num_constraints, -2.0);
+  DenseVector fric(num_constraints);
   for (int i = 0; i < num_contacts; i++) {
     if (settings.solver.solver_mode == NORMAL) {
       fric[i] = host_data.fric_rigid_rigid[i].x;
@@ -103,31 +103,26 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof);
 
-      Eigen::Block<SparseMatrix> D_n_T_sub = D_T.block(0, 0, num_contacts, num_dof);
-      D_n_T_sub = host_data.D_n_T;
+      D_T.middleRows(0, num_contacts) = host_data.D_n_T;
+
     } break;
     case SLIDING: {
       nnz_total += nnz_normal + num_tangential;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof);
-      Eigen::Block<SparseMatrix> D_t_T_sub = D_T.block( num_contacts, 0, 2 * num_contacts, num_dof);
-      D_t_T_sub = host_data.D_t_T;
+      D_T.middleRows(num_contacts, 2 * num_contacts) = host_data.D_t_T;
     } break;
     case SPINNING: {
       nnz_total += nnz_normal + num_tangential + num_spinning;
       D_T.reserve(nnz_total);
       D_T.resize(num_constraints, num_dof);
 
-      Eigen::Block<SparseMatrix> D_t_T_sub = D_T.block( num_contacts, 0, 2 * num_contacts, num_dof);
-      D_t_T_sub = host_data.D_t_T;
+      D_T.middleRows(num_contacts, 2 * num_contacts) = host_data.D_t_T;
+      D_T.middleRows(3 * num_contacts, 3 * num_contacts) = host_data.D_s_T;
 
-      Eigen::Block<SparseMatrix> D_s_T_sub = D_T.block( 3 * num_contacts, 0, 3 * num_contacts, num_dof);
-      D_s_T_sub = host_data.D_t_T;
     } break;
   }
-
-  Eigen::Block<SparseMatrix> D_b_T = D_T.block( num_unilaterals, 0, num_bilaterals, num_dof);
-  D_b_T = host_data.D_b_T;
+  D_T.middleRows(num_unilaterals, num_bilaterals) = host_data.D_b_T;
 
   filename = output_dir + "dump_D.dat";
   OutputBlazeMatrix(D_T, filename);

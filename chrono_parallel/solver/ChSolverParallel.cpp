@@ -165,8 +165,8 @@ void ChSolverParallel::UpdateContacts()
 
 uint ChSolverParallel::SolveStab(const uint max_iter,
                                  const uint size,
-                                 const blaze::DenseSubvector<const DenseVector >& mb,
-                                 blaze::DenseSubvector<DenseVector >& x)
+                                 const Eigen::VectorBlock<DenseVector>& mb,
+                                 Eigen::VectorBlock<DenseVector>& x)
 {
   real& residual = data_container->measures.solver.residual;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;

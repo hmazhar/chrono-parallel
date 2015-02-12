@@ -71,24 +71,19 @@ void ChSystemParallelDVI::CalculateContactForces()
   switch (data_manager->settings.solver.solver_mode) {
   case NORMAL: {
     const SparseMatrix& D_n = data_manager->host_data.D_n;
-    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
-    Fc = D_n * gamma_n;
+
+    Fc = D_n * gamma.segment(0, num_contacts);
   } break;
   case SLIDING: {
     const SparseMatrix& D_n = data_manager->host_data.D_n;
     const SparseMatrix& D_t = data_manager->host_data.D_t;
-    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
-    blaze::DenseSubvector<DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
-    Fc = D_n * gamma_n + D_t * gamma_t;
+    Fc = D_n * gamma.segment(0, num_contacts) + D_t * gamma.segment(num_contacts, 2 * num_contacts);
   } break;
   case SPINNING: {
     const SparseMatrix& D_n = data_manager->host_data.D_n;
     const SparseMatrix& D_t = data_manager->host_data.D_t;
     const SparseMatrix& D_s = data_manager->host_data.D_s;
-    blaze::DenseSubvector<DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
-    blaze::DenseSubvector<DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
-    blaze::DenseSubvector<DenseVector > gamma_s = blaze::subvector(gamma, 3 * num_contacts, 3 * num_contacts);
-    Fc = D_n * gamma_n + D_t * gamma_t + D_s * gamma_s;
+    Fc = D_n * gamma.segment(0, num_contacts) + D_t * gamma.segment(num_contacts, 2 * num_contacts) + D_s * gamma.segment(3 * num_contacts, 3 * num_contacts);
   } break;
   }
 
