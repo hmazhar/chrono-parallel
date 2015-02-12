@@ -253,6 +253,14 @@ MixtureIngredient::calcGeometricProps(const ChVector<>& size, double& volume, Ch
     volume = CalcConeVolume(size.x,size.y);
     gyration = CalcConeGyration(size.x,size.y).Get_Diag();
     break;
+  case CAPSULE:
+    volume = CalcCapsuleVolume(size.x,size.y);
+    gyration = CalcCapsuleGyration(size.x,size.y).Get_Diag();
+    break;
+  case ROUNDEDCYLINDER:
+    volume = CalcRoundedCylinderVolume(size.x,size.y, size.z);
+    gyration = CalcRoundedCylinderGyration(size.x,size.y,size.z).Get_Diag();
+    break;
   }
 }
 
@@ -308,7 +316,7 @@ Generator::AddMixtureIngredient(MixtureType type,
 // The types of objects created are selected randomly with probability
 // proportional to the ratio of that ingredient in the mixture.
 void Generator::createObjectsBox(SamplingType      sType,
-                                 double            dist,
+								 const ChVector<>& distv,
                                  const ChVector<>& pos,
                                  const ChVector<>& hdims,
                                  const ChVector<>& vel)
@@ -316,15 +324,17 @@ void Generator::createObjectsBox(SamplingType      sType,
   // Normalize the mixture ratios
   normalizeMixture();
 
+  double dist;
+
   // Generate the object locations
   if (m_sysType == SEQUENTIAL_DEM || m_sysType == PARALLEL_DEM)
-    dist = calcMinSeparation(dist);
+    dist = calcMinSeparation(std::max(distv.x, std::max(distv.y, distv.z)));
 
   PointVector points;
   switch (sType) {
   case REGULAR_GRID:
     {
-    GridSampler<> sampler(dist);
+    GridSampler<> sampler(distv);
     points = sampler.SampleBox(pos, hdims);
     }
     break;
@@ -345,6 +355,18 @@ void Generator::createObjectsBox(SamplingType      sType,
   createObjects(points, vel);
 }
 
+// Create objects in a box domain using the specified type of point
+// sampler and separation distance and the current mixture settings.
+// The types of objects created are selected randomly with probability
+// proportional to the ratio of that ingredient in the mixture.
+void Generator::createObjectsBox(SamplingType      sType,
+                                 double            dist,
+                                 const ChVector<>& pos,
+                                 const ChVector<>& hdims,
+                                 const ChVector<>& vel)
+{
+	createObjectsBox(sType, ChVector<>(dist), pos, hdims, vel);
+}
 
 // Create objects in a cylindrical domain using the specified type of point
 // sampler and separation distance and the current mixture settings.
@@ -574,6 +596,12 @@ void Generator::createObjects(const PointVector& points,
       break;
     case CONE:
       AddConeGeometry(body, size.x, size.y);
+      break;
+    case CAPSULE:
+      AddCapsuleGeometry(body, size.x, size.y);
+      break;
+	case ROUNDEDCYLINDER:
+      AddRoundedCylinderGeometry(body, size.x, size.y, size.z);
       break;
     }
 

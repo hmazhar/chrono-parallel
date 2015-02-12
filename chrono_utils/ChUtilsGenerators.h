@@ -57,7 +57,9 @@ enum MixtureType {
   ELLIPSOID,
   BOX,
   CYLINDER,
-  CONE
+  CONE,
+  CAPSULE,
+  ROUNDEDCYLINDER
 };
 
 
@@ -178,6 +180,15 @@ public:
   // Identifiers are incremented for successively created bodies.
   int  getBodyIdentifier() const   {return m_crtBodyId;}
   void setBodyIdentifier(int id)   {m_crtBodyId = id;}
+
+  // Create bodies, according to the current mixture setup, with initial
+  // positions given by the specified sampler in the box domain specified by
+  // 'pos' and 'hdims'. Optionally, a constant inital linear velocity can be set
+  // for all created bodies. ChVector<>& distv is used to specify bodies spacing
+  // in x,y,z directions.
+  void createObjectsBox(SamplingType sType, const ChVector<>& distv,
+                        const ChVector<>& pos, const ChVector<>& hdims,
+                        const ChVector<>& vel = ChVector<>(0, 0, 0));
 
   // Create bodies, according to the current mixture setup, with initial
   // positions given by the specified sampler in the box domain specified by
