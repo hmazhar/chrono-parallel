@@ -37,7 +37,7 @@ void ChLcpSolverParallel::ComputeMassMatrix()
   DenseVector& M_invk = data_container->host_data.M_invk;
   SparseMatrix& M_inv = data_container->host_data.M_inv;
 
-  M_inv.setZero();
+  M_inv.makeCompressed();
 
   // Each rigid object has 3 mass entries and 9 inertia entries
   // Each shaft has one inertia entry
@@ -45,7 +45,7 @@ void ChLcpSolverParallel::ComputeMassMatrix()
   // The mass matrix is square and each rigid body has 6 DOF
   // Shafts have one DOF
   M_inv.resize(num_dof, num_dof);
-
+  M_inv.setZero();
   for (int i = 0; i < num_bodies; i++) {
 
     if (data_container->host_data.active_data[i]) {

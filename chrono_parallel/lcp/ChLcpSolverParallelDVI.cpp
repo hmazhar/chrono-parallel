@@ -147,6 +147,11 @@ void ChLcpSolverParallelDVI::ComputeD()
 
   const SparseMatrix& M_inv = data_container->host_data.M_inv;
 
+  D_n_T.makeCompressed();
+  D_t_T.makeCompressed();
+  D_s_T.makeCompressed();
+  D_b_T.makeCompressed();
+
   switch (data_container->settings.solver.solver_mode) {
     case NORMAL:
       D_n_T.setZero();
@@ -179,6 +184,8 @@ void ChLcpSolverParallelDVI::ComputeD()
       D_s_T.resize(num_spinning, num_dof);
       break;
   }
+
+
 
   D_b_T.setZero();
   D_b_T.reserve(nnz_bilaterals);
@@ -298,28 +305,28 @@ void ChLcpSolverParallelDVI::SetR() {
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
   R.resize(data_container->num_constraints);
-  reset(R);
+  R.setZero();
 
   switch (data_container->settings.solver.local_solver_mode) {
     case BILATERAL:{
-      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
+      R.segment(num_unilaterals, num_bilaterals) = R_full.segment(num_unilaterals, num_bilaterals);
     } break;
 
     case NORMAL: {
-      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
-      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
+      R.segment( num_unilaterals, num_bilaterals) = R_full.segment( num_unilaterals, num_bilaterals);
+      R.segment( 0, num_contacts) = R_full.segment( 0, num_contacts);
     } break;
     case SLIDING: {
-      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
-      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
-      blaze::subvector(R, num_contacts, num_contacts * 2) = blaze::subvector(R_full, num_contacts, num_contacts * 2);
+      R.segment( num_unilaterals, num_bilaterals) = R_full.segment( num_unilaterals, num_bilaterals);
+      R.segment( 0, num_contacts) = R_full.segment( 0, num_contacts);
+      R.segment( num_contacts, num_contacts * 2) =R_full.segment( num_contacts, num_contacts * 2);
     } break;
 
     case SPINNING: {
-      blaze::subvector(R, num_unilaterals, num_bilaterals) = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
-      blaze::subvector(R, 0, num_contacts) = blaze::subvector(R_full, 0, num_contacts);
-      blaze::subvector(R, num_contacts, num_contacts * 2) = blaze::subvector(R_full, num_contacts, num_contacts * 2);
-      blaze::subvector(R, num_contacts * 3, num_contacts * 3) = blaze::subvector(R_full, num_contacts * 3, num_contacts * 3);
+      R.segment( num_unilaterals, num_bilaterals) = R_full.segment( num_unilaterals, num_bilaterals);
+      R.segment( 0, num_contacts) = R_full.segment( 0, num_contacts);
+      R.segment( num_contacts, num_contacts * 2) =R_full.segment(num_contacts, num_contacts * 2);
+      R.segment( num_contacts * 3, num_contacts * 3) = R_full.segment( num_contacts * 3, num_contacts * 3);
     } break;
   }
 }
@@ -345,11 +352,8 @@ void ChLcpSolverParallelDVI::ComputeImpulses() {
 
   if (data_container->num_constraints > 0) {
 
-
-
-
-    blaze::DenseSubvector<const DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
-    blaze::DenseSubvector<const DenseVector > gamma_n = blaze::subvector(gamma, 0, num_contacts);
+    Eigen::VectorBlock<const DenseVector> gamma_b = gamma.segment( num_unilaterals, num_bilaterals);
+    Eigen::VectorBlock<const DenseVector> gamma_n = gamma.segment( 0, num_contacts);
 
     //Compute new velocity based on the lagrange multipliers
     switch (data_container->settings.solver.solver_mode) {
@@ -358,15 +362,15 @@ void ChLcpSolverParallelDVI::ComputeImpulses() {
       } break;
 
       case SLIDING: {
-         blaze::DenseSubvector<const DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
+        Eigen::VectorBlock<const DenseVector> gamma_t = gamma.segment( num_contacts, num_contacts * 2);
 
         v = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_b * gamma_b;
         //printf("-gamma: %f %f %f \n", gamma_n[0],gamma_t[0],gamma_t[1]);
       } break;
 
       case SPINNING: {
-         blaze::DenseSubvector<const DenseVector > gamma_t = blaze::subvector(gamma, num_contacts, num_contacts * 2);
-         blaze::DenseSubvector<const DenseVector > gamma_s = blaze::subvector(gamma, num_contacts * 3, num_contacts * 3);
+        Eigen::VectorBlock<const DenseVector> gamma_t = gamma.segment( num_contacts, num_contacts * 2);
+        Eigen::VectorBlock<const DenseVector> gamma_s = gamma.segment( num_contacts * 3, num_contacts * 3);
 
         v = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_s * gamma_s + M_invD_b * gamma_b;
 
@@ -389,7 +393,7 @@ void ChLcpSolverParallelDVI::PreSolve(){
   }
 
   if(data_container->settings.solver.presolve){
-    rigid_rigid.SolveLocal();
+    //rigid_rigid.SolveLocal();
   }
 
 }

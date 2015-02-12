@@ -21,19 +21,19 @@ uint ChSolverCGS::SolveCGS(const uint max_iter, const uint size, DenseVector& mb
 
   u = r;
 
-  real normb = sqrt((mb, mb));
+  real normb = sqrt(mb.dot( mb));
   rtilde = r;
 
   if (normb == 0.0) {
     normb = 1;
   }
 
-  if ((sqrt((r, r)) / normb) <= data_container->settings.solver.tolerance) {
+  if ((sqrt(r.dot( r)) / normb) <= data_container->settings.solver.tolerance) {
     return 0;
   }
 
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
-    rho_1 = (rtilde, r);
+    rho_1 = rtilde.dot( r);
 
     if (rho_1 == 0) {
       break;
@@ -49,7 +49,7 @@ uint ChSolverCGS::SolveCGS(const uint max_iter, const uint size, DenseVector& mb
     phat = p;
     ShurProduct(phat, vhat);    // vhat = data_container->host_data.D_T *
                                 // (data_container->host_data.M_invD * phat);
-    alpha = rho_1 / (rtilde, vhat);
+    alpha = rho_1 / rtilde.dot( vhat);
     q = u - alpha * vhat;
     uhat = (u + q);
     ml = ml + alpha * uhat;
@@ -57,7 +57,7 @@ uint ChSolverCGS::SolveCGS(const uint max_iter, const uint size, DenseVector& mb
                                 // (data_container->host_data.M_invD * uhat);
     r = r - alpha * qhat;
     rho_2 = rho_1;
-    residual = (sqrt((r, r)) / normb);
+    residual = (sqrt(r.dot( r)) / normb);
 
     objective_value = GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value);

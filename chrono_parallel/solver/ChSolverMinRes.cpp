@@ -48,8 +48,8 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter, const uint size, DenseVect
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     mMNp = mNp;
 
-    double zNMr = (mz, mNMr);
-    double MNpNp = (mMNp, mNp);
+    double zNMr = mz.dot( mNMr);
+    double MNpNp = mMNp.dot( mNp);
     if (std::abs(MNpNp) < 10e-30) {
       if (data_container->settings.solver.verbose) {
         std::cout << "Iter=" << current_iteration << " Rayleygh quotient alpha breakdown: " << zNMr << " / " << MNpNp << "\n";
@@ -67,7 +67,7 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter, const uint size, DenseVect
     mr = mr * grad_diffstep + ml;
     Project(mr.data());
     mr = (mr - ml) * (1.0 / grad_diffstep);
-    residual = sqrt((mr, mr));
+    residual = sqrt(mr.dot( mr));
 
     if (residual < std::max(rel_tol_b, abs_tol)) {
       if (data_container->settings.solver.verbose) {
@@ -83,8 +83,8 @@ uint ChSolverMinRes::SolveMinRes(const uint max_iter, const uint size, DenseVect
     ShurProduct(mz, mNMr);    // mNMr = data_container->host_data.D_T *
                               // (data_container->host_data.M_invD * mz);
 
-    double numerator = (mz, mNMr - mNMr_old);
-    double denominator = (mz_old, mNMr_old);
+    double numerator = mz.dot( mNMr - mNMr_old);
+    double denominator = mz_old.dot( mNMr_old);
     double beta = numerator / numerator;
 
     if (std::abs(denominator) < 10e-30 || std::abs(numerator) < 10e-30) {

@@ -14,19 +14,19 @@ uint ChSolverSD::SolveSD(const uint max_iter, const uint size, DenseVector& mb, 
                          // (data_container->host_data.M_invD * ml);
 
   r = mb - r;
-  real resold = 1, resnew, normb = sqrt((mb, mb)), alpha;
+  real resold = 1, resnew, normb = sqrt(mb.dot( mb)), alpha;
   if (normb == 0.0) {
     normb = 1;
   }
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     ShurProduct(r, temp);    // temp = data_container->host_data.D_T *
                              // (data_container->host_data.M_invD * r);
-    alpha = (r, r) / (r, temp);
+    alpha = r.dot( r) / r.dot( temp);
     ml = ml + alpha * r;
     ShurProduct(ml, r);    // r = data_container->host_data.D_T *
                            // (data_container->host_data.M_invD * ml);
     r = mb - r;
-    resnew = sqrt((ml, ml));
+    resnew = sqrt(ml.dot( ml));
     residual = std::abs(resnew - resold);
 
     objective_value = GetObjective(ml, mb);

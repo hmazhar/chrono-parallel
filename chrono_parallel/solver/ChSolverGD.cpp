@@ -13,7 +13,7 @@ uint ChSolverGD::SolveGD(const uint max_iter, const uint size, DenseVector& mb, 
   ShurProduct(ml, r);    // r = data_container->host_data.D_T *
                          // (data_container->host_data.M_invD * ml);
   r = mb - r;
-  real resold = 1, resnew, normb = sqrt((mb, mb));
+  real resold = 1, resnew, normb = sqrt(mb.dot( mb));
   if (normb == 0.0) {
     normb = 1;
   };
@@ -21,7 +21,7 @@ uint ChSolverGD::SolveGD(const uint max_iter, const uint size, DenseVector& mb, 
     ml = ml + eps * r;
     ShurProduct(ml, r);
     r = mb - r;
-    resnew = sqrt((ml, ml));
+    resnew = sqrt(ml.dot( ml));
     residual = std::abs(resnew - resold);
     objective_value = GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value);

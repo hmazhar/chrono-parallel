@@ -402,15 +402,15 @@ void ChLcpSolverParallelDEM::ComputeD()
   uint nnz_bilaterals = data_container->nnz_bilaterals;
 
   SparseMatrix& D_b_T = data_container->host_data.D_b_T;
-  clear(D_b_T);
+  D_b_T.setZero();
   D_b_T.reserve(nnz_bilaterals );
 
-  D_b_T.resize(num_constraints, num_dof, false);
+  D_b_T.resize(num_constraints, num_dof);
 
   bilateral.GenerateSparsity();
   bilateral.Build_D();
 
-  data_container->host_data.D_b = trans(data_container->host_data.D_b_T);
+  data_container->host_data.D_b = data_container->host_data.D_b_T.transpose();
   data_container->host_data.M_invD_b = data_container->host_data.M_inv * data_container->host_data.D_b;
 }
 
@@ -421,7 +421,7 @@ void ChLcpSolverParallelDEM::ComputeE()
   }
 
   data_container->host_data.E.resize(data_container->num_constraints);
-  reset(data_container->host_data.E);
+  data_container->host_data.E.setZero();
 
   bilateral.Build_E();
 }
@@ -434,7 +434,7 @@ void ChLcpSolverParallelDEM::ComputeR()
   }
 
   data_container->host_data.b.resize(data_container->num_constraints);
-  reset(data_container->host_data.b);
+  data_container->host_data.b.setZero();
   bilateral.Build_b();
 
   data_container->host_data.R_full = -data_container->host_data.b - data_container->host_data.D_b_T * data_container->host_data.M_invk;
@@ -485,7 +485,7 @@ void ChLcpSolverParallelDEM::RunTimeStep()
 
     // Set the initial guess for the iterative solver to zero.
     data_container->host_data.gamma.resize(data_container->num_constraints);
-    data_container->host_data.gamma.reset();
+    data_container->host_data.gamma.setZero();
 
     //Compute the jacobian matrix, the compliance matrix and the right hand side
     ComputeD();
@@ -518,7 +518,7 @@ void ChLcpSolverParallelDEM::ComputeImpulses() {
   uint num_bilaterals = data_container->num_bilaterals;
 
   if (data_container->num_constraints > 0) {
-    blaze::DenseSubvector<const DenseVector > gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
+    Eigen::VectorBlock<const DenseVector> gamma_b = gamma.segment(num_unilaterals, num_bilaterals);
     v = M_invk + M_invD_b * gamma_b;
   } else {
     v = M_invk;

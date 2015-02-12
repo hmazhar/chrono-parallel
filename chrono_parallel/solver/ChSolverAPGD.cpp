@@ -23,13 +23,13 @@ void ChSolverAPGD::UpdateR() {
   uint num_contacts = data_container->num_contacts;
 
   s.resize(data_container->num_contacts);
-  reset(s);
+  s.setZero();
 
   rigid_rigid->Build_s();
 
-  blaze::DenseSubvector<const DenseVector > b_n = blaze::subvector(b, 0, num_contacts);
-  blaze::DenseSubvector<DenseVector > R_n = blaze::subvector(R, 0, num_contacts);
-  blaze::DenseSubvector<DenseVector > s_n = blaze::subvector(s, 0, num_contacts);
+  Eigen::VectorBlock<const DenseVector> b_n = b.segment( 0, num_contacts);
+  Eigen::VectorBlock< DenseVector> R_n = R.segment( 0, num_contacts);
+  Eigen::VectorBlock< DenseVector> s_n = s.segment( 0, num_contacts);
 
   R_n = -b_n - D_n_T * M_invk + s_n;
 }
@@ -39,7 +39,8 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVe
   real& objective_value = data_container->measures.solver.objective_value;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;
 
-  DenseVector one(size, 1.0);
+  DenseVector one(size);
+  one.setOnes();
   data_container->system_timer.start("ChSolverParallel_Solve");
 
   N_gamma_new.resize(size);
@@ -65,10 +66,10 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVe
   // mg = mg - r;
 
   temp = gamma - one;
-  L = sqrt((real)(temp, temp));
+  L = sqrt((real)temp.dot( temp));
   ShurProduct(temp, temp);
   L = L == 0 ? 1 : L;
-  L = sqrt((real)(temp, temp)) / L;
+  L = sqrt((real)temp.dot( temp)) / L;
 
   t = 1.0 / L;
   y = gamma;
@@ -82,14 +83,14 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVe
     Project(gamma_new.data());
 
     ShurProduct(gamma_new, N_gamma_new);
-    obj1 = 0.5 * (gamma_new, N_gamma_new) - (gamma_new, r);
+    obj1 = 0.5 * gamma_new.dot( N_gamma_new) - gamma_new.dot( r);
 
     ShurProduct(y, temp);
-    obj2 = 0.5 * (y, temp) - (y, r);
+    obj2 = 0.5 * y.dot( temp) - y.dot( r);
 
     temp = gamma_new - y;
-    dot_g_temp = (g, temp);
-    norm_ms = (temp, temp);
+    dot_g_temp = g.dot( temp);
+    norm_ms = temp.dot( temp);
 
     while (obj1 > obj2 + dot_g_temp + 0.5 * L * norm_ms) {
       L = 2.0 * L;
@@ -97,23 +98,23 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVe
       gamma_new = y - t * g;
       Project(gamma_new.data());
       ShurProduct(gamma_new, N_gamma_new);
-      obj1 = 0.5 * (gamma_new, N_gamma_new) - (gamma_new, r);
+      obj1 = 0.5 * gamma_new.dot( N_gamma_new) - gamma_new.dot( r);
       temp = gamma_new - y;
-      dot_g_temp = (g, temp);
-      norm_ms = (temp, temp);
+      dot_g_temp = g.dot( temp);
+      norm_ms = temp.dot( temp);
     }
     theta_new = (-pow(theta, 2.0) + theta * sqrt(pow(theta, 2.0) + 4.0)) / 2.0;
     beta_new = theta * (1.0 - theta) / (pow(theta, 2.0) + theta_new);
 
     temp = gamma_new - gamma;
     y = beta_new * temp + gamma_new;
-    dot_g_temp = (g, temp);
+    dot_g_temp = g.dot( temp);
 
     // Compute the residual
     temp = gamma_new - g_diff * (N_gamma_new - r);
     Project(temp.data());
     temp = (1.0 / g_diff) * (gamma_new - temp);
-    real res = sqrt((real)(temp, temp));
+    real res = sqrt((real)temp.dot( temp));
 
     if (res < residual) {
       residual = res;
@@ -122,7 +123,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const DenseVe
 
     // Compute the objective value
     temp = 0.5 * N_gamma_new - r;
-    objective_value = (gamma_new, temp);
+    objective_value = gamma_new.dot( temp);
 
     AtIterationEnd(residual, objective_value);
 

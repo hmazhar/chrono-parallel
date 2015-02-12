@@ -13,7 +13,7 @@ uint ChSolverBiCGStab::SolveBiCGStab(const uint max_iter, const uint size, Dense
   r.resize(size);
   t.resize(size);
   v.resize(size);
-  real normb = sqrt((mb, mb));
+  real normb = sqrt(mb.dot( mb));
 
   ShurProduct(ml, r);    // r = data_container->host_data.D_T *
                          // (data_container->host_data.M_invD * ml);
@@ -24,12 +24,12 @@ uint ChSolverBiCGStab::SolveBiCGStab(const uint max_iter, const uint size, Dense
     normb = 1;
   }
 
-  if ((residual = sqrt((r, r)) / normb) <= data_container->settings.solver.tolerance) {
+  if ((residual = sqrt(r.dot( r)) / normb) <= data_container->settings.solver.tolerance) {
     return 0;
   }
 
   for (current_iteration = 0; current_iteration <= max_iter; current_iteration++) {
-    rho_1 = (rtilde, r);
+    rho_1 = rtilde.dot( r);
 
     if (rho_1 == 0) {
       break;
@@ -43,9 +43,9 @@ uint ChSolverBiCGStab::SolveBiCGStab(const uint max_iter, const uint size, Dense
     phat = p;
     ShurProduct(phat, v);    // v = data_container->host_data.D_T *
                              // (data_container->host_data.M_invD * phat);
-    alpha = rho_1 / (rtilde, v);
+    alpha = rho_1 / rtilde.dot(v);
     s = r - alpha * v;    // SEAXPY(-alpha,v,r,s);//
-    residual = sqrt((s, s)) / normb;
+    residual = sqrt(s.dot( s)) / normb;
 
     if (residual < data_container->settings.solver.tolerance) {
       ml = ml + alpha * phat;
@@ -55,11 +55,11 @@ uint ChSolverBiCGStab::SolveBiCGStab(const uint max_iter, const uint size, Dense
     shat = s;
     ShurProduct(shat, t);    // t = data_container->host_data.D_T *
                              // (data_container->host_data.M_invD * shat);
-    omega = (t, s) / (t, t);
+    omega = t.dot( s) / t.dot( t);
     ml = ml + alpha * phat + omega * shat;
     r = s - omega * t;
     rho_2 = rho_1;
-    residual = sqrt((r, r)) / normb;
+    residual = sqrt(r.dot( r)) / normb;
 
     objective_value = GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value);

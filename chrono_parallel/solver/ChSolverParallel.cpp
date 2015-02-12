@@ -57,17 +57,17 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
   Eigen::VectorBlock<const DenseVector> x_n = x.segment( 0, num_contacts);
   Eigen::VectorBlock<const DenseVector> E_n = E.segment( 0, num_contacts);
 
-
-
+  if(num_bilaterals>0){
+    o_b = D_b_T * (M_invD_b * x_b) + E_b.cwiseProduct( x_b);
+  }
 
   switch (data_container->settings.solver.local_solver_mode) {
     case BILATERAL: {
-      o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
+
     } break;
 
     case NORMAL: {
-      o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
-      o_n = D_n_T * (M_invD_n * x_n) + E_n * x_n;
+      o_n = D_n_T * (M_invD_n * x_n) + E_n.cwiseProduct( x_n);
     } break;
 
     case SLIDING: {
@@ -76,9 +76,10 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
       Eigen::VectorBlock<const DenseVector> x_t = x.segment(num_contacts, num_contacts * 2);
       Eigen::VectorBlock<const DenseVector> E_t = E.segment(num_contacts, num_contacts * 2);
 
-      o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
-      o_n = D_n_T * (M_invD_n * x_n) + E_n * x_n;
-      o_t = D_t_T * (M_invD_t * x_t) + E_t * x_t;
+      o_n = D_n_T * (M_invD_n * x_n) + E_n.cwiseProduct(x_n);
+      o_t = D_t_T * (M_invD_t * x_t) + E_t.cwiseProduct(x_t);
+
+
     } break;
 
     case SPINNING: {
@@ -92,10 +93,9 @@ void ChSolverParallel::ShurProduct(const DenseVector& x, DenseVector& output) {
       Eigen::VectorBlock<const DenseVector> x_s = x.segment(num_contacts * 3, num_contacts * 3);
       Eigen::VectorBlock<const DenseVector> E_s = E.segment(num_contacts * 3, num_contacts * 3);
 
-      o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;
-      o_n = D_n_T * (M_invD_n * x_n) + E_n * x_n;
-      o_t = D_t_T * (M_invD_t * x_t) + E_t * x_t;
-      o_s = D_s_T * (M_invD_s * x_s) + E_s * x_s;
+      o_n = D_n_T * (M_invD_n * x_n) + E_n.cwiseProduct(x_n);
+      o_t = D_t_T * (M_invD_t * x_t) + E_t.cwiseProduct( x_t);
+      o_s = D_s_T * (M_invD_s * x_s) + E_s.cwiseProduct( x_s);
     } break;
   }
 

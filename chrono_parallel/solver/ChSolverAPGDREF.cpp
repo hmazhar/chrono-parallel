@@ -14,7 +14,7 @@ real ChSolverAPGDREF::Res4(DenseVector & gamma,
   Project(tmp.data());
   tmp = (1.0 / gdiff) * (gamma - tmp);
 
-  return sqrt((double) (tmp, tmp));
+  return sqrt((double) tmp.dot( tmp));
 }
 
 uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
@@ -45,10 +45,10 @@ uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
   residual = 10e30;
 
   // (1) gamma_0 = zeros(nc,1)
-  if(!useWarmStarting) gamma = 0.0;
+  if(!useWarmStarting) gamma.setZero();
 
   // (2) gamma_hat_0 = ones(nc,1)
-  gamma_hat = 1.0;
+  gamma_hat.setOnes();
 
   // (3) y_0 = gamma_0
   y = gamma;
@@ -62,9 +62,9 @@ uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
 
   // (5) L_k = norm(N * (gamma_0 - gamma_hat_0)) / norm(gamma_0 - gamma_hat_0)
   tmp = gamma - gamma_hat;
-  L = sqrt((double) (tmp, tmp));
+  L = sqrt((double) tmp.dot( tmp));
   ShurProduct(tmp, tmp);
-  L = sqrt((double) (tmp, tmp)) / L;
+  L = sqrt((double) tmp.dot( tmp)) / L;
 
   // (6) t_k = 1 / L_k
   t = 1.0 / L;
@@ -82,11 +82,11 @@ uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
 
     // (10) while 0.5 * gamma_(k+1)' * N * gamma_(k+1) - gamma_(k+1)' * r >= 0.5 * y_k' * N * y_k - y_k' * r + g' * (gamma_(k+1) - y_k) + 0.5 * L_k * norm(gamma_(k+1) - y_k)^2
     ShurProduct(gammaNew, tmp); // Here tmp is equal to N*gammaNew;
-    obj1 = 0.5 * (gammaNew, tmp) - (gammaNew, r);
+    obj1 = 0.5 * gammaNew.dot( tmp) - gammaNew.dot(r);
     ShurProduct(y, tmp); // Here tmp is equal to N*y;
-    obj2 = 0.5 * (y, tmp) - (y, r);
+    obj2 = 0.5 * y.dot( tmp) - y.dot( r);
     tmp = gammaNew - y; // Here tmp is equal to gammaNew - y
-    obj2 = obj2 + (g, tmp) + 0.5 * L * (tmp, tmp);
+    obj2 = obj2 + g.dot( tmp) + 0.5 * L * tmp.dot( tmp);
 
     while (obj1 >= obj2) {
       // (11) L_k = 2 * L_k
@@ -101,11 +101,11 @@ uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
 
       // Update the components of the while condition
       ShurProduct(gammaNew, tmp); // Here tmp is equal to N*gammaNew;
-      obj1 = 0.5 * (gammaNew, tmp) - (gammaNew, r);
+      obj1 = 0.5 * gammaNew.dot( tmp) - gammaNew.dot( r);
       ShurProduct(y, tmp); // Here tmp is equal to N*y;
-      obj2 = 0.5 * (y, tmp) - (y, r);
+      obj2 = 0.5 * y.dot( tmp) - y.dot( r);
       tmp = gammaNew - y; // Here tmp is equal to gammaNew - y
-      obj2 = obj2 + (g, tmp) + 0.5 * L * (tmp, tmp);
+      obj2 = obj2 + g.dot( tmp) + 0.5 * L * tmp.dot( tmp);
 
       // (14) endwhile
     }
@@ -145,7 +145,7 @@ uint ChSolverAPGDREF::SolveAPGDREF(const uint max_iter, const uint size,
     }
 
     // (26) if g' * (gamma_(k+1) - gamma_k) > 0
-    if ((g, gammaNew - gamma) > 0) {
+    if (g.dot( gammaNew - gamma) > 0) {
       // (27) y_(k+1) = gamma_(k+1)
       yNew = gammaNew;
 

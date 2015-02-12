@@ -22,7 +22,7 @@ real ChSolverPDIP::Res4(DenseVector & gamma,
   Project(tmp.data());
   tmp = (1.0 / gdiff) * (gamma - tmp);
 
-  return sqrt((double) (tmp, tmp));
+  return sqrt((double) tmp.dot( tmp));
 }
 
 void ChSolverPDIP::SchurComplementProduct(DenseVector & src,
@@ -46,14 +46,14 @@ void ChSolverPDIP::initializeConstraintGradient(DenseVector & src,
 {
   //#pragma omp parallel for
   for (int i = 0; i < data_container->num_contacts; i++) {
-    grad_f.append(i, _index_ + 0, -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * src[_index_ + 0]);
-    grad_f.append(i, _index_ + 1, src[_index_ + 1]);
-    grad_f.append(i, _index_ + 2, src[_index_ + 2]);
-    grad_f.finalize(i);
+    grad_f.insert(i, _index_ + 0)= -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * src[_index_ + 0];
+    grad_f.insert(i, _index_ + 1)= src[_index_ + 1];
+    grad_f.insert(i, _index_ + 2)= src[_index_ + 2];
+
   }
   for (int i = 0; i < data_container->num_contacts; i++) {
-    grad_f.append(i + data_container->num_contacts, _index_, -1);
-    grad_f.finalize(i + data_container->num_contacts);
+    grad_f.insert(i + data_container->num_contacts, _index_)= -1;
+
   }
 }
 
@@ -62,13 +62,13 @@ void ChSolverPDIP::updateConstraintGradient(DenseVector & src,
 {
 #pragma omp parallel for
   for (int i = 0; i < data_container->num_contacts; i++) {
-  grad_f(i, _index_ + 0) = -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * src[_index_ + 0];
-  grad_f(i, _index_ + 1) = src[_index_ + 1];
-  grad_f(i, _index_ + 2) = src[_index_ + 2];
+  grad_f.coeffRef(i, _index_ + 0) = -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * src[_index_ + 0];
+  grad_f.coeffRef(i, _index_ + 1) = src[_index_ + 1];
+  grad_f.coeffRef(i, _index_ + 2) = src[_index_ + 2];
 }
 #pragma omp parallel for
   for (int i = 0; i < data_container->num_contacts; i++) {
-    grad_f(i + data_container->num_contacts, _index_) = -1;
+    grad_f.coeffRef(i + data_container->num_contacts, _index_) = -1;
 }
 }
 
@@ -78,22 +78,17 @@ void ChSolverPDIP::initializeNewtonStepMatrix(DenseVector & gamma,
                                               const uint size)
 {
   for (int i = 0; i < data_container->num_contacts; i++) {
-    M_hat.append(_index_ + 0, _index_ + 0, -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * lambda[i]);
-    M_hat.finalize(_index_ + 0);
-    M_hat.append(_index_ + 1, _index_ + 1, lambda[i]);
-    M_hat.finalize(_index_ + 1);
-    M_hat.append(_index_ + 2, _index_ + 2, lambda[i]);
-    M_hat.finalize(_index_ + 2);
+    M_hat.insert(_index_ + 0, _index_ + 0)= -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * lambda[i];
+    M_hat.insert(_index_ + 1, _index_ + 1)= lambda[i];
+    M_hat.insert(_index_ + 2, _index_ + 2)= lambda[i];
   }
   updateConstraintGradient(gamma, size);
-  B = trans(grad_f);
+  B = grad_f.transpose();
 
   for (int i = 0; i < 2 * data_container->num_contacts; i++) {
-    diaglambda.append(i, i, lambda[i]);
-    diaglambda.finalize(i);
+    diaglambda.insert(i, i)= lambda[i];
+    Dinv.insert(i, i)= -1 / f[i];
 
-    Dinv.append(i, i, -1 / f[i]);
-    Dinv.finalize(i);
   }
 }
 
@@ -104,18 +99,18 @@ void ChSolverPDIP::updateNewtonStepMatrix(DenseVector & gamma,
 {
 #pragma omp parallel for
   for (int i = 0; i < data_container->num_contacts; i++) {
-    M_hat(_index_ + 0, _index_ + 0) = -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * lambda[i];
-    M_hat(_index_ + 1, _index_ + 1) = lambda[i];
-    M_hat(_index_ + 2, _index_ + 2) = lambda[i];
+    M_hat.coeffRef(_index_ + 0, _index_ + 0) = -pow(data_container->host_data.fric_rigid_rigid[i].x, 2) * lambda[i];
+    M_hat.coeffRef(_index_ + 1, _index_ + 1) = lambda[i];
+    M_hat.coeffRef(_index_ + 2, _index_ + 2) = lambda[i];
   }
   updateConstraintGradient(gamma, size);
-  B = trans(grad_f);
+  B = grad_f.transpose();
 
 #pragma omp parallel for
   for (int i = 0; i < 2 * data_container->num_contacts; i++) {
-    diaglambda(i, i) = lambda[i];
+    diaglambda.coeffRef(i, i) = lambda[i];
 
-    Dinv(i, i) = -1 / f[i];
+    Dinv.coeffRef(i, i) = -1 / f[i];
   }
 }
 
@@ -136,7 +131,7 @@ void ChSolverPDIP::updateNewtonStepVector(DenseVector & gamma,
                                           const uint size)
 {
   updateConstraintGradient(gamma, size);
-  r_d = D_T * (M_invD * gamma) + r + trans(grad_f) * lambda;
+  r_d = D_T * (M_invD * gamma) + r + grad_f.transpose() * lambda;
   MultiplyByDiagMatrix(lambda, f, r_g);
   r_g = - (1 / t) * ones - r_g;
 }
@@ -148,14 +143,14 @@ void ChSolverPDIP::conjugateGradient(DenseVector & x)
   real alpha_cg = 0;
   r_cg = (B * (Dinv * r_g) - r_d) - (D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f) * x;
   p_cg = r_cg;
-  rsold_cg = (r_cg, r_cg);
+  rsold_cg = r_cg.dot( r_cg);
 
   for (int i = 0; i < 10*gamma.size(); i++) {
     Ap_cg = (D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f) * p_cg;
-    alpha_cg = rsold_cg / (p_cg, Ap_cg);
+    alpha_cg = rsold_cg / p_cg.dot( Ap_cg);
     x = x + alpha_cg * p_cg;
     r_cg = r_cg - alpha_cg * Ap_cg;
-    rsnew_cg = (r_cg, r_cg);
+    rsnew_cg = r_cg.dot( r_cg);
     if (sqrt(rsnew_cg) < data_container->settings.solver.tol_speed / 100.0) {
       return;
     }
@@ -171,7 +166,7 @@ void ChSolverPDIP::buildPreconditioner(const uint size)
 #pragma omp parallel for
   for(int i=0; i<prec_cg.size(); i++)
   {
-    prec_cg[i] = A(i,i);
+    prec_cg[i] = A.coeff(i,i);
   }
 }
 
@@ -196,16 +191,16 @@ int ChSolverPDIP::preconditionedConjugateGradient(DenseVector & x,
   r_cg = (B * (Dinv * r_g) - r_d) - (D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f) * x;
   applyPreconditioning(r_cg,z_cg);
   p_cg = z_cg;
-  rsold_cg = (r_cg, z_cg);
+  rsold_cg = r_cg.dot( z_cg);
 
   for (int i = 0; i < 1000*gamma.size(); i++) {
     iter++;
     Ap_cg = (D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f) * p_cg;
-    alpha_cg = rsold_cg / (p_cg, Ap_cg);
+    alpha_cg = rsold_cg / p_cg.dot( Ap_cg);
     x = x + alpha_cg * p_cg;
     r_cg = r_cg - alpha_cg * Ap_cg;
     applyPreconditioning(r_cg,z_cg);
-    rsnew_cg = (z_cg, r_cg);
+    rsnew_cg = z_cg.dot( r_cg);
     if (sqrt(rsnew_cg) < data_container->settings.solver.tol_speed / 100.0) {
       return iter;
     }
@@ -264,23 +259,23 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
   Ap_cg.resize(size);
 
   // Initialize matrices
-  grad_f.reset();
+  grad_f.setZero();
   grad_f.resize(2 * num_contacts, size);
   grad_f.reserve(4 * num_contacts);  // there are (4*num_contacts) nonzero entries
 
-  M_hat.reset();
+  M_hat.setZero();
   M_hat.resize(size, size);
   M_hat.reserve(size);  // there are (size) nonzero entries
 
-  B.reset();
+  B.setZero();
   B.resize(size, 2 * num_contacts);
   B.reserve(4 * num_contacts);  // there are (4*num_contacts) nonzero entries
 
-  diaglambda.reset();
+  diaglambda.setZero();
   diaglambda.resize(2 * num_contacts, 2 * num_contacts);
   diaglambda.reserve(2 * num_contacts);  // there are (2 * num_contacts) nonzero entries
 
-  Dinv.reset();
+  Dinv.setZero();
   Dinv.resize(2 * num_contacts, 2 * num_contacts);
   Dinv.reserve(2 * num_contacts);  // there are (2 * num_contacts) nonzero entries
 
@@ -315,7 +310,7 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
     getConstraintVector(gamma, f, size);
 
     // (5) eta_hat = -f^T * lambda_k
-    eta_hat = -(f, lambda);
+    eta_hat = -f.dot( lambda);
 
     // (6) t = mu*m/eta_hat
     t = mu * (f.size()) / eta_hat;
@@ -339,7 +334,7 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
       if (delta_lambda[i] >= 0)
         lambda_tmp[i] = 1.0;
     }
-    s_max = std::fmin(1.0, min(lambda_tmp));
+    s_max = std::fmin(1.0, lambda_tmp.minCoeff());
 
     // (11) s = 0.99 * s_max
     s = 0.99 * s_max;
@@ -347,7 +342,7 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
     // (12) while max(f(gamma_k + s * delta_gamma) > 0)
     gamma_tmp = gamma + s * delta_gamma;
     getConstraintVector(gamma_tmp, lambda_tmp, size);
-    while (max(lambda_tmp) > 0) {
+    while (lambda_tmp.maxCoeff() > 0) {
       // (13) s = beta * s
       s = beta * s;
       gamma_tmp = gamma + s * delta_gamma;
@@ -357,11 +352,11 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
     }
 
     // (15) while norm(r_t(gamma_k + s * delta_gamma, lambda_k + s * delta_lambda),2) > (1-alpha*s)*norm(r_t,2)
-    norm_rt = sqrt((r_d, r_d) + (r_g, r_g));
+    norm_rt = sqrt(r_d.dot( r_d) + r_g.dot( r_g));
     lambda_tmp = lambda + s * delta_lambda;
     getConstraintVector(gamma_tmp, f, size);
     updateNewtonStepVector(gamma_tmp, lambda_tmp, f, t, size);
-    while (sqrt((r_d, r_d) + (r_g, r_g)) > (1 - alpha * s) * norm_rt) {
+    while (sqrt(r_d.dot( r_d) + r_g.dot( r_g)) > (1 - alpha * s) * norm_rt) {
       // (16) s = beta * s
       s = beta * s;
       gamma_tmp = gamma + s * delta_gamma;
@@ -379,7 +374,7 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
     lambda = lambda + s * delta_lambda;
 
     // (20) r = r(gamma_(k+1))
-    residual = sqrt((r_g, r_g));//Res4(gamma, gamma_tmp);
+    residual = sqrt(r_g.dot( r_g));//Res4(gamma, gamma_tmp);
 
     // (21) if r < tau
     AtIterationEnd(residual, objective_value);

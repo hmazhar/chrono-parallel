@@ -9,14 +9,14 @@ uint ChSolverCG::SolveCG(const uint max_iter, const uint size, DenseVector& mb, 
 
   r.resize(size), Ap.resize(size);
 
-  real rsold, alpha, rsnew = 0, normb = sqrt((mb, mb));
+  real rsold, alpha, rsnew = 0, normb = sqrt(mb.dot( mb));
   if (normb == 0.0) {
     normb = 1;
   }
   ShurProduct(ml, r);    // r = data_container->host_data.D_T *
                          // (data_container->host_data.M_invD * ml);
   p = r = mb - r;
-  rsold = (r, r);
+  rsold = r.dot(r);
   normb = 1.0 / normb;
   if (sqrt(rsold) * normb <= data_container->settings.solver.tolerance) {
     return 0;
@@ -24,11 +24,11 @@ uint ChSolverCG::SolveCG(const uint max_iter, const uint size, DenseVector& mb, 
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     ShurProduct(p, Ap);    // Ap = data_container->host_data.D_T *
                            // (data_container->host_data.M_invD * p);
-    alpha = rsold / (p, Ap);
+    alpha = rsold / p.dot( Ap);
     rsnew = 0;
     ml = alpha * p + ml;
     r = -alpha * Ap + r;
-    rsnew = (r, r);
+    rsnew = r.dot( r);
 
     residual = sqrt(rsnew) * normb;
     if (residual < data_container->settings.solver.tolerance) {

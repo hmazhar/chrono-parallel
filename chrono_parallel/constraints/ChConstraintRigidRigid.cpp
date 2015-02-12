@@ -309,21 +309,21 @@ void ChConstraintRigidRigid::Build_s() {
     real fric = data_container->host_data.fric_rigid_rigid[index].x;
     int2 body_id = ids[index];
 
-    real s_v = D_t_T(index * 2 + 0, body_id.x * 6 + 0) * +v_new[body_id.x * 6 + 0] + D_t_T(index * 2 + 0, body_id.x * 6 + 1) * +v_new[body_id.x * 6 + 1] +
-               D_t_T(index * 2 + 0, body_id.x * 6 + 2) * +v_new[body_id.x * 6 + 2] + D_t_T(index * 2 + 0, body_id.x * 6 + 3) * +v_new[body_id.x * 6 + 3] +
-               D_t_T(index * 2 + 0, body_id.x * 6 + 4) * +v_new[body_id.x * 6 + 4] + D_t_T(index * 2 + 0, body_id.x * 6 + 5) * +v_new[body_id.x * 6 + 5] +
+    real s_v = D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 0) * +v_new[body_id.x * 6 + 0] + D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 1) * +v_new[body_id.x * 6 + 1] +
+               D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 2) * +v_new[body_id.x * 6 + 2] + D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 3) * +v_new[body_id.x * 6 + 3] +
+               D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 4) * +v_new[body_id.x * 6 + 4] + D_t_T.coeffRef(index * 2 + 0, body_id.x * 6 + 5) * +v_new[body_id.x * 6 + 5] +
 
-               D_t_T(index * 2 + 0, body_id.y * 6 + 0) * +v_new[body_id.y * 6 + 0] + D_t_T(index * 2 + 0, body_id.y * 6 + 1) * +v_new[body_id.y * 6 + 1] +
-               D_t_T(index * 2 + 0, body_id.y * 6 + 2) * +v_new[body_id.y * 6 + 2] + D_t_T(index * 2 + 0, body_id.y * 6 + 3) * +v_new[body_id.y * 6 + 3] +
-               D_t_T(index * 2 + 0, body_id.y * 6 + 4) * +v_new[body_id.y * 6 + 4] + D_t_T(index * 2 + 0, body_id.y * 6 + 5) * +v_new[body_id.y * 6 + 5];
+               D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 0) * +v_new[body_id.y * 6 + 0] + D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 1) * +v_new[body_id.y * 6 + 1] +
+               D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 2) * +v_new[body_id.y * 6 + 2] + D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 3) * +v_new[body_id.y * 6 + 3] +
+               D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 4) * +v_new[body_id.y * 6 + 4] + D_t_T.coeffRef(index * 2 + 0, body_id.y * 6 + 5) * +v_new[body_id.y * 6 + 5];
 
-    real s_w = D_t_T(index * 2 + 1, body_id.x * 6 + 0) * +v_new[body_id.x * 6 + 0] + D_t_T(index * 2 + 1, body_id.x * 6 + 1) * +v_new[body_id.x * 6 + 1] +
-               D_t_T(index * 2 + 1, body_id.x * 6 + 2) * +v_new[body_id.x * 6 + 2] + D_t_T(index * 2 + 1, body_id.x * 6 + 3) * +v_new[body_id.x * 6 + 3] +
-               D_t_T(index * 2 + 1, body_id.x * 6 + 4) * +v_new[body_id.x * 6 + 4] + D_t_T(index * 2 + 1, body_id.x * 6 + 5) * +v_new[body_id.x * 6 + 5] +
+    real s_w = D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 0) * +v_new[body_id.x * 6 + 0] + D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 1) * +v_new[body_id.x * 6 + 1] +
+               D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 2) * +v_new[body_id.x * 6 + 2] + D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 3) * +v_new[body_id.x * 6 + 3] +
+               D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 4) * +v_new[body_id.x * 6 + 4] + D_t_T.coeffRef(index * 2 + 1, body_id.x * 6 + 5) * +v_new[body_id.x * 6 + 5] +
 
-               D_t_T(index * 2 + 1, body_id.y * 6 + 0) * +v_new[body_id.y * 6 + 0] + D_t_T(index * 2 + 1, body_id.y * 6 + 1) * +v_new[body_id.y * 6 + 1] +
-               D_t_T(index * 2 + 1, body_id.y * 6 + 2) * +v_new[body_id.y * 6 + 2] + D_t_T(index * 2 + 1, body_id.y * 6 + 3) * +v_new[body_id.y * 6 + 3] +
-               D_t_T(index * 2 + 1, body_id.y * 6 + 4) * +v_new[body_id.y * 6 + 4] + D_t_T(index * 2 + 1, body_id.y * 6 + 5) * +v_new[body_id.y * 6 + 5];
+               D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 0) * +v_new[body_id.y * 6 + 0] + D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 1) * +v_new[body_id.y * 6 + 1] +
+               D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 2) * +v_new[body_id.y * 6 + 2] + D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 3) * +v_new[body_id.y * 6 + 3] +
+               D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 4) * +v_new[body_id.y * 6 + 4] + D_t_T.coeffRef(index * 2 + 1, body_id.y * 6 + 5) * +v_new[body_id.y * 6 + 5];
 
     data_container->host_data.s[index * 1 + 0] = sqrt(s_v * s_v + s_w * s_w) * fric;
   }
@@ -541,7 +541,7 @@ void ChConstraintRigidRigid::GenerateSparsity()
       D_t_T.insert(row * 2 + 1, body_id.y * 6 + 3)= 1;
       D_t_T.insert(row * 2 + 1, body_id.y * 6 + 4)= 1;
       D_t_T.insert(row * 2 + 1, body_id.y * 6 + 5)= 1;
-
+    }
 
 
 
