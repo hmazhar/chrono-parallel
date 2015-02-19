@@ -8,11 +8,11 @@ namespace collision {
 
 struct ConvexShape {
   shape_type type;  // type of shape
-  real3 A;  // location
-  real3 B;  // dimensions
-  real3 C;  // extra
-  quaternion R;  // rotation
-  real3* convex;  // pointer to convex data;
+  real3 A;          // location
+  real3 B;          // dimensions
+  real3 C;          // extra
+  quaternion R;     // rotation
+  real3* convex;    // pointer to convex data;
   real margin;
 };
 

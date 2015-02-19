@@ -42,7 +42,7 @@ class CH_PARALLEL_API ChNodeFluid : public ChNodeXYZ {
   ChNodeFluid();
   ~ChNodeFluid();
 
-  ChNodeFluid(const ChNodeFluid& other);  // Copy constructor
+  ChNodeFluid(const ChNodeFluid& other);             // Copy constructor
   ChNodeFluid& operator=(const ChNodeFluid& other);  // Assignment operator
 
   //
@@ -75,9 +75,9 @@ class CH_PARALLEL_API ChNodeFluid : public ChNodeXYZ {
 
   ChVector<> UserForce;
 
-  real volume;  // volume of the node
-  real density;  // density of the node
-  real h_rad;  // kernel radius of the node
+  real volume;    // volume of the node
+  real density;   // density of the node
+  real h_rad;     // kernel radius of the node
   real coll_rad;  // collision radius (for collision model)
   real pressure;  // pressure at node
 };

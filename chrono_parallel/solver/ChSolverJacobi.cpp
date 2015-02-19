@@ -50,7 +50,7 @@ uint ChSolverJacobi::SolveJacobi(const uint max_iter,
     }
     Project(ml.data());
     ml_old = ml;
-    residual = 0;  // Res4Blaze(ml, mb);
+    residual = 0;         // Res4Blaze(ml, mb);
     objective_value = 0;  // GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value);
   }

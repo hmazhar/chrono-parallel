@@ -51,16 +51,16 @@ namespace chrono {
 
 struct host_container {
   // Collision data
-  thrust::host_vector<real3> ObA_rigid;  // Position of shape
-  thrust::host_vector<real3> ObB_rigid;  // Size of shape (dims or convex data)
-  thrust::host_vector<real3> ObC_rigid;  // Rounded size
-  thrust::host_vector<real4> ObR_rigid;  // Shape rotation
-  thrust::host_vector<short2> fam_rigid;  // Family information
-  thrust::host_vector<int> typ_rigid;  // Shape type
+  thrust::host_vector<real3> ObA_rigid;    // Position of shape
+  thrust::host_vector<real3> ObB_rigid;    // Size of shape (dims or convex data)
+  thrust::host_vector<real3> ObC_rigid;    // Rounded size
+  thrust::host_vector<real4> ObR_rigid;    // Shape rotation
+  thrust::host_vector<short2> fam_rigid;   // Family information
+  thrust::host_vector<int> typ_rigid;      // Shape type
   thrust::host_vector<real> margin_rigid;  // Inner collision margins
-  thrust::host_vector<uint> id_rigid;  // Body identifier for each shape
-  thrust::host_vector<real3> aabb_rigid;  // List of bounding boxes
-  custom_vector<real3> convex_data;  // list of convex points
+  thrust::host_vector<uint> id_rigid;      // Body identifier for each shape
+  thrust::host_vector<real3> aabb_rigid;   // List of bounding boxes
+  custom_vector<real3> convex_data;        // list of convex points
 
   // Contact data
   thrust::host_vector<real3> norm_rigid_rigid;
@@ -152,13 +152,13 @@ struct host_container {
   CompressedMatrix<real> M_invD_n, M_invD_t, M_invD_s, M_invD_b;
 
   DynamicVector<real> R_full;  // The right hand side of the system
-  DynamicVector<real> R;  // The rhs of the system, changes during solve
-  DynamicVector<real> b;  // Correction terms
+  DynamicVector<real> R;       // The rhs of the system, changes during solve
+  DynamicVector<real> b;       // Correction terms
   DynamicVector<real> s;
   DynamicVector<real> M_invk;  // result of M_inv multiplied by vector of forces
-  DynamicVector<real> gamma;  // THe unknowns we are solving for
-  DynamicVector<real> v;  // This vector holds the velocities for all objects
-  DynamicVector<real> hf;  // This vector holds h*forces, h is time step
+  DynamicVector<real> gamma;   // THe unknowns we are solving for
+  DynamicVector<real> v;       // This vector holds the velocities for all objects
+  DynamicVector<real> hf;      // This vector holds h*forces, h is time step
   DynamicVector<real> rhs_bilateral;
   // While E is the compliance matrix, in reality it is completely diagonal
   // therefore it is stored in a vector for performance reasons
@@ -183,8 +183,8 @@ class CH_PARALLEL_API ChParallelDataManager {
 
   // These pointers are used to compute the mass matrix instead of filling a
   // a temporary data structure
-  std::vector<ChBody*>* body_list;  // List of bodies
-  std::vector<ChLink*>* link_list;  // List of bilaterals
+  std::vector<ChBody*>* body_list;                  // List of bodies
+  std::vector<ChLink*>* link_list;                  // List of bilaterals
   std::vector<ChPhysicsItem*>* other_physics_list;  // List to other items
 
   // Indexing variables
