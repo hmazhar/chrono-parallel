@@ -36,16 +36,16 @@ class CH_PARALLEL_API ChSolverMosek : public ChSolverParallel {
     }
     data_container->system_timer.start("ChSolverParallel_Solve");
 
-
-    data_container->measures.solver.total_iteration += SolveMosek(max_iteration, data_container->num_constraints, data_container->host_data.R, data_container->host_data.gamma);
+    data_container->measures.solver.total_iteration += SolveMosek(
+        max_iteration, data_container->num_constraints, data_container->host_data.R, data_container->host_data.gamma);
     data_container->system_timer.stop("ChSolverParallel_Solve");
   }
 
   // Solve using the primal-dual interior point method
-  uint SolveMosek(const uint max_iter,                    // Maximum number of iterations
-                  const uint size,                        // Number of unknowns
-                  const blaze::DynamicVector<real>& b,    // Rhs vector
-                  blaze::DynamicVector<real>& x           // The vector of unknowns
+  uint SolveMosek(const uint max_iter,                  // Maximum number of iterations
+                  const uint size,                      // Number of unknowns
+                  const blaze::DynamicVector<real>& b,  // Rhs vector
+                  blaze::DynamicVector<real>& x         // The vector of unknowns
                   );
 
   // PDIP specific vectors

@@ -3,11 +3,17 @@
 #include "mosek.h"
 using namespace chrono;
 
-ChSolverMosek::ChSolverMosek() : ChSolverParallel() {}
+ChSolverMosek::ChSolverMosek() : ChSolverParallel() {
+}
 
-static void MSKAPI printstr(void* handle, MSKCONST char str[]) { printf("%s", str); } /* printstr */
+static void MSKAPI printstr(void* handle, MSKCONST char str[]) {
+  printf("%s", str);
+} /* printstr */
 
-void ConvertCOO(const CompressedMatrix<real>& mat, std::vector<MSKint32t>& row, std::vector<MSKint32t>& col, std::vector<real>& val) {
+void ConvertCOO(const CompressedMatrix<real>& mat,
+                std::vector<MSKint32t>& row,
+                std::vector<MSKint32t>& col,
+                std::vector<real>& val) {
   int nnz = mat.nonZeros();
   row.resize(nnz);
   col.resize(nnz);
@@ -25,7 +31,10 @@ void ConvertCOO(const CompressedMatrix<real>& mat, std::vector<MSKint32t>& row, 
   }
 }
 
-uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze::DynamicVector<real>& rhs, blaze::DynamicVector<real>& gamma) {
+uint ChSolverMosek::SolveMosek(const uint max_iter,
+                               const uint size,
+                               const blaze::DynamicVector<real>& rhs,
+                               blaze::DynamicVector<real>& gamma) {
   const DynamicVector<real>& v = data_container->host_data.v;
 
   const CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
@@ -45,15 +54,15 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   M_invD.reserve(nnz_total);
   M_invD.resize(num_dof, num_constraints, false);
 
-  CompressedMatrix<real> N(num_constraints,num_constraints);
+  CompressedMatrix<real> N(num_constraints, num_constraints);
 
   blaze::submatrix(D_T, 0, 0, num_contacts, num_dof) = data_container->host_data.D_n_T;
   blaze::submatrix(D_T, num_contacts, 0, 2 * num_contacts, num_dof) = data_container->host_data.D_t_T;
   blaze::submatrix(D_T, num_unilaterals, 0, num_bilaterals, num_dof) = data_container->host_data.D_b_T;
 
-//  blaze::submatrix(D, 0, 0, num_dof, num_contacts) = data_container->host_data.D_n;
-//  blaze::submatrix(D, 0, num_contacts, num_dof, 2 * num_contacts) = data_container->host_data.D_t;
-//  blaze::submatrix(D, 0, num_unilaterals, num_dof, num_bilaterals) = data_container->host_data.D_b;
+  //  blaze::submatrix(D, 0, 0, num_dof, num_contacts) = data_container->host_data.D_n;
+  //  blaze::submatrix(D, 0, num_contacts, num_dof, 2 * num_contacts) = data_container->host_data.D_t;
+  //  blaze::submatrix(D, 0, num_unilaterals, num_dof, num_bilaterals) = data_container->host_data.D_b;
 
   blaze::submatrix(M_invD, 0, 0, num_dof, num_contacts) = data_container->host_data.M_invD_n;
   blaze::submatrix(M_invD, 0, num_contacts, num_dof, 2 * num_contacts) = data_container->host_data.M_invD_t;
@@ -70,7 +79,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
 
   ConvertCOO(N, obj_row, obj_col, obj_val);
 
-  MSKrescodee res_code;    // Variable for holding the error code
+  MSKrescodee res_code;  // Variable for holding the error code
 
   const MSKint32t num_variables = num_constraints;
   const MSKint32t num_constr = num_contacts + num_bilaterals;
@@ -85,8 +94,8 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
   //
   //  std::vector<MSKint32t> cone_index(num_contacts * 3);
 
-  MSKenv_t env = NULL;      // Mosek Environment variable
-  MSKtask_t task = NULL;    // Task that mosek will perform
+  MSKenv_t env = NULL;    // Mosek Environment variable
+  MSKtask_t task = NULL;  // Task that mosek will perform
   MSKint32t csub[3];
   blaze::DynamicVector<real> rhs_neg = -rhs;
 
@@ -98,9 +107,8 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
     res_code = MSK_maketask(env, num_constr, num_variables, &task);
   }
   if (res_code == MSK_RES_OK) {
-
     // Connects a user-defined function to a task stream.
-     MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
+    MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
 
     // Append 'numcon' empty constraints. The constraints will initially have no bounds.
     if (res_code == MSK_RES_OK) {
@@ -155,7 +163,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter, const uint size, const blaze
     }
   }
 
-  if(!res_code){
+  if (!res_code) {
     res_code = MSK_solutionsummary(task, MSK_STREAM_MSG);
   }
 
