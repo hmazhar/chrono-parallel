@@ -29,7 +29,8 @@ class CH_OPENGL_API ChOpenGLGraphs {
   bool Initialize(ChOpenGLMaterial mat, ChOpenGLShader* _shader);
   void Draw(const glm::mat4& projection, const glm::mat4& modelview);
   void TakeDown();
-  void Update(ChSystem* physics_system, const glm::ivec2& window_size);
+  void Update(ChSystem * physics_system,const glm::ivec2 & window_size);
+  
 
  private:
   std::vector<glm::vec3> plot_data;
@@ -37,4 +38,4 @@ class CH_OPENGL_API ChOpenGLGraphs {
 };
 }
 }
-#endif  // END of CHOPENGLGRAPHS_H
+#endif    // END of CHOPENGLGRAPHS_H

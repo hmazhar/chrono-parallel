@@ -2,10 +2,7 @@
 
 using namespace chrono;
 
-uint ChSolverCG::SolveCG(const uint max_iter,
-                         const uint size,
-                         blaze::DynamicVector<real>& mb,
-                         blaze::DynamicVector<real>& ml) {
+uint ChSolverCG::SolveCG(const uint max_iter, const uint size, blaze::DynamicVector<real>& mb, blaze::DynamicVector<real>& ml) {
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;
@@ -16,8 +13,8 @@ uint ChSolverCG::SolveCG(const uint max_iter,
   if (normb == 0.0) {
     normb = 1;
   }
-  ShurProduct(ml, r);  // r = data_container->host_data.D_T *
-                       // (data_container->host_data.M_invD * ml);
+  ShurProduct(ml, r);    // r = data_container->host_data.D_T *
+                         // (data_container->host_data.M_invD * ml);
   p = r = mb - r;
   rsold = (r, r);
   normb = 1.0 / normb;
@@ -25,8 +22,8 @@ uint ChSolverCG::SolveCG(const uint max_iter,
     return 0;
   }
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
-    ShurProduct(p, Ap);  // Ap = data_container->host_data.D_T *
-                         // (data_container->host_data.M_invD * p);
+    ShurProduct(p, Ap);    // Ap = data_container->host_data.D_T *
+                           // (data_container->host_data.M_invD * p);
     alpha = rsold / (p, Ap);
     rsnew = 0;
     ml = alpha * p + ml;

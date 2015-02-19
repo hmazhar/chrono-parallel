@@ -58,15 +58,9 @@ void ChOpenGLShader::CommonSetup(const GLfloat* projection, const GLfloat* view)
   this->GLReturnedError("Draw - after common setup");
 }
 
-void ChOpenGLShader::SetTime(const float& _time) {
-  time = _time;
-}
-void ChOpenGLShader::SetCamera(const vec3& campos) {
-  camera_pos = campos;
-}
-void ChOpenGLShader::SetViewport(const glm::ivec2& viewport) {
-  viewport_size = viewport;
-}
+void ChOpenGLShader::SetTime(const float& _time) { time = _time; }
+void ChOpenGLShader::SetCamera(const vec3& campos) { camera_pos = campos; }
+void ChOpenGLShader::SetViewport(const glm::ivec2& viewport) { viewport_size = viewport; }
 void ChOpenGLShader::Use() {
   assert(this->program_id != BAD_GL_VALUE);
   glUseProgram(this->program_id);
@@ -200,8 +194,7 @@ bool ChOpenGLShader::InitializeStrings(std::string name, const char* vertex_shad
 
   return !GLReturnedError("ChOpenGLShader::Initialize - on exit");
 }
-void ChOpenGLShader::CustomSetup() {
-}
+void ChOpenGLShader::CustomSetup() {}
 
 void ChOpenGLShader::TakeDown() {
   // Cleanup the shader
@@ -306,8 +299,6 @@ void ChOpenGLShader::CheckGlProgram(GLuint prog) {
   }
 }
 
-GLuint ChOpenGLShader::GetUniformLocation(std::string name) {
-  return glGetUniformLocation(program_id, (const GLchar*)name.c_str());
-}
+GLuint ChOpenGLShader::GetUniformLocation(std::string name) { return glGetUniformLocation(program_id, (const GLchar*)name.c_str()); }
 }
 }

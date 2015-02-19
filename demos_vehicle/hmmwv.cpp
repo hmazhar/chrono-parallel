@@ -30,6 +30,7 @@ using namespace chrono::collision;
 using std::cout;
 using std::endl;
 
+
 // =============================================================================
 
 // JSON file for vehicle model
@@ -78,17 +79,19 @@ bool loop = false;
 // =============================================================================
 
 class MyVehicle {
- public:
+public:
   MyVehicle(ChSystem* system);
 
   void Update(double time);
 
-  ChSharedPtr<Vehicle> m_vehicle;
+  ChSharedPtr<Vehicle>          m_vehicle;
   ChSharedPtr<SimplePowertrain> m_powertrain;
-  ChTireForces m_tire_forces;
+  ChTireForces                  m_tire_forces;
 };
 
-MyVehicle::MyVehicle(ChSystem* system) {
+
+MyVehicle::MyVehicle(ChSystem* system)
+{
   // Create and initialize the vehicle system
 
   m_vehicle = ChSharedPtr<Vehicle>(new Vehicle(system, vehicle::GetDataFile(vehicle_file)));
@@ -126,7 +129,8 @@ MyVehicle::MyVehicle(ChSystem* system) {
   m_tire_forces.resize(numWheels);
 }
 
-void MyVehicle::Update(double time) {
+void MyVehicle::Update(double time)
+{
   // Calculate driver inputs at current time
   double throttle = 0;
   double steering = 0;
@@ -144,20 +148,24 @@ void MyVehicle::Update(double time) {
   m_vehicle->Update(time, steering, braking, m_powertrain->GetOutputTorque(), m_tire_forces);
 }
 
+
 // =============================================================================
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+
   // Set path to ChronoVehicle data files
   vehicle::SetDataPath(CHRONOVEHICLE_DATA_DIR);
+
 
   // --------------------------
   // Create output directories.
   // --------------------------
 
-  if (ChFileutils::MakeDirectory(out_dir.c_str()) < 0) {
+  if(ChFileutils::MakeDirectory(out_dir.c_str()) < 0) {
     cout << "Error creating directory " << out_dir << endl;
     return 1;
   }
-  if (ChFileutils::MakeDirectory(pov_dir.c_str()) < 0) {
+  if(ChFileutils::MakeDirectory(pov_dir.c_str()) < 0) {
     cout << "Error creating directory " << pov_dir << endl;
     return 1;
   }
@@ -227,15 +235,15 @@ int main(int argc, char* argv[]) {
 
   system->AddBody(ground);
 
-// -----------------------
-// Perform the simulation.
-// -----------------------
+  // -----------------------
+  // Perform the simulation.
+  // -----------------------
 
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
   // Initialize OpenGL
-  opengl::ChOpenGLWindow& gl_window = opengl::ChOpenGLWindow::getInstance();
+  opengl::ChOpenGLWindow &gl_window = opengl::ChOpenGLWindow::getInstance();
   gl_window.Initialize(1280, 720, "mixerDEM", system);
-  gl_window.SetCamera(ChVector<>(0, -10, 0), ChVector<>(0, 0, 0), ChVector<>(0, 0, 1));
+  gl_window.SetCamera(ChVector<>(0,-10,0), ChVector<>(0,0,0),ChVector<>(0,0,1));
 
   // Let the OpenGL manager run the simulation until interrupted.
   // NOTE: we need to add a user callback to the OpenGL library to give back
@@ -269,6 +277,7 @@ int main(int argc, char* argv[]) {
       cout << "             Avg. contacts:  " << num_contacts / out_steps << endl;
       cout << "             Execution time: " << exec_time << endl;
 
+
       out_frame++;
       next_out_frame += out_steps;
       num_contacts = 0;
@@ -277,11 +286,11 @@ int main(int argc, char* argv[]) {
     // Update vehicle
     vehicle.Update(time);
 
-// Advance dynamics.
+    // Advance dynamics.
 #ifdef CHRONO_PARALLEL_HAS_OPENGL
     if (gl_window.Active()) {
-      gl_window.DoStepDynamics(time_step);
-      gl_window.Render();
+       gl_window.DoStepDynamics(time_step);
+       gl_window.Render();
     } else
       break;
 #else

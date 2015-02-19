@@ -84,8 +84,7 @@ void ChCNarrowphaseDispatch::Process() {
   thrust::remove_if(dpth_data.begin(), dpth_data.end(), contact_active.begin(), thrust::identity<int>());
   thrust::remove_if(erad_data.begin(), erad_data.end(), contact_active.begin(), thrust::identity<int>());
   thrust::remove_if(bids_data.begin(), bids_data.end(), contact_active.begin(), thrust::identity<int>());
-  thrust::remove_if(
-      potentialCollisions.begin(), potentialCollisions.end(), contact_active.begin(), thrust::identity<int>());
+  thrust::remove_if(potentialCollisions.begin(), potentialCollisions.end(), contact_active.begin(), thrust::identity<int>());
   // Resize all lists so that we don't access invalid contacts
   potentialCollisions.resize(number_of_contacts);
   norm_data.resize(number_of_contacts);
@@ -99,7 +98,8 @@ void ChCNarrowphaseDispatch::Process() {
   // std::cout << num_potentialContacts << " " << number_of_contacts << std::endl;
 }
 
-void ChCNarrowphaseDispatch::PreprocessCount() {
+void ChCNarrowphaseDispatch::PreprocessCount()
+{
   // MPR and GJK always report at most one contact per pair.
   if (narrowphase_algorithm == NARROWPHASE_MPR /*|| narrowphase_algorithm == NARROWPHASE_GJK*/) {
     thrust::fill(contact_index.begin(), contact_index.end(), 1);
@@ -129,8 +129,8 @@ void ChCNarrowphaseDispatch::PreprocessCount() {
       contact_index[index] = 1;
     } else if (type1 == CAPSULE || type2 == CAPSULE) {
       contact_index[index] = 2;
-      ////} else if (type1 == BOX && type2 == BOX) {
-      ////  contact_index[index] = 8;
+    ////} else if (type1 == BOX && type2 == BOX) {
+    ////  contact_index[index] = 8;
     } else {
       contact_index[index] = 1;
     }
@@ -138,6 +138,7 @@ void ChCNarrowphaseDispatch::PreprocessCount() {
 }
 
 void ChCNarrowphaseDispatch::PreprocessLocalToParent() {
+
   uint num_shapes = data_container->num_shapes;
 
   const custom_vector<int>& obj_data_T = data_container->host_data.typ_rigid;
@@ -157,13 +158,14 @@ void ChCNarrowphaseDispatch::PreprocessLocalToParent() {
 
 #pragma omp parallel for
   for (int index = 0; index < num_shapes; index++) {
+
     shape_type T = obj_data_T[index];
 
     // Get the identifier for the object associated with this collision shape
     uint ID = obj_data_ID[index];
 
-    real3 pos = body_pos[ID];  // Get the global object position
-    real4 rot = body_rot[ID];  // Get the global object rotation
+    real3 pos = body_pos[ID];    // Get the global object position
+    real4 rot = body_rot[ID];    // Get the global object rotation
 
     obj_data_A_global[index] = TransformLocalToParent(pos, rot, obj_data_A[index]);
     if (T == TRIANGLEMESH) {
@@ -177,12 +179,8 @@ void ChCNarrowphaseDispatch::PreprocessLocalToParent() {
   }
 }
 
-void ChCNarrowphaseDispatch::Dispatch_Init(uint index,
-                                           uint& icoll,
-                                           uint& ID_A,
-                                           uint& ID_B,
-                                           ConvexShape& shapeA,
-                                           ConvexShape& shapeB) {
+void ChCNarrowphaseDispatch::Dispatch_Init(uint index, uint& icoll, uint& ID_A, uint& ID_B, ConvexShape& shapeA, ConvexShape& shapeB) {
+
   const shape_type* obj_data_T = data_container->host_data.typ_rigid.data();
   const custom_vector<uint>& obj_data_ID = data_container->host_data.id_rigid;
   const custom_vector<long long>& contact_pair = data_container->host_data.pair_rigid_rigid;
@@ -190,14 +188,13 @@ void ChCNarrowphaseDispatch::Dispatch_Init(uint index,
   real3* convex_data = data_container->host_data.convex_data.data();
 
   long long p = contact_pair[index];
-  int2 pair =
-      I2(int(p >> 32), int(p & 0xffffffff));  // Get the identifiers for the two shapes involved in this collision
+  int2 pair = I2(int(p >> 32), int(p & 0xffffffff));    // Get the identifiers for the two shapes involved in this collision
 
   ID_A = obj_data_ID[pair.x];
-  ID_B = obj_data_ID[pair.y];  // Get the identifiers of the two associated objects (bodies)
+  ID_B = obj_data_ID[pair.y];    // Get the identifiers of the two associated objects (bodies)
 
   shapeA.type = obj_data_T[pair.x];
-  shapeB.type = obj_data_T[pair.y];  // Load the type data for each object in the collision pair
+  shapeB.type = obj_data_T[pair.y];    // Load the type data for each object in the collision pair
 
   shapeA.A = obj_data_A_global[pair.x];
   shapeB.A = obj_data_A_global[pair.y];
@@ -215,6 +212,7 @@ void ChCNarrowphaseDispatch::Dispatch_Init(uint index,
 }
 
 void ChCNarrowphaseDispatch::Dispatch_Finalize(uint icoll, uint ID_A, uint ID_B, int nC) {
+
   custom_vector<int2>& body_ids = data_container->host_data.bids_rigid_rigid;
 
   // Mark the active contacts and set their body IDs
@@ -225,6 +223,7 @@ void ChCNarrowphaseDispatch::Dispatch_Finalize(uint icoll, uint ID_A, uint ID_B,
 }
 
 void ChCNarrowphaseDispatch::DispatchMPR() {
+
   custom_vector<real3>& norm = data_container->host_data.norm_rigid_rigid;
   custom_vector<real3>& ptA = data_container->host_data.cpta_rigid_rigid;
   custom_vector<real3>& ptB = data_container->host_data.cptb_rigid_rigid;
@@ -247,6 +246,7 @@ void ChCNarrowphaseDispatch::DispatchMPR() {
 }
 
 void ChCNarrowphaseDispatch::DispatchR() {
+
   real3* norm = data_container->host_data.norm_rigid_rigid.data();
   real3* ptA = data_container->host_data.cpta_rigid_rigid.data();
   real3* ptB = data_container->host_data.cptb_rigid_rigid.data();
@@ -261,21 +261,14 @@ void ChCNarrowphaseDispatch::DispatchR() {
 
     Dispatch_Init(index, icoll, ID_A, ID_B, shapeA, shapeB);
 
-    if (RCollision(shapeA,
-                   shapeB,
-                   2 * collision_envelope,
-                   &norm[icoll],
-                   &ptA[icoll],
-                   &ptB[icoll],
-                   &contactDepth[icoll],
-                   &effective_radius[icoll],
-                   nC)) {
+    if (RCollision(shapeA, shapeB, 2 * collision_envelope, &norm[icoll], &ptA[icoll], &ptB[icoll], &contactDepth[icoll], &effective_radius[icoll], nC)) {
       Dispatch_Finalize(icoll, ID_A, ID_B, nC);
     }
   }
 }
 
 void ChCNarrowphaseDispatch::DispatchHybridMPR() {
+
   real3* norm = data_container->host_data.norm_rigid_rigid.data();
   real3* ptA = data_container->host_data.cpta_rigid_rigid.data();
   real3* ptB = data_container->host_data.cptb_rigid_rigid.data();
@@ -290,18 +283,9 @@ void ChCNarrowphaseDispatch::DispatchHybridMPR() {
 
     Dispatch_Init(index, icoll, ID_A, ID_B, shapeA, shapeB);
 
-    if (RCollision(shapeA,
-                   shapeB,
-                   2 * collision_envelope,
-                   &norm[icoll],
-                   &ptA[icoll],
-                   &ptB[icoll],
-                   &contactDepth[icoll],
-                   &effective_radius[icoll],
-                   nC)) {
+    if (RCollision(shapeA, shapeB, 2 * collision_envelope, &norm[icoll], &ptA[icoll], &ptB[icoll], &contactDepth[icoll], &effective_radius[icoll], nC)) {
       Dispatch_Finalize(icoll, ID_A, ID_B, nC);
-    } else if (MPRCollision(
-                   shapeA, shapeB, collision_envelope, norm[icoll], ptA[icoll], ptB[icoll], contactDepth[icoll])) {
+    } else if (MPRCollision(shapeA, shapeB, collision_envelope, norm[icoll], ptA[icoll], ptB[icoll], contactDepth[icoll])) {
       effective_radius[icoll] = edge_radius;
       Dispatch_Finalize(icoll, ID_A, ID_B, 1);
     }
@@ -309,6 +293,7 @@ void ChCNarrowphaseDispatch::DispatchHybridMPR() {
 }
 
 void ChCNarrowphaseDispatch::Dispatch() {
+
   switch (narrowphase_algorithm) {
     case NARROWPHASE_MPR:
       DispatchMPR();
@@ -322,5 +307,5 @@ void ChCNarrowphaseDispatch::Dispatch() {
   }
 }
 
-}  // end namespace collision
-}  // end namespace chrono
+} // end namespace collision
+} // end namespace chrono

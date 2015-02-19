@@ -42,7 +42,8 @@ const float precision = 1e-6f;
 // Tests for various utility functions
 // =============================================================================
 
-void test_snap_to_box() {
+void test_snap_to_box()
+{
   cout << "snap_to_box" << endl;
   real3 hdims(1.0, 2.0, 3.0);
 
@@ -77,9 +78,11 @@ void test_snap_to_box() {
     StrictEqual(code, 7);
     StrictEqual(loc, real3(1.0, -2.0, -3.0));
   }
+
 }
 
-void test_snap_to_cylinder() {
+void test_snap_to_cylinder()
+{
   cout << "snap_to_cylinder" << endl;
   real rad = 2;
   real hlen = 1.5;
@@ -121,7 +124,8 @@ void test_snap_to_cylinder() {
 // Tests for various primitive collision functions
 // =============================================================================
 
-void test_sphere_sphere(bool sep) {
+void test_sphere_sphere(bool sep)
+{
   cout << "sphere_sphere" << endl;
 
   ConvexShape shapeS1;
@@ -140,9 +144,9 @@ void test_sphere_sphere(bool sep) {
   real3 norm;
   real3 pt1;
   real3 pt2;
-  real depth;
-  real eff_rad;
-  int nC;
+  real  depth;
+  real  eff_rad;
+  int   nC;
 
   {
     cout << "  separated (far)" << endl;
@@ -180,7 +184,7 @@ void test_sphere_sphere(bool sep) {
       WeakEqual(depth, 0.05, precision);
       WeakEqual(pt1, real3(2, 1, 0), precision);
       WeakEqual(pt2, real3(2, 0.95, 0), precision);
-      WeakEqual(eff_rad, 0.95 / 1.95, precision);
+      WeakEqual(eff_rad, 0.95/1.95, precision);
     } else {
       if (!res || nC != 0) {
         cout << "    test failed" << endl;
@@ -243,7 +247,8 @@ void test_sphere_sphere(bool sep) {
 
 // -----------------------------------------------------------------------------
 
-void test_box_sphere(bool sep) {
+void test_box_sphere(bool sep)
+{
   cout << "box_sphere" << endl;
 
   // Box position and orientation fixed for all tests.
@@ -260,7 +265,7 @@ void test_box_sphere(bool sep) {
   shapeB.R = b_rot;
 
   // Sphere position changes for each test.
-  real s_rad = 1.5;  // sphere radius
+  real  s_rad = 1.5;  // sphere radius
 
   ConvexShape shapeS;
   shapeS.type = ShapeType::SPHERE;
@@ -274,11 +279,11 @@ void test_box_sphere(bool sep) {
   real3 norm;
   real3 pt1;
   real3 pt2;
-  real depth;
-  real eff_rad;
-  int nC;
+  real  depth;
+  real  eff_rad;
+  int   nC;
 
-  real oosqrt2 = sqrt(0.5);  // 1/sqrt(2)
+  real oosqrt2 = sqrt(0.5);   // 1/sqrt(2)
 
   {
     cout << "  sphere center inside box" << endl;
@@ -362,7 +367,8 @@ void test_box_sphere(bool sep) {
       WeakEqual(depth, 0.05, precision);
       WeakEqual(pt1, real3(oosqrt2, 3.0 * oosqrt2, 1.0), precision);
       WeakEqual(pt2, real3(oosqrt2, 3.0 * oosqrt2 + 0.05, 1.0), precision);
-    } else {
+    }
+    else {
       if (!res || nC != 0) {
         cout << "    test failed" << endl;
         exit(1);
@@ -411,7 +417,8 @@ void test_box_sphere(bool sep) {
       WeakEqual(depth, 0.05, precision);
       WeakEqual(pt1, real3(oosqrt2, 3.0 * oosqrt2, 3.0), precision);
       WeakEqual(pt2, s_pos - s_rad * norm, precision);
-    } else {
+    }
+    else {
       if (!res || nC != 0) {
         cout << "    test failed" << endl;
         exit(1);
@@ -439,7 +446,8 @@ void test_box_sphere(bool sep) {
 
 // -----------------------------------------------------------------------------
 
-void test_capsule_sphere() {
+void test_capsule_sphere()
+{
   cout << "capsule_sphere" << endl;
 
   // Capsule position and orientation fixed for all tests.
@@ -457,7 +465,7 @@ void test_capsule_sphere() {
   shapeC.R = c_rot;
 
   // Sphere position changes for each test.
-  real s_rad = 1.0;  // sphere radius
+  real  s_rad = 1.0;  // sphere radius
 
   ConvexShape shapeS;
   shapeS.type = ShapeType::SPHERE;
@@ -469,11 +477,11 @@ void test_capsule_sphere() {
   real3 norm;
   real3 pt1;
   real3 pt2;
-  real depth;
-  real eff_rad;
-  int nC;
+  real  depth;
+  real  eff_rad;
+  int   nC;
 
-  real oosqrt2 = sqrt(0.5);  // 1/sqrt(2)
+  real oosqrt2 = sqrt(0.5);   // 1/sqrt(2)
 
   {
     cout << "  sphere center on capsule axis" << endl;
@@ -506,7 +514,7 @@ void test_capsule_sphere() {
     StrictEqual(nC, 1);
     WeakEqual(norm, real3(oosqrt2, oosqrt2, 0), precision);
     WeakEqual(depth, sqrt(2.0) - 1.5, precision);
-    WeakEqual(pt1, real3(4.0 + 0.5 * oosqrt2, 0.5 * oosqrt2, 0), precision);
+    WeakEqual(pt1, real3(4.0 + 0.5*oosqrt2, 0.5*oosqrt2, 0), precision);
     WeakEqual(pt2, real3(5.0 - oosqrt2, 1.0 - oosqrt2, 0), precision);
     WeakEqual(eff_rad, s_rad * c_rad / (s_rad + c_rad), precision);
   }
@@ -540,13 +548,14 @@ void test_capsule_sphere() {
 
 // -----------------------------------------------------------------------------
 
-void test_cylinder_sphere() {
+void test_cylinder_sphere()
+{
   cout << "cylinder_sphere" << endl;
 
   // Cylinder position and orientation fixed for all tests.
   // Aligned with X axis and shifted by its half-length in the X direction.
-  real c_rad = 2.0;
-  real c_hlen = 1.5;
+  real  c_rad = 2.0;
+  real  c_hlen = 1.5;
   real3 c_pos(c_hlen, 0, 0);
   real4 c_rot = ToReal4(Q_from_AngAxis(CH_C_PI_2, ChVector<>(0, 0, 1)));
 
@@ -558,7 +567,7 @@ void test_cylinder_sphere() {
   shapeC.R = c_rot;
 
   // Sphere position changes for each test.
-  real s_rad = 1.0;  // sphere radius
+  real  s_rad = 1.0;  // sphere radius
 
   ConvexShape shapeS;
   shapeS.type = ShapeType::SPHERE;
@@ -570,11 +579,11 @@ void test_cylinder_sphere() {
   real3 norm;
   real3 pt1;
   real3 pt2;
-  real depth;
-  real eff_rad;
-  int nC;
+  real  depth;
+  real  eff_rad;
+  int   nC;
 
-  real oosqrt2 = sqrt(0.5);  // 1/sqrt(2)
+  real oosqrt2 = sqrt(0.5);   // 1/sqrt(2)
 
   {
     cout << "  sphere center inside cylinder" << endl;
@@ -667,14 +676,15 @@ void test_cylinder_sphere() {
 
 // -----------------------------------------------------------------------------
 
-void test_roundedcyl_sphere() {
+void test_roundedcyl_sphere()
+{
   cout << "roundedcyl_sphere" << endl;
 
   // Rounded cylinder position and orientation fixed for all tests.
   // Aligned with X axis and shifted by its half-length in the X direction.
-  real c_rad = 2.0;   // radius of skeleton cylinder
-  real c_hlen = 1.5;  // half-length of skeleton cylinder
-  real c_srad = 0.1;  // radius of sweeping sphere
+  real  c_rad = 2.0;   // radius of skeleton cylinder
+  real  c_hlen = 1.5;  // half-length of skeleton cylinder
+  real  c_srad = 0.1;  // radius of sweeping sphere
   real3 c_pos(c_hlen, 0, 0);
   real4 c_rot = ToReal4(Q_from_AngAxis(CH_C_PI_2, ChVector<>(0, 0, 1)));
 
@@ -686,7 +696,7 @@ void test_roundedcyl_sphere() {
   shapeC.R = c_rot;
 
   // Sphere position changes for each test.
-  real s_rad = 1.0;  // sphere radius
+  real  s_rad = 1.0;  // sphere radius
 
   ConvexShape shapeS;
   shapeS.type = ShapeType::SPHERE;
@@ -698,11 +708,11 @@ void test_roundedcyl_sphere() {
   real3 norm;
   real3 pt1;
   real3 pt2;
-  real depth;
-  real eff_rad;
-  int nC;
+  real  depth;
+  real  eff_rad;
+  int   nC;
 
-  real oosqrt2 = sqrt(0.5);  // 1/sqrt(2)
+  real oosqrt2 = sqrt(0.5);   // 1/sqrt(2)
 
   {
     cout << "  sphere center inside cylinder" << endl;
@@ -787,7 +797,7 @@ void test_roundedcyl_sphere() {
     StrictEqual(nC, 1);
     WeakEqual(norm, real3(oosqrt2, oosqrt2, 0), precision);
     WeakEqual(depth, -1.1 + oosqrt2, precision);
-    WeakEqual(pt1, real3(3.0 + 0.1 * oosqrt2, 2.0 + 0.1 * oosqrt2, 0), precision);
+    WeakEqual(pt1, real3(3.0 + 0.1*oosqrt2, 2.0 + 0.1*oosqrt2, 0), precision);
     WeakEqual(pt2, real3(3.5 - oosqrt2, 2.5 - oosqrt2, 0), precision);
     WeakEqual(eff_rad, s_rad * c_srad / (s_rad + c_srad), precision);
   }
@@ -795,7 +805,8 @@ void test_roundedcyl_sphere() {
 
 // =============================================================================
 
-int main() {
+int main()
+{
   // Utility functions
   test_snap_to_box();
   test_snap_to_cylinder();
@@ -808,9 +819,11 @@ int main() {
   test_cylinder_sphere();
   test_roundedcyl_sphere();
 
+
   cout << endl << "With separation distance" << endl;
   test_sphere_sphere(true);
   test_box_sphere(true);
 
-  return 0;
+   return 0;
 }
+

@@ -2,23 +2,10 @@
 #include <blaze/math/CompressedVector.h>
 using namespace chrono;
 
-ChSolverAPGD::ChSolverAPGD()
-    : ChSolverParallel(),
-      mg_tmp_norm(0),
-      mb_tmp_norm(0),
-      obj1(0),
-      obj2(0),
-      norm_ms(0),
-      dot_g_temp(0),
-      theta(1),
-      theta_new(0),
-      beta_new(0),
-      t(0),
-      L(0),
-      g_diff(0) {
-}
+ChSolverAPGD::ChSolverAPGD() : ChSolverParallel(), mg_tmp_norm(0), mb_tmp_norm(0), obj1(0), obj2(0), norm_ms(0), dot_g_temp(0), theta(1), theta_new(0), beta_new(0), t(0), L(0), g_diff(0) {}
 
 void ChSolverAPGD::UpdateR() {
+
   if (data_container->num_constraints <= 0) {
     return;
   }
@@ -47,10 +34,7 @@ void ChSolverAPGD::UpdateR() {
   R_n = -b_n - D_n_T * M_invk + s_n;
 }
 
-uint ChSolverAPGD::SolveAPGD(const uint max_iter,
-                             const uint size,
-                             const blaze::DynamicVector<real>& r,
-                             blaze::DynamicVector<real>& gamma) {
+uint ChSolverAPGD::SolveAPGD(const uint max_iter, const uint size, const blaze::DynamicVector<real>& r, blaze::DynamicVector<real>& gamma) {
   real& residual = data_container->measures.solver.residual;
   real& objective_value = data_container->measures.solver.objective_value;
   custom_vector<real>& iter_hist = data_container->measures.solver.iter_hist;
@@ -90,6 +74,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   y = gamma;
 
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
+
     ShurProduct(y, g);
     g = g - r;
     gamma_new = y - t * g;

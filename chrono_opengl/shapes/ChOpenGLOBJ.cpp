@@ -21,10 +21,8 @@ using namespace glm;
 namespace chrono {
 namespace opengl {
 
-ChOpenGLOBJ::ChOpenGLOBJ() {
-}
-ChOpenGLOBJ::~ChOpenGLOBJ() {
-}
+ChOpenGLOBJ::ChOpenGLOBJ() {}
+ChOpenGLOBJ::~ChOpenGLOBJ() {}
 bool ChOpenGLOBJ::Initialize(std::string filename, ChOpenGLMaterial mat, ChOpenGLShader* shader) {
   if (this->GLReturnedError("ChOpenGLOBJ::Initialize - on entry")) {
     return false;

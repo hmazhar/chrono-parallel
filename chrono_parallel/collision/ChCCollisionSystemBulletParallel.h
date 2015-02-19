@@ -23,6 +23,7 @@
 #include "chrono_parallel/collision/ChCNarrowphase.h"
 #include "chrono_parallel/collision/ChCBroadphase.h"
 
+
 namespace chrono {
 
 class ChSystemParallel;  // forward declaration
@@ -35,7 +36,8 @@ namespace collision {
 ///
 
 class CH_PARALLEL_API ChCollisionSystemBulletParallel : public ChCollisionSystem {
- public:
+public:
+
   ChCollisionSystemBulletParallel(ChParallelDataManager* dc, unsigned int max_objects = 16000, double scene_size = 500);
   virtual ~ChCollisionSystemBulletParallel();
 
@@ -53,7 +55,7 @@ class CH_PARALLEL_API ChCollisionSystemBulletParallel : public ChCollisionSystem
 
   /// Removes all collision models from the collision
   /// engine (custom data may be deallocated).
-  // virtual void RemoveAll();
+  //virtual void RemoveAll();
 
   /// Run the algorithm and finds all the contacts.
   /// (Contacts will be managed by the Bullet persistent contact cache).
@@ -75,15 +77,17 @@ class CH_PARALLEL_API ChCollisionSystemBulletParallel : public ChCollisionSystem
   /// The basic behavior of the implementation is  the following: collision system
   /// will call in sequence the functions BeginAddProximities(), AddProximity() (x n times),
   /// EndAddProximities() of the proximity container.
-  virtual void ReportProximities(ChProximityContainerBase* mproximitycontainer) {}
+  virtual void ReportProximities(ChProximityContainerBase* mproximitycontainer){}
 
   /// Perform a raycast (ray-hit test with the collision models).
-  virtual bool RayHit(const ChVector<>& from, const ChVector<>& to, ChRayhitResult& mresult) { return false; }
+  virtual bool RayHit(const ChVector<>& from, const ChVector<>& to, ChRayhitResult& mresult){ return false; }
 
   // For Bullet related stuff
-  btCollisionWorld* GetBulletCollisionWorld() { return bt_collision_world; }
+  btCollisionWorld* GetBulletCollisionWorld() {
+    return bt_collision_world;
+  }
 
- private:
+private:
   btCollisionConfiguration* bt_collision_configuration;
   btCollisionDispatcher* bt_dispatcher;
   btBroadphaseInterface* bt_broadphase;
@@ -94,7 +98,8 @@ class CH_PARALLEL_API ChCollisionSystemBulletParallel : public ChCollisionSystem
   uint counter;
 };
 
-}  // end namespace collision
-}  // end namespace chrono
+} // end namespace collision
+} // end namespace chrono
 
 #endif
+

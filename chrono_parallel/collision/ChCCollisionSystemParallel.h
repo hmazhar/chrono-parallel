@@ -26,85 +26,105 @@ namespace collision {
 
 class CH_PARALLEL_API ChCollisionSystemParallel : public ChCollisionSystem {
  public:
-  ChCollisionSystemParallel(ChParallelDataManager* dc);
-  virtual ~ChCollisionSystemParallel();
 
-  /// Clears all data instanced by this algorithm
-  /// if any (like persistent contact manifolds)
-  virtual void Clear(void) {}
+   ChCollisionSystemParallel(ChParallelDataManager* dc);
+   virtual ~ChCollisionSystemParallel();
 
-  /// Adds a collision model to the collision
-  /// engine (custom data may be allocated).
-  virtual void Add(ChCollisionModel* model);
+   /// Clears all data instanced by this algorithm
+   /// if any (like persistent contact manifolds)
+   virtual void Clear(void) {
+   }
 
-  /// Removes a collision model from the collision
-  /// engine (custom data may be deallocated).
-  virtual void Remove(ChCollisionModel* model);
+   /// Adds a collision model to the collision
+   /// engine (custom data may be allocated).
+   virtual void Add(ChCollisionModel *model);
 
-  /// Removes all collision models from the collision
-  /// engine (custom data may be deallocated).
-  // virtual void RemoveAll();
+   /// Removes a collision model from the collision
+   /// engine (custom data may be deallocated).
+   virtual void Remove(ChCollisionModel *model);
 
-  /// Run the algorithm and finds all the contacts.
-  /// (Contacts will be managed by the Bullet persistent contact cache).
-  virtual void Run();
+   /// Removes all collision models from the collision
+   /// engine (custom data may be deallocated).
+   //virtual void RemoveAll();
 
-  /// After the Run() has completed, you can call this function to
-  /// fill a 'contact container', that is an object inherited from class
-  /// ChContactContainerBase. For instance ChSystem, after each Run()
-  /// collision detection, calls this method multiple times for all contact containers in the system,
-  /// The basic behavior of the implementation is the following: collision system
-  /// will call in sequence the functions BeginAddContact(), AddContact() (x n times),
-  /// EndAddContact() of the contact container. But if a special container (say, GPU enabled)
-  /// is passed, a more rapid buffer copy might be performed)
-  virtual void ReportContacts(ChContactContainerBase* mcontactcontainer) {}
+   /// Run the algorithm and finds all the contacts.
+   /// (Contacts will be managed by the Bullet persistent contact cache).
+   virtual void Run();
 
-  /// After the Run() has completed, you can call this function to
-  /// fill a 'proximity container' (container of narrow phase pairs), that is
-  /// an object inherited from class ChProximityContainerBase. For instance ChSystem, after each Run()
-  /// collision detection, calls this method multiple times for all proximity containers in the system,
-  /// The basic behavior of the implementation is  the following: collision system
-  /// will call in sequence the functions BeginAddProximities(), AddProximity() (x n times),
-  /// EndAddProximities() of the proximity container. But if a special container (say, GPU enabled)
-  /// is passed, a more rapid buffer copy might be performed)
-  virtual void ReportProximities(ChProximityContainerBase* mproximitycontainer) {}
+   /// After the Run() has completed, you can call this function to
+   /// fill a 'contact container', that is an object inherited from class
+   /// ChContactContainerBase. For instance ChSystem, after each Run()
+   /// collision detection, calls this method multiple times for all contact containers in the system,
+   /// The basic behavior of the implementation is the following: collision system
+   /// will call in sequence the functions BeginAddContact(), AddContact() (x n times),
+   /// EndAddContact() of the contact container. But if a special container (say, GPU enabled)
+   /// is passed, a more rapid buffer copy might be performed)
+   virtual void ReportContacts(ChContactContainerBase *mcontactcontainer) {
+   }
 
-  /// Perform a raycast (ray-hit test with the collision models).
-  virtual bool RayHit(const ChVector<>& from, const ChVector<>& to, ChRayhitResult& mresult) { return false; }
+   /// After the Run() has completed, you can call this function to
+   /// fill a 'proximity container' (container of narrow phase pairs), that is
+   /// an object inherited from class ChProximityContainerBase. For instance ChSystem, after each Run()
+   /// collision detection, calls this method multiple times for all proximity containers in the system,
+   /// The basic behavior of the implementation is  the following: collision system
+   /// will call in sequence the functions BeginAddProximities(), AddProximity() (x n times),
+   /// EndAddProximities() of the proximity container. But if a special container (say, GPU enabled)
+   /// is passed, a more rapid buffer copy might be performed)
+   virtual void ReportProximities(ChProximityContainerBase *mproximitycontainer) {
+   }
 
-  void SetCollisionEnvelope(const real& envelope) { data_container->settings.collision.collision_envelope = envelope; }
-  real GetCollisionEnvelope() { return data_container->settings.collision.collision_envelope; }
+   /// Perform a raycast (ray-hit test with the collision models).
+   virtual bool RayHit(const ChVector<> &from,
+                       const ChVector<> &to,
+                       ChRayhitResult &mresult) {
+      return false;
+   }
 
-  std::vector<int2> GetOverlappingPairs();
-  void GetOverlappingAABB(custom_vector<bool>& active_id, real3 Amin, real3 Amax);
+   void SetCollisionEnvelope(const real &envelope) {
+      data_container->settings.collision.collision_envelope = envelope;
+   }
+   real GetCollisionEnvelope() {
+      return data_container->settings.collision.collision_envelope;
+   }
 
-  void setBinsPerAxis(int3 binsPerAxis) { broadphase->setBinsPerAxis(binsPerAxis); }
+   std::vector<int2> GetOverlappingPairs();
+   void GetOverlappingAABB(custom_vector<bool> &active_id,
+                           real3 Amin,
+                           real3 Amax);
 
-  void SetAABB(real3 aabbmin, real3 aabbmax) {
-    data_container->settings.collision.aabb_min = aabbmin;
-    data_container->settings.collision.aabb_max = aabbmax;
-    data_container->settings.collision.use_aabb_active = true;
-  }
+   void setBinsPerAxis(int3 binsPerAxis) {
+      broadphase->setBinsPerAxis(binsPerAxis);
+   }
 
-  bool GetAABB(real3& aabbmin, real3& aabbmax) {
-    aabbmin = data_container->settings.collision.aabb_min;
-    aabbmax = data_container->settings.collision.aabb_max;
+   void SetAABB(real3 aabbmin,
+                real3 aabbmax) {
+      data_container->settings.collision.aabb_min = aabbmin;
+      data_container->settings.collision.aabb_max = aabbmax;
+      data_container->settings.collision.use_aabb_active = true;
+   }
 
-    return data_container->settings.collision.use_aabb_active;
-  }
+   bool GetAABB(real3 &aabbmin,
+                real3 &aabbmax) {
+      aabbmin = data_container->settings.collision.aabb_min;
+      aabbmax = data_container->settings.collision.aabb_max;
+
+      return data_container->settings.collision.use_aabb_active;
+   }
 
  private:
-  ChCBroadphase* broadphase;
-  ChCNarrowphaseDispatch* narrowphase;
 
-  ChCAABBGenerator aabb_generator;
+   ChCBroadphase* broadphase;
+   ChCNarrowphaseDispatch* narrowphase;
 
-  ChParallelDataManager* data_container;
+   ChCAABBGenerator aabb_generator;
 
-  friend class chrono::ChSystemParallel;
+   ChParallelDataManager *data_container;
+
+   friend class chrono::ChSystemParallel;
 };
 
-}  // end namespace collision
-}  // end namespace chrono
+}     // end namespace collision
+}     // end namespace chrono
 
 #endif
+
