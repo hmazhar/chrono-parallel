@@ -23,7 +23,7 @@
 #include "chrono_parallel/ChApiParallel.h"
 #include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/math/ChParallelMath.h"
-
+#include "chrono_parallel/collision/ChCDataStructures.h"
 namespace chrono {
 // forward references
 class ChBody;
@@ -209,15 +209,7 @@ class CH_PARALLEL_API ChCollisionModelParallel : public ChCollisionModel {
 
    float getVolume();
 
-   struct bData {
-      real3 A;
-      real3 B;
-      real3 C;
-      real4 R;
-      int type;
-   };
-
-   std::vector<bData> mData;
+   std::vector<ConvexShape> mData;
    std::vector<real3> local_convex_data;
 
  protected:

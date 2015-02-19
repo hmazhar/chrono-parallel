@@ -14,7 +14,8 @@
 //
 // Description: class for a parallel collision model
 // =============================================================================
-
+// not used but prevents compilation errors with cuda 7 RC
+#include <thrust/transform.h>
 #include "chrono_parallel/collision/ChCCollisionModelParallel.h"
 #include "physics/ChBody.h"
 #include "physics/ChSystem.h"
@@ -29,6 +30,7 @@ ChCollisionModelParallel::ChCollisionModelParallel()
   inertia(ZERO_VECTOR),
   total_volume(0)
 {
+    model_safe_margin = 0;
 }
 
 ChCollisionModelParallel::~ChCollisionModelParallel() {
@@ -68,12 +70,13 @@ bool ChCollisionModelParallel::AddSphere(double radius,
 
    model_type = SPHERE;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(radius, 0, 0);
    tData.C = R3(0, 0, 0);
    tData.R = R4(1, 0, 0, 0);
    tData.type = SPHERE;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += 4.0 / 3.0 * CH_C_PI * pow(radius, 3.0);
 
@@ -94,13 +97,14 @@ bool ChCollisionModelParallel::AddEllipsoid(double rx,
 
    model_type = ELLIPSOID;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, ry, rz);
    tData.C = R3(0, 0, 0);
    ChMatrix33<> rotation = rot;
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = ELLIPSOID;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += 4.0 / 3.0 * CH_C_PI * rx * ry * rz;
    return true;
@@ -120,7 +124,7 @@ bool ChCollisionModelParallel::AddBox(double rx,
 
    model_type = BOX;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, ry, rz);
    tData.C = R3(0, 0, 0);
@@ -128,6 +132,7 @@ bool ChCollisionModelParallel::AddBox(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = BOX;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += rx * 2 * ry * 2 * rz * 2;
    return true;
@@ -149,7 +154,7 @@ bool ChCollisionModelParallel::AddRoundedBox(double rx,
 
    model_type = ROUNDEDBOX;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, ry, rz);
    tData.C = R3(sphere_r, 0, 0);
@@ -157,6 +162,7 @@ bool ChCollisionModelParallel::AddRoundedBox(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = ROUNDEDBOX;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += rx * 2 * ry * 2 * rz * 2;
    return true;
@@ -170,7 +176,7 @@ bool ChCollisionModelParallel::AddTriangle(ChVector<> A,
    double mass = this->GetBody()->GetMass();
    model_type = TRIANGLEMESH;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(A.x + pos.x, A.y + pos.y, A.z + pos.z);
    tData.B = R3(B.x + pos.x, B.y + pos.y, B.z + pos.z);
    tData.C = R3(C.x + pos.x, C.y + pos.y, C.z + pos.z);
@@ -178,6 +184,7 @@ bool ChCollisionModelParallel::AddTriangle(ChVector<> A,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = TRIANGLEMESH;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    return true;
 }
@@ -195,7 +202,7 @@ bool ChCollisionModelParallel::AddCylinder(double rx,
    inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
    model_type = CYLINDER;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, hy, rz);
    tData.C = R3(0, 0, 0);
@@ -203,6 +210,7 @@ bool ChCollisionModelParallel::AddCylinder(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = CYLINDER;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += CH_C_PI * rx * rz * hy * 2;
    return true;
@@ -223,7 +231,7 @@ bool ChCollisionModelParallel::AddRoundedCylinder(double rx,
    inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
    model_type = ROUNDEDCYL;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, hy, rz);
    tData.C = R3(sphere_r, 0, 0);
@@ -231,6 +239,7 @@ bool ChCollisionModelParallel::AddRoundedCylinder(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = ROUNDEDCYL;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += CH_C_PI * rx * rz * hy * 2;
    return true;
@@ -254,7 +263,7 @@ bool ChCollisionModelParallel::AddCone(double rx,
 
    model_type = CONE;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, height, rz);
    tData.C = R3(0, 0, 0);
@@ -262,6 +271,7 @@ bool ChCollisionModelParallel::AddCone(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = CONE;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += 1 / 3.0 * rx * hy * 2;
    return true;
@@ -286,7 +296,7 @@ bool ChCollisionModelParallel::AddRoundedCone(double rx,
 
    model_type = ROUNDEDCONE;
    nObjects++;
-   bData tData;
+   ConvexShape tData;
    tData.A = R3(pos.x, pos.y, pos.z);
    tData.B = R3(rx, height, rz);
    tData.C = R3(sphere_r, 0, 0);
@@ -294,6 +304,7 @@ bool ChCollisionModelParallel::AddRoundedCone(double rx,
 
    tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
    tData.type = ROUNDEDCONE;
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
    total_volume += 1 / 3.0 * rx * hy * 2;
    return true;
@@ -316,7 +327,7 @@ bool ChCollisionModelParallel::AddCapsule(double radius,
    model_type = CAPSULE;
    nObjects++;
 
-   bData tData;
+   ConvexShape tData;
    ChQuaternion<> q = rot.Get_A_quaternion();
 
    tData.A = R3(pos.x, pos.y, pos.z);
@@ -324,7 +335,7 @@ bool ChCollisionModelParallel::AddCapsule(double radius,
    tData.C = R3(0, 0, 0);
    tData.R = R4(q.e0, q.e1, q.e2, q.e3);
    tData.type = CAPSULE;
-
+   tData.margin = model_safe_margin;
    mData.push_back(tData);
 
    total_volume += 2 * CH_C_PI * radius * radius * (hlen + 2 * radius / 3);
@@ -338,7 +349,7 @@ bool ChCollisionModelParallel::AddConvexHull(std::vector<ChVector<double> > &poi
 	  inertia = R3(1);    // so that it gets initialized to something
 	  model_type = CONVEX;
 	  nObjects++;
-	  bData tData;
+	  ConvexShape tData;
 	  tData.A = R3(pos.x, pos.y, pos.z);
 	  tData.B = R3(pointlist.size(), local_convex_data.size(), 0);
 	  tData.C = R3(0, 0, 0);
@@ -346,6 +357,7 @@ bool ChCollisionModelParallel::AddConvexHull(std::vector<ChVector<double> > &poi
 
 	  tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
 	  tData.type = CONVEX;
+	  tData.margin = model_safe_margin;
 	  mData.push_back(tData);
 	  total_volume += 0;
 
@@ -374,7 +386,7 @@ bool ChCollisionModelParallel::AddTriangleMesh(const geometry::ChTriangleMesh &t
                                                const ChMatrix33<> &rot) {
    model_type = TRIANGLEMESH;
    nObjects += trimesh.getNumTriangles();
-   bData tData;
+   ConvexShape tData;
    for (int i = 0; i < trimesh.getNumTriangles(); i++) {
       geometry::ChTriangle temptri = trimesh.getTriangle(i);
       tData.A = R3(temptri.p1.x + pos.x, temptri.p1.y + pos.y, temptri.p1.z + pos.z);
@@ -384,6 +396,7 @@ bool ChCollisionModelParallel::AddTriangleMesh(const geometry::ChTriangleMesh &t
 
       tData.R = R4(rotation.Get_A_quaternion().e0, rotation.Get_A_quaternion().e1, rotation.Get_A_quaternion().e2, rotation.Get_A_quaternion().e3);
       tData.type = TRIANGLEMESH;
+      tData.margin = model_safe_margin;
       mData.push_back(tData);
    }
 

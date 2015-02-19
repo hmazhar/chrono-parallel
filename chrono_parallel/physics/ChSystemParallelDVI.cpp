@@ -1,5 +1,4 @@
 #include "chrono_parallel/physics/ChSystemParallel.h"
-#include <omp.h>
 
 using namespace chrono;
 
@@ -118,10 +117,13 @@ static inline chrono::ChVector<real> ToChVector(const real3 &a) {
 void ChSystemParallelDVI::SolveSystem() {
    data_manager->system_timer.Reset();
    data_manager->system_timer.start("step");
+
+   Setup();
+
    data_manager->system_timer.start("update");
    Update();
    data_manager->system_timer.stop("update");
-   Prepare();
+
    data_manager->system_timer.start("collision");
    collision_system->Run();
    collision_system->ReportContacts(this->contact_container);

@@ -37,13 +37,14 @@ class CH_OPENGL_API ChOpenGLHUD : public ChOpenGLBase {
   void GenerateRenderer();
   void GenerateStats(ChSystem* physics_system);
   void TakeDown();
-  void Update(const glm::ivec2& window_size, const float& dpi, const float & frame_per_sec);
+  void Update(const glm::ivec2& window_size, const float& dpi, const float& frame_per_sec, const float& t_geometry, const float& t_text, const float& t_total);
   void Draw();
 
  private:
   ChOpenGLText text;
   ChOpenGLShader font_shader;
-  float sx, sy, spacing;
+  float sx, sy;
+  float aspect, z_x, z_y;
   char buffer[50];
   ChOpenGLCamera* render_camera;
 

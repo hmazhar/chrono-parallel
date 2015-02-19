@@ -27,7 +27,7 @@ GJK-EPA collision solver by Nathanael Presson, 2008
 #ifndef CHC_NARROWPHASE_GJK_EPA_H
 #define CHC_NARROWPHASE_GJK_EPA_H
 
-#include "chrono_parallel/collision/ChCNarrowphase.h"
+#include "chrono_parallel/collision/ChCDataStructures.h"
 
 namespace chrono {
 namespace collision {
@@ -44,6 +44,7 @@ struct sResults {
    real distance;
 };
 
+
 CH_PARALLEL_API
 bool GJKDistance(const ConvexShape& shape0,
                  const ConvexShape& shape1,
@@ -57,14 +58,19 @@ bool GJKPenetration(const ConvexShape& shape0,
 
 CH_PARALLEL_API
 bool GJKCollide(const ConvexShape& shape0,
-                    const ConvexShape& shape1,
-                    sResults& results);
+                const ConvexShape& shape1,
+                ContactManifold& manifold,
+                real3& m_cachedSeparatingAxis);
 
 CH_PARALLEL_API
 bool GJKFindPenetration(const ConvexShape& shape0,
-                const ConvexShape& shape1,
-                sResults& results);
-
+                        const ConvexShape& shape1,
+                        sResults& results);
+CH_PARALLEL_API
+void GJKPerturbedCollide(const ConvexShape& shapeA,
+                          const ConvexShape& shapeB,
+                          ContactManifold& manifold,
+                          real3 m_cachedSeparatingAxis);
 
 }  // end namespace collision
 }  // end namespace chrono
