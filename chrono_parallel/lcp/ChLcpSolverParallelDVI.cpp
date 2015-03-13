@@ -15,7 +15,13 @@
 #include "chrono_parallel/solver/ChSolverPDIP.h"
 using namespace chrono;
 
+#define CLEAR_RESERVE_RESIZE(M, nnz, rows, cols) \
+  clear(M);                                      \
+  M.reserve(nnz);                                \
+  M.resize(rows, cols, false);
+
 void ChLcpSolverParallelDVI::RunTimeStep() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::RunTimeStep";
   // Compute the offsets and number of constrains depending on the solver mode
   if (data_container->settings.solver.solver_mode == NORMAL) {
     rigid_rigid.offset = 1;
@@ -74,6 +80,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_normal);
       data_container->settings.solver.local_solver_mode = NORMAL;
       SetR();
+      LOG(INFO) << "ChLcpSolverParallelDVI::RunTimeStep - Solve Normal";
       solver->Solve();
     }
   }
@@ -83,6 +90,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_sliding);
       data_container->settings.solver.local_solver_mode = SLIDING;
       SetR();
+      LOG(INFO) << "ChLcpSolverParallelDVI::RunTimeStep - Solve Sliding";
       solver->Solve();
     }
   }
@@ -91,6 +99,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
       solver->SetMaxIterations(data_container->settings.solver.max_iteration_spinning);
       data_container->settings.solver.local_solver_mode = SPINNING;
       SetR();
+      LOG(INFO) << "ChLcpSolverParallelDVI::RunTimeStep - Solve Spinning";
       solver->Solve();
     }
   }
@@ -106,12 +115,11 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   }
   tot_iterations = data_container->measures.solver.iter_hist.size();
 
-#if PRINT_LEVEL == 2
-  std::cout << "Solve Done: " << residual << std::endl;
-#endif
+  LOG(TRACE) << "Solve Done: " << residual;
 }
 
 void ChLcpSolverParallelDVI::ComputeD() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeD()";
   data_container->system_timer.start("ChLcpSolverParallel_D");
   uint num_constraints = data_container->num_constraints;
   if (num_constraints <= 0) {
@@ -152,73 +160,49 @@ void ChLcpSolverParallelDVI::ComputeD() {
 
   switch (data_container->settings.solver.solver_mode) {
     case NORMAL:
-      clear(D_n_T);
-
-      D_n_T.reserve(nnz_normal);
-
-      D_n_T.resize(num_normal, num_dof, false);
+      CLEAR_RESERVE_RESIZE(D_n_T, nnz_normal, num_normal, num_dof)
+      CLEAR_RESERVE_RESIZE(D_n, nnz_normal, num_dof, num_normal)
+      CLEAR_RESERVE_RESIZE(M_invD_n, nnz_normal, num_dof, num_normal)
       break;
     case SLIDING:
-      clear(D_n_T);
-      clear(D_t_T);
 
-      D_n_T.reserve(nnz_normal);
-      D_t_T.reserve(nnz_tangential);
+      CLEAR_RESERVE_RESIZE(D_n_T, nnz_normal, num_normal, num_dof)
+      CLEAR_RESERVE_RESIZE(D_n, nnz_normal, num_dof, num_normal)
+      CLEAR_RESERVE_RESIZE(M_invD_n, nnz_normal, num_dof, num_normal)
 
-      D_n_T.resize(num_normal, num_dof, false);
-      D_t_T.resize(num_tangential, num_dof, false);
+      CLEAR_RESERVE_RESIZE(D_t_T, nnz_tangential, num_tangential, num_dof)
+      CLEAR_RESERVE_RESIZE(D_t, nnz_tangential, num_dof, num_tangential)
+      CLEAR_RESERVE_RESIZE(M_invD_t, nnz_tangential, num_dof, num_tangential)
+
       break;
     case SPINNING:
-      clear(D_n_T);
-      clear(D_t_T);
-      clear(D_s_T);
 
-      D_n_T.reserve(nnz_normal);
-      D_t_T.reserve(nnz_tangential);
-      D_s_T.reserve(nnz_spinning);
+      CLEAR_RESERVE_RESIZE(D_n_T, nnz_normal, num_normal, num_dof)
+      CLEAR_RESERVE_RESIZE(D_n, nnz_normal, num_dof, num_normal)
+      CLEAR_RESERVE_RESIZE(M_invD_n, nnz_normal, num_dof, num_normal)
 
-      D_n_T.resize(num_normal, num_dof, false);
-      D_t_T.resize(num_tangential, num_dof, false);
-      D_s_T.resize(num_spinning, num_dof, false);
+      CLEAR_RESERVE_RESIZE(D_t_T, nnz_tangential, num_tangential, num_dof)
+      CLEAR_RESERVE_RESIZE(D_t, nnz_tangential, num_dof, num_tangential)
+      CLEAR_RESERVE_RESIZE(M_invD_t, nnz_tangential, num_dof, num_tangential)
+
+      CLEAR_RESERVE_RESIZE(D_s_T, nnz_spinning, num_spinning, num_dof)
+      CLEAR_RESERVE_RESIZE(D_s, nnz_spinning, num_dof, num_spinning)
+      CLEAR_RESERVE_RESIZE(M_invD_s, nnz_spinning, num_dof, num_spinning)
+
       break;
   }
-
-  clear(D_b_T);
-  D_b_T.reserve(nnz_bilaterals);
-  D_b_T.resize(num_bilaterals, num_dof, false);
+  CLEAR_RESERVE_RESIZE(D_b_T, nnz_bilaterals, num_bilaterals, num_dof)
 
   rigid_rigid.GenerateSparsity();
   bilateral.GenerateSparsity();
   rigid_rigid.Build_D();
   bilateral.Build_D();
 
-  switch (data_container->settings.solver.solver_mode) {
-    case NORMAL:
-      D_n = trans(D_n_T);
-      M_invD_n = M_inv * D_n;
-      break;
-    case SLIDING:
-      D_n = trans(D_n_T);
-      D_t = trans(D_t_T);
-      M_invD_n = M_inv * D_n;
-      M_invD_t = M_inv * D_t;
-      break;
-    case SPINNING:
-      D_n = trans(D_n_T);
-      D_t = trans(D_t_T);
-      D_s = trans(D_s_T);
-      M_invD_n = M_inv * D_n;
-      M_invD_t = M_inv * D_t;
-      M_invD_s = M_inv * D_s;
-      break;
-  }
-
-  D_b = trans(D_b_T);
-  M_invD_b = M_inv * D_b;
   data_container->system_timer.stop("ChLcpSolverParallel_D");
 }
 
 void ChLcpSolverParallelDVI::ComputeE() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeE()";
   data_container->system_timer.start("ChLcpSolverParallel_E");
   if (data_container->num_constraints <= 0) {
     return;
@@ -233,6 +217,7 @@ void ChLcpSolverParallelDVI::ComputeE() {
 }
 
 void ChLcpSolverParallelDVI::ComputeR() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeR()";
   data_container->system_timer.start("ChLcpSolverParallel_R");
   if (data_container->num_constraints <= 0) {
     return;
@@ -297,6 +282,7 @@ void ChLcpSolverParallelDVI::ComputeR() {
 }
 
 void ChLcpSolverParallelDVI::ComputeN() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeN()";
   if (!data_container->settings.solver.compute_N) {
     return;
   }
@@ -343,10 +329,9 @@ void ChLcpSolverParallelDVI::ComputeN() {
   uint num_unilaterals = data_container->num_unilaterals;
   uint num_bilaterals = data_container->num_bilaterals;
 
-  data_container->host_data.N_bb = D_b_T * M_invD_b;
-
   switch (data_container->settings.solver.solver_mode) {
     case NORMAL: {
+      N_bb = D_b_T * M_invD_b;
       N_bn = D_b_T * M_invD_n;
 
       N_nn = D_n_T * M_invD_n;
@@ -354,6 +339,7 @@ void ChLcpSolverParallelDVI::ComputeN() {
     } break;
 
     case SLIDING: {
+      N_bb = D_b_T * M_invD_b;
       N_bn = D_b_T * M_invD_n;
       N_bt = D_b_T * M_invD_t;
 
@@ -367,6 +353,7 @@ void ChLcpSolverParallelDVI::ComputeN() {
     } break;
 
     case SPINNING: {
+      N_bb = D_b_T * M_invD_b;
       N_bn = D_b_T * M_invD_n;
       N_bt = D_b_T * M_invD_t;
       N_bs = D_b_T * M_invD_s;
@@ -391,6 +378,7 @@ void ChLcpSolverParallelDVI::ComputeN() {
 }
 
 void ChLcpSolverParallelDVI::SetR() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::SetR()";
   if (data_container->num_constraints <= 0) {
     return;
   }
@@ -430,6 +418,7 @@ void ChLcpSolverParallelDVI::SetR() {
 }
 
 void ChLcpSolverParallelDVI::ComputeImpulses() {
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeImpulses()";
   DynamicVector<real>& v = data_container->host_data.v;
 
   const DynamicVector<real>& M_invk = data_container->host_data.M_invk;

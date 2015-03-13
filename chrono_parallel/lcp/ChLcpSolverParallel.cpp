@@ -17,6 +17,7 @@ ChLcpSolverParallel::~ChLcpSolverParallel() {
 }
 
 void ChLcpSolverParallel::ComputeMassMatrix() {
+  LOG(INFO) << "ChLcpSolverParallel::ComputeMassMatrix()";
   uint num_bodies = data_container->num_bodies;
   uint num_shafts = data_container->num_shafts;
   uint num_dof = data_container->num_dof;
@@ -137,6 +138,7 @@ void ChLcpSolverParallel::ComputeMassMatrix() {
 }
 
 void ChLcpSolverParallel::PerformStabilization() {
+  LOG(INFO) << "ChLcpSolverParallel::PerformStabilization";
   const DynamicVector<real>& R_full = data_container->host_data.R_full;
   DynamicVector<real>& gamma = data_container->host_data.gamma;
   uint num_unilaterals = data_container->num_unilaterals;

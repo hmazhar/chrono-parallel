@@ -89,6 +89,10 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
 
   settings_container* GetSettings() { return &(data_manager->settings); }
 
+  // based on the passed logging level and the state of that level, enable or
+  // disable logging level
+  void SetLoggingLevel(LOGGINGLEVEL level, bool state = true);
+
   ChParallelDataManager* data_manager;
 
  protected:

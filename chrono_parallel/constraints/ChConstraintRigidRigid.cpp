@@ -390,7 +390,40 @@ void ChConstraintRigidRigid::Build_E() {
   }
 }
 
+void inline SetRow3(CompressedMatrix<real>& D, const int row, const int col, const real3& A) {
+  D.set(row, col + 0, A.x);
+  D.set(row, col + 1, A.y);
+  D.set(row, col + 2, A.z);
+}
+
+void inline SetRow6(CompressedMatrix<real>& D, const int row, const int col, const real3& A, const real3& B) {
+  D.set(row, col + 0, A.x);
+  D.set(row, col + 1, A.y);
+  D.set(row, col + 2, A.z);
+
+  D.set(row, col + 3, B.x);
+  D.set(row, col + 4, B.y);
+  D.set(row, col + 5, B.z);
+}
+
+void inline SetCol3(CompressedMatrix<real>& D, const int row, const int col, const real3& A) {
+  D.set(row + 0, col, A.x);
+  D.set(row + 1, col, A.y);
+  D.set(row + 2, col, A.z);
+}
+
+void inline SetCol6(CompressedMatrix<real>& D, const int row, const int col, const real3& A, const real3& B) {
+  D.set(row + 0, col, A.x);
+  D.set(row + 1, col, A.y);
+  D.set(row + 2, col, A.z);
+
+  D.set(row + 3, col, B.x);
+  D.set(row + 4, col, B.y);
+  D.set(row + 5, col, B.z);
+}
+
 void ChConstraintRigidRigid::Build_D() {
+  LOG(INFO) << "ChConstraintRigidRigid::Build_D";
   real3* norm = data_container->host_data.norm_rigid_rigid.data();
   real3* ptA = data_container->host_data.cpta_rigid_rigid.data();
   real3* ptB = data_container->host_data.cptb_rigid_rigid.data();
@@ -402,7 +435,19 @@ void ChConstraintRigidRigid::Build_D() {
   CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
   CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
 
+  CompressedMatrix<real>& D_n = data_container->host_data.D_n;
+  CompressedMatrix<real>& D_t = data_container->host_data.D_t;
+  CompressedMatrix<real>& D_s = data_container->host_data.D_s;
+
+  CompressedMatrix<real>& M_invD_n = data_container->host_data.M_invD_n;
+  CompressedMatrix<real>& M_invD_t = data_container->host_data.M_invD_t;
+  CompressedMatrix<real>& M_invD_s = data_container->host_data.M_invD_s;
+
+  const CompressedMatrix<real>& M_inv = data_container->host_data.M_inv;
+
   SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
+
+  const std::vector<ChBody*>* body_list = data_container->body_list;
 
 #pragma omp parallel for
   for (int index = 0; index < data_container->num_contacts; index++) {
@@ -410,9 +455,7 @@ void ChConstraintRigidRigid::Build_D() {
     real3 T3, T4, T5, T6, T7, T8;
     real3 TA, TB, TC;
     real3 TD, TE, TF;
-
     Orthogonalize(U, V, W);
-
     int2 body_id = ids[index];
 
     int row = index;
@@ -420,88 +463,69 @@ void ChConstraintRigidRigid::Build_D() {
     Compute_Jacobian(rot[body_id.x], U, V, W, ptA[index] - pos_data[body_id.x], T3, T4, T5);
     Compute_Jacobian(rot[body_id.y], U, V, W, ptB[index] - pos_data[body_id.y], T6, T7, T8);
 
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 0, -U.x);
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 1, -U.y);
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 2, -U.z);
-
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 3, T3.x);
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 4, T3.y);
-    D_n_T.set(row * 1 + 0, body_id.x * 6 + 5, T3.z);
-
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 0, U.x);
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 1, U.y);
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 2, U.z);
-
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 3, -T6.x);
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 4, -T6.y);
-    D_n_T.set(row * 1 + 0, body_id.y * 6 + 5, -T6.z);
-
+    SetRow6(D_n_T, row * 1 + 0, body_id.x * 6, -U, T3);
+    SetRow6(D_n_T, row * 1 + 0, body_id.y * 6, U, -T6);
     if (solver_mode == SLIDING || solver_mode == SPINNING) {
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 0, -V.x);
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 1, -V.y);
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 2, -V.z);
+      SetRow6(D_t_T, row * 2 + 0, body_id.x * 6, -V, T4);
+      SetRow6(D_t_T, row * 2 + 1, body_id.x * 6, -W, T5);
 
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 3, T4.x);
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 4, T4.y);
-      D_t_T.set(row * 2 + 0, body_id.x * 6 + 5, T4.z);
-
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 0, -W.x);
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 1, -W.y);
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 2, -W.z);
-
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 3, T5.x);
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 4, T5.y);
-      D_t_T.set(row * 2 + 1, body_id.x * 6 + 5, T5.z);
-
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 0, V.x);
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 1, V.y);
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 2, V.z);
-
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 3, -T7.x);
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 4, -T7.y);
-      D_t_T.set(row * 2 + 0, body_id.y * 6 + 5, -T7.z);
-
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 0, W.x);
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 1, W.y);
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 2, W.z);
-
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 3, -T8.x);
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 4, -T8.y);
-      D_t_T.set(row * 2 + 1, body_id.y * 6 + 5, -T8.z);
+      SetRow6(D_t_T, row * 2 + 0, body_id.y * 6, V, -T7);
+      SetRow6(D_t_T, row * 2 + 1, body_id.y * 6, W, -T8);
     }
 
     if (solver_mode == SPINNING) {
       Compute_Jacobian_Rolling(rot[index], U, V, W, TA, TB, TC);
       Compute_Jacobian_Rolling(rot[index + data_container->num_contacts], U, V, W, TD, TE, TF);
 
-      D_s_T.set(row * 3 + 0, body_id.x * 6 + 3, -TA.x);
-      D_s_T.set(row * 3 + 0, body_id.x * 6 + 4, -TA.y);
-      D_s_T.set(row * 3 + 0, body_id.x * 6 + 5, -TA.z);
+      SetRow3(D_s_T, row * 3 + 0, body_id.x * 6 + 3, -TA);
+      SetRow3(D_s_T, row * 3 + 1, body_id.x * 6 + 3, -TB);
+      SetRow3(D_s_T, row * 3 + 2, body_id.x * 6 + 3, -TC);
 
-      D_s_T.set(row * 3 + 1, body_id.x * 6 + 3, -TB.x);
-      D_s_T.set(row * 3 + 1, body_id.x * 6 + 4, -TB.y);
-      D_s_T.set(row * 3 + 1, body_id.x * 6 + 5, -TB.z);
+      SetRow3(D_s_T, row * 3 + 0, body_id.y * 6 + 3, TD);
+      SetRow3(D_s_T, row * 3 + 1, body_id.y * 6 + 3, TE);
+      SetRow3(D_s_T, row * 3 + 2, body_id.y * 6 + 3, TF);
 
-      D_s_T.set(row * 3 + 2, body_id.x * 6 + 3, -TC.x);
-      D_s_T.set(row * 3 + 2, body_id.x * 6 + 4, -TC.y);
-      D_s_T.set(row * 3 + 2, body_id.x * 6 + 5, -TC.z);
-
-      D_s_T.set(row * 3 + 0, body_id.y * 6 + 3, TD.x);
-      D_s_T.set(row * 3 + 0, body_id.y * 6 + 4, TD.y);
-      D_s_T.set(row * 3 + 0, body_id.y * 6 + 5, TD.z);
-
-      D_s_T.set(row * 3 + 1, body_id.y * 6 + 3, TE.x);
-      D_s_T.set(row * 3 + 1, body_id.y * 6 + 4, TE.y);
-      D_s_T.set(row * 3 + 1, body_id.y * 6 + 5, TE.z);
-
-      D_s_T.set(row * 3 + 2, body_id.y * 6 + 3, TF.x);
-      D_s_T.set(row * 3 + 2, body_id.y * 6 + 4, TF.y);
-      D_s_T.set(row * 3 + 2, body_id.y * 6 + 5, TF.z);
     }
+  }
+
+  LOG(INFO) << "ChConstraintRigidRigid::Build_D - Compute Transpose";
+  switch (data_container->settings.solver.solver_mode) {
+    case NORMAL:
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
+      D_n = trans(D_n_T);
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
+      M_invD_n = M_inv * D_n;
+      break;
+    case SLIDING:
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
+      D_n = trans(D_n_T);
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_t";
+      D_t = trans(D_t_T);
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
+      M_invD_n = M_inv * D_n;
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_t";
+      M_invD_t = M_inv * D_t;
+      break;
+    case SPINNING:
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
+      D_n = trans(D_n_T);
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_t";
+      D_t = trans(D_t_T);
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_s";
+      D_s = trans(D_s_T);
+
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
+      M_invD_n = M_inv * D_n;
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_t";
+      M_invD_t = M_inv * D_t;
+      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_s";
+      M_invD_s = M_inv * D_s;
+      break;
   }
 }
 
 void ChConstraintRigidRigid::GenerateSparsity() {
+  LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsity";
   SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
 
   CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
@@ -510,96 +534,289 @@ void ChConstraintRigidRigid::GenerateSparsity() {
 
   const int2* ids = data_container->host_data.bids_rigid_rigid.data();
 
+#pragma omp parallel sections
+  {
+#pragma omp section
+    {
+      for (int index = 0; index < data_container->num_contacts; index++) {
+        int2 body_id = ids[index];
+        int row = index;
+
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 0, 1);
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 1, 1);
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 2, 1);
+
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 3, 1);
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 4, 1);
+        D_n_T.append(row * 1 + 0, body_id.x * 6 + 5, 1);
+
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 0, 1);
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 1, 1);
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 2, 1);
+
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 3, 1);
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 4, 1);
+        D_n_T.append(row * 1 + 0, body_id.y * 6 + 5, 1);
+
+        D_n_T.finalize(row * 1 + 0);
+      }
+    }
+#pragma omp section
+    {
+      if (solver_mode == SLIDING || solver_mode == SPINNING) {
+        for (int index = 0; index < data_container->num_contacts; index++) {
+          int2 body_id = ids[index];
+          int row = index;
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 0, 1);
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 1, 1);
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 2, 1);
+
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 3, 1);
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 4, 1);
+          D_t_T.append(row * 2 + 0, body_id.x * 6 + 5, 1);
+
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 0, 1);
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 1, 1);
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 2, 1);
+
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 3, 1);
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 4, 1);
+          D_t_T.append(row * 2 + 0, body_id.y * 6 + 5, 1);
+
+          D_t_T.finalize(row * 2 + 0);
+
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 0, 1);
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 1, 1);
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 2, 1);
+
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 3, 1);
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 4, 1);
+          D_t_T.append(row * 2 + 1, body_id.x * 6 + 5, 1);
+
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 0, 1);
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 1, 1);
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 2, 1);
+
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 3, 1);
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 4, 1);
+          D_t_T.append(row * 2 + 1, body_id.y * 6 + 5, 1);
+
+          D_t_T.finalize(row * 2 + 1);
+        }
+      }
+    }
+#pragma omp section
+    {
+      if (solver_mode == SPINNING) {
+        for (int index = 0; index < data_container->num_contacts; index++) {
+          int2 body_id = ids[index];
+          int row = index;
+          D_s_T.append(row * 3 + 0, body_id.x * 6 + 3, 1);
+          D_s_T.append(row * 3 + 0, body_id.x * 6 + 4, 1);
+          D_s_T.append(row * 3 + 0, body_id.x * 6 + 5, 1);
+
+          D_s_T.append(row * 3 + 0, body_id.y * 6 + 3, 1);
+          D_s_T.append(row * 3 + 0, body_id.y * 6 + 4, 1);
+          D_s_T.append(row * 3 + 0, body_id.y * 6 + 5, 1);
+
+          D_s_T.finalize(row * 3 + 0);
+
+          D_s_T.append(row * 3 + 1, body_id.x * 6 + 3, 1);
+          D_s_T.append(row * 3 + 1, body_id.x * 6 + 4, 1);
+          D_s_T.append(row * 3 + 1, body_id.x * 6 + 5, 1);
+
+          D_s_T.append(row * 3 + 1, body_id.y * 6 + 3, 1);
+          D_s_T.append(row * 3 + 1, body_id.y * 6 + 4, 1);
+          D_s_T.append(row * 3 + 1, body_id.y * 6 + 5, 1);
+
+          D_s_T.finalize(row * 3 + 1);
+
+          D_s_T.append(row * 3 + 2, body_id.x * 6 + 3, 1);
+          D_s_T.append(row * 3 + 2, body_id.x * 6 + 4, 1);
+          D_s_T.append(row * 3 + 2, body_id.x * 6 + 5, 1);
+
+          D_s_T.append(row * 3 + 2, body_id.y * 6 + 3, 1);
+          D_s_T.append(row * 3 + 2, body_id.y * 6 + 4, 1);
+          D_s_T.append(row * 3 + 2, body_id.y * 6 + 5, 1);
+
+          D_s_T.finalize(row * 3 + 2);
+        }
+      }
+    }
+  }
+  // Disabled due to issues with parallelizing properly
+  // GenerateSparsityTranspose();
+}
+
+void inline ColIndex3(host_vector<int>& Rows, host_vector<int>& Cols, const int id, const int row, const int col) {
+  Rows[id + 0] = row + 0;
+  Cols[id + 0] = col;
+  Rows[id + 1] = row + 1;
+  Cols[id + 1] = col;
+  Rows[id + 2] = row + 2;
+  Cols[id + 2] = col;
+}
+
+void inline ColIndex6(host_vector<int>& Rows, host_vector<int>& Cols, const int id, const int row, const int col) {
+  Rows[id + 0] = row + 0;
+  Cols[id + 0] = col;
+  Rows[id + 1] = row + 1;
+  Cols[id + 1] = col;
+  Rows[id + 2] = row + 2;
+  Cols[id + 2] = col;
+  Rows[id + 3] = row + 3;
+  Cols[id + 3] = col;
+  Rows[id + 4] = row + 4;
+  Cols[id + 4] = col;
+  Rows[id + 5] = row + 5;
+  Cols[id + 5] = col;
+}
+
+void ChConstraintRigidRigid::GenerateSparsityTranspose() {
+  LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsityTranspose";
+  SOLVERMODE solver_mode = data_container->settings.solver.solver_mode;
+
+  CompressedMatrix<real>& D_n_T = data_container->host_data.D_n_T;
+  CompressedMatrix<real>& D_t_T = data_container->host_data.D_t_T;
+  CompressedMatrix<real>& D_s_T = data_container->host_data.D_s_T;
+
+  CompressedMatrix<real>& D_n = data_container->host_data.D_n;
+  CompressedMatrix<real>& D_t = data_container->host_data.D_t;
+  CompressedMatrix<real>& D_s = data_container->host_data.D_s;
+
+  CompressedMatrix<real>& M_invD_n = data_container->host_data.M_invD_n;
+  CompressedMatrix<real>& M_invD_t = data_container->host_data.M_invD_t;
+  CompressedMatrix<real>& M_invD_s = data_container->host_data.M_invD_s;
+
+  const int2* ids = data_container->host_data.bids_rigid_rigid.data();
+
+  host_vector<int> D_n_T_r(data_container->num_contacts * 12);
+  host_vector<int> D_n_T_c(data_container->num_contacts * 12);
+  host_vector<int> start_n(data_container->num_contacts * 12);
+
+  host_vector<int> D_t_T_r, D_s_T_r;
+  host_vector<int> D_t_T_c, D_s_T_c;
+  host_vector<int> start_t, start_s;
+
+  int last_n, last_t, last_s;
+
+#pragma omp parallel for
   for (int index = 0; index < data_container->num_contacts; index++) {
     int2 body_id = ids[index];
     int row = index;
 
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 0, 1);
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 1, 1);
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 2, 1);
+    ColIndex6(D_n_T_r, D_n_T_c, index * 12 + 0, body_id.x * 6, row * 1);
+    ColIndex6(D_n_T_r, D_n_T_c, index * 12 + 6, body_id.y * 6, row * 1);
+  }
 
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 3, 1);
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 4, 1);
-    D_n_T.append(row * 1 + 0, body_id.x * 6 + 5, 1);
+  thrust::sort_by_key(D_n_T_r.begin(), D_n_T_r.end(), D_n_T_c.begin());
+  last_n = Thrust_Reduce_By_Key(D_n_T_r, D_n_T_r, start_n);
+  start_n.resize(last_n);
+  thrust::inclusive_scan(start_n.begin(), start_n.end(), start_n.begin());
 
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 0, 1);
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 1, 1);
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 2, 1);
+  if (solver_mode == SLIDING || solver_mode == SPINNING) {
+    D_t_T_r.resize(data_container->num_contacts * 12 * 2);
+    D_t_T_c.resize(data_container->num_contacts * 12 * 2);
+    start_t.resize(data_container->num_contacts * 12 * 2);
+#pragma omp parallel for
+    for (int index = 0; index < data_container->num_contacts; index++) {
+      int2 body_id = ids[index];
+      int row = index;
 
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 3, 1);
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 4, 1);
-    D_n_T.append(row * 1 + 0, body_id.y * 6 + 5, 1);
+      ColIndex6(D_t_T_r, D_t_T_c, index * 24 + 0, body_id.x * 6, row * 2 + 0);
+      ColIndex6(D_t_T_r, D_t_T_c, index * 24 + 6, body_id.y * 6, row * 2 + 0);
 
-    D_n_T.finalize(row * 1 + 0);
-
-    if (solver_mode == SLIDING || solver_mode == SPINNING) {
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 0, 1);
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 1, 1);
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 2, 1);
-
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 3, 1);
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 4, 1);
-      D_t_T.append(row * 2 + 0, body_id.x * 6 + 5, 1);
-
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 0, 1);
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 1, 1);
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 2, 1);
-
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 3, 1);
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 4, 1);
-      D_t_T.append(row * 2 + 0, body_id.y * 6 + 5, 1);
-
-      D_t_T.finalize(row * 2 + 0);
-
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 0, 1);
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 1, 1);
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 2, 1);
-
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 3, 1);
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 4, 1);
-      D_t_T.append(row * 2 + 1, body_id.x * 6 + 5, 1);
-
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 0, 1);
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 1, 1);
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 2, 1);
-
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 3, 1);
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 4, 1);
-      D_t_T.append(row * 2 + 1, body_id.y * 6 + 5, 1);
-
-      D_t_T.finalize(row * 2 + 1);
+      ColIndex6(D_t_T_r, D_t_T_c, index * 24 + 12, body_id.x * 6, row * 2 + 1);
+      ColIndex6(D_t_T_r, D_t_T_c, index * 24 + 18, body_id.y * 6, row * 2 + 1);
     }
 
-    if (solver_mode == SPINNING) {
-      D_s_T.append(row * 3 + 0, body_id.x * 6 + 3, 1);
-      D_s_T.append(row * 3 + 0, body_id.x * 6 + 4, 1);
-      D_s_T.append(row * 3 + 0, body_id.x * 6 + 5, 1);
+    thrust::sort_by_key(D_t_T_r.begin(), D_t_T_r.end(), D_t_T_c.begin());
+    last_t = Thrust_Reduce_By_Key(D_t_T_r, D_t_T_r, start_t);
+    start_t.resize(last_t);
+    thrust::inclusive_scan(start_t.begin(), start_t.end(), start_t.begin());
+  }
 
-      D_s_T.append(row * 3 + 0, body_id.y * 6 + 3, 1);
-      D_s_T.append(row * 3 + 0, body_id.y * 6 + 4, 1);
-      D_s_T.append(row * 3 + 0, body_id.y * 6 + 5, 1);
+  if (solver_mode == SPINNING) {
+    D_s_T_r.resize(data_container->num_contacts * 18);
+    D_s_T_c.resize(data_container->num_contacts * 18);
+    start_s.resize(data_container->num_contacts * 18);
 
-      D_s_T.finalize(row * 3 + 0);
+#pragma omp parallel for
+    for (int index = 0; index < data_container->num_contacts; index++) {
+      int2 body_id = ids[index];
+      int row = index;
 
-      D_s_T.append(row * 3 + 1, body_id.x * 6 + 3, 1);
-      D_s_T.append(row * 3 + 1, body_id.x * 6 + 4, 1);
-      D_s_T.append(row * 3 + 1, body_id.x * 6 + 5, 1);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 0, body_id.x * 6 + 3, row * 3 + 0);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 3, body_id.y * 6 + 3, row * 3 + 0);
 
-      D_s_T.append(row * 3 + 1, body_id.y * 6 + 3, 1);
-      D_s_T.append(row * 3 + 1, body_id.y * 6 + 4, 1);
-      D_s_T.append(row * 3 + 1, body_id.y * 6 + 5, 1);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 6, body_id.x * 6 + 3, row * 3 + 1);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 9, body_id.y * 6 + 3, row * 3 + 1);
 
-      D_s_T.finalize(row * 3 + 1);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 12, body_id.x * 6 + 3, row * 3 + 2);
+      ColIndex3(D_s_T_r, D_s_T_c, index * 18 + 15, body_id.y * 6 + 3, row * 3 + 2);
+    }
 
-      D_s_T.append(row * 3 + 2, body_id.x * 6 + 3, 1);
-      D_s_T.append(row * 3 + 2, body_id.x * 6 + 4, 1);
-      D_s_T.append(row * 3 + 2, body_id.x * 6 + 5, 1);
-
-      D_s_T.append(row * 3 + 2, body_id.y * 6 + 3, 1);
-      D_s_T.append(row * 3 + 2, body_id.y * 6 + 4, 1);
-      D_s_T.append(row * 3 + 2, body_id.y * 6 + 5, 1);
-
-      D_s_T.finalize(row * 3 + 2);
+    thrust::sort_by_key(D_s_T_r.begin(), D_s_T_r.end(), D_s_T_c.begin());
+    last_s = Thrust_Reduce_By_Key(D_s_T_r, D_s_T_r, start_s);
+    start_s.resize(last_s);
+    thrust::inclusive_scan(start_s.begin(), start_s.end(), start_s.begin());
+  }
+  #pragma omp parallel sections
+  {
+    #pragma omp section
+    {
+      LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsityTranspose - D_n";
+      for (int i = 0; i < last_n; i++) {
+        uint start = (i == 0) ? 0 : start_n[i - 1];
+        uint end = start_n[i];
+        int row = D_n_T_r[i];
+        for (int index = start; index < end; index++) {
+          int col = D_n_T_c[index];
+          std::cout << row << " " << col << std::endl;
+          D_n.append(row, col, 1);
+          M_invD_n.append(row, col, 1);
+        }
+        D_n.finalize(row);
+        M_invD_n.finalize(row);
+      }
+    }
+    #pragma omp section
+    {
+      LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsityTranspose - D_t";
+      if (solver_mode == SLIDING || solver_mode == SPINNING) {
+        for (int i = 0; i < last_t; i++) {
+          uint start = (i == 0) ? 0 : start_t[i - 1];
+          uint end = start_t[i];
+          int row = D_t_T_r[i];
+          for (int index = start; index < end; index++) {
+            int col = D_t_T_c[index];
+            std::cout << row << " " << col << std::endl;
+            D_t.append(row, col, 1);
+            M_invD_t.append(row, col, 1);
+          }
+          D_t.finalize(row);
+          M_invD_t.finalize(row);
+        }
+      }
+    }
+    #pragma omp section
+    {
+      LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsityTranspose - D_s";
+      if (solver_mode == SPINNING) {
+        for (int i = 0; i < last_s; i++) {
+          uint start = (i == 0) ? 0 : start_s[i - 1];
+          uint end = start_s[i];
+          int row = D_s_T_r[i];
+          for (int index = start; index < end; index++) {
+            int col = D_s_T_c[index];
+            std::cout << row << " " << col << std::endl;
+            D_s.append(row, col, 1);
+            M_invD_s.append(row, col, 1);
+          }
+          D_s.finalize(row);
+          M_invD_s.finalize(row);
+        }
+      }
     }
   }
 }
@@ -708,18 +925,8 @@ void ChConstraintRigidRigid::SolveQuartic() {
     real lambda12 = N(1, 2) - alpha * beta * invW0;
     real mu = f_mu;
 
-    printf("W0=%e\ninvW0=%e\n,alpha=%e\nbeta=%e\nlambda1=%e\nlambda2=%e\nlambda12=%e\nq=%e\nq1=%e\nq2=%e\nmu=%e",
-           W0,
-           invW0,
-           alpha,
-           beta,
-           lambda1,
-           lambda2,
-           lambda12,
-           q,
-           q1,
-           q2,
-           mu);
+    printf("W0=%e\ninvW0=%e\n,alpha=%e\nbeta=%e\nlambda1=%e\nlambda2=%e\nlambda12=%e\nq=%e\nq1=%e\nq2=%e\nmu=%e", W0,
+           invW0, alpha, beta, lambda1, lambda2, lambda12, q, q1, q2, mu);
 
     cg[0] = -mu * mu * q * q;
     cg[1] = -2 * mu * mu * q * alpha * q1 - 2 * mu * mu * q * beta * q2 - (2 * lambda1 + 2 * lambda2) * mu * mu * q * q;
