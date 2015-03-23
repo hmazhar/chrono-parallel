@@ -67,6 +67,8 @@ void function_CalcContactForces(int index,                      // index of this
   // Identify the two bodies in contact.
   int body1 = body_id[index].x;
   int body2 = body_id[index].y;
+  int shape1 = shape_id[index].x;
+  int shape2 = shape_id[index].y;
 
   // If the two contact shapes are actually separated, set zero forces and
   // torques.
@@ -151,8 +153,89 @@ void function_CalcContactForces(int index,                      // index of this
   real gn;
   real gt;
 
-  real delta = -depth[index];
-  real delta_t = use_contact_history ? relvel_t_mag * dT : 0;
+  real delta_n = -depth[index];
+  real3 delta_t = R3(0, 0, 0);
+
+  int i;
+  int contact_id;
+  int shear_body1;
+  int shear_body2;
+  int shear_shape1;
+  int shear_shape2;
+  bool newcontact = true;
+
+  if (use_contact_history) {
+    delta_t = relvel_t * dT;
+
+    // Contact history information will be stored on the body with
+    // the smaller shape in contact or the body with larger index.
+    // We call this body shear_body1.
+
+    real3 aabb_shape1 = aabb_rigid[num_shapes + shape1] - aabb_rigid[shape1];
+    real3 aabb_shape2 = aabb_rigid[num_shapes + shape2] - aabb_rigid[shape2];
+    real size_shape1 = length(aabb_shape1);
+    real size_shape2 = length(aabb_shape2);
+
+//    if (size_shape1 < size_shape2) {
+//      shear_body1 = body1;
+//      shear_body2 = body2;
+//    } else if (size_shape2 < size_shape1) {
+//      shear_body1 = body2;
+//      shear_body2 = body1;
+//    } else {
+      shear_body1 = std::max(body1, body2);
+      shear_body2 = std::min(body1, body2);
+//    }
+    shear_shape1 = std::max(shape1, shape2);
+    shear_shape2 = std::min(shape1, shape2);
+
+    // Check if contact history already exists.
+    // If not, initialize new contact history.
+
+    for (i = 0; i < max_shear; i++) {
+      if (shear_neigh[max_shear * shear_body1 + i].x == shear_body2
+       && shear_neigh[max_shear * shear_body1 + i].y == shear_shape1
+       && shear_neigh[max_shear * shear_body1 + i].z == shear_shape2) {
+        contact_id = i;
+        newcontact = false;
+        break;
+      }
+    }
+    if (newcontact == true) {
+      for (i = 0; i < max_shear; i++) {
+        if(shear_neigh[max_shear * shear_body1 + i].x == -1) {
+          contact_id = i;
+          shear_neigh[max_shear * shear_body1 + i].x = shear_body2;
+          shear_neigh[max_shear * shear_body1 + i].y = shear_shape1;
+          shear_neigh[max_shear * shear_body1 + i].z = shear_shape2;
+          shear_disp[max_shear * shear_body1 + i].x = 0;
+          shear_disp[max_shear * shear_body1 + i].y = 0;
+          shear_disp[max_shear * shear_body1 + i].z = 0;
+          break;
+        }
+      }
+    }
+
+    // Record that these two bodies are really in contact at this time.
+    shear_touch[max_shear * shear_body1 + contact_id] = true;
+
+    // Increment stored contact history tangential (shear) displacement vector
+    // and project it onto the <current> contact plane.
+
+    if (shear_body1 == body1) {
+      shear_disp[max_shear * shear_body1 + contact_id] += delta_t;
+      shear_disp[max_shear * shear_body1 + contact_id] -=
+        dot(shear_disp[max_shear * shear_body1 + contact_id], normal[index])
+        * normal[index];
+      delta_t = shear_disp[max_shear * shear_body1 + contact_id];
+    } else {
+      shear_disp[max_shear * shear_body1 + contact_id] -= delta_t;
+      shear_disp[max_shear * shear_body1 + contact_id] -=
+        dot(shear_disp[max_shear * shear_body1 + contact_id], normal[index])
+        * normal[index];
+      delta_t = -shear_disp[max_shear * shear_body1 + contact_id];
+    }
+  }
 
   switch (force_model) {
     case HOOKE:
@@ -175,7 +258,7 @@ void function_CalcContactForces(int index,                      // index of this
 
     case HERTZ:
       if (use_mat_props) {
-        double sqrt_Rd = sqrt(eff_radius[index] * delta);
+        double sqrt_Rd = sqrt(eff_radius[index] * delta_n);
         double Sn = 2 * E_eff * sqrt_Rd;
         double St = 8 * G_eff * sqrt_Rd;
         double loge = log(cr_eff);
@@ -185,7 +268,7 @@ void function_CalcContactForces(int index,                      // index of this
         gn = -2 * sqrt(5.0 / 6) * beta * sqrt(Sn * m_eff);
         gt = -2 * sqrt(5.0 / 6) * beta * sqrt(St * m_eff);
       } else {
-        double tmp = eff_radius[index] * std::sqrt(delta);
+        double tmp = eff_radius[index] * std::sqrt(delta_n);
         kn = tmp * user_kn;
         kt = tmp * user_kt;
         gn = tmp * m_eff * user_gn;
@@ -195,28 +278,70 @@ void function_CalcContactForces(int index,                      // index of this
       break;
   }
 
-  // Calculate the magnitudes of the normal and tangential contact forces.
-  // Recall that relvel_n_mag is signed, while relvel_t_mag is always positive.
-  real forceN = kn * delta - gn * relvel_n_mag;
-  real forceT = kt * delta_t + gt * relvel_t_mag;
+  // Calculate the the normal and tangential contact forces.
+  // The normal force is a magnitude, and it will be applied along the contact
+  // normal direction (negative relative to body1 & positive relative to body2).
+  // The tangential force is a vector with two parts: one depends on the stored
+  // contact history tangential (or shear) displacement vector delta_t, and the
+  // other depends on the current relative velocity vector (for viscous damping).
+  real forceN_mag = kn * delta_n - gn * relvel_n_mag;
+  real3 forceT_stiff = kt * delta_t;
+  real3 forceT_damp = gt * relvel_t;
 
-  // If the resulting force is negative, the two shapes are moving away from
-  // each other so fast that no contact force is generated.
-  if (forceN < 0) {
-    forceN = 0;
-    forceT = 0;
+  // If the resulting normal force is negative, then the two shapes are
+  // moving away from each other so fast that no contact force is generated.
+  if (forceN_mag < 0) {
+    forceN_mag = 0;
+    forceT_stiff.x = 0;
+    forceT_stiff.y = 0;
+    forceT_stiff.z = 0;
+    forceT_damp.x = 0;
+    forceT_damp.y = 0;
+    forceT_damp.z = 0;
   }
 
   // Include cohesion force.
-  forceN -= cohesion_eff;
+  // (This is a very simple model, which can perhaps be improved later.)
+  forceN_mag -= cohesion_eff;
 
-  // Coulomb law
-  forceT = std::min(forceT, mu_eff * fabsf(forceN));
+  // Apply Coulomb friction law.
+  // We must enforce force_T_mag <= mu_eff * |forceN_mag|.
+  // If force_T_mag > mu_eff * |forceN_mag| and there is shear displacement
+  // due to contact history, then the shear displacement is scaled so that
+  // the tangential force will be correct if force_T_mag subsequently drops
+  // below the Coulomb limit.  Also, if there is sliding, then there is no
+  // viscous damping in the tangential direction (to keep the Coulomb limit
+  // strict, and independent of velocity).
+//  real forceT_mag = length(forceT_stiff + forceT_damp);  // This seems correct
+  real forceT_mag = length(forceT_stiff);  // This is what LAMMPS/LIGGGHTS does
+  real delta_t_mag = length(delta_t);
+  real forceT_slide = mu_eff * fabsf(forceN_mag);
+  if (forceT_mag > forceT_slide) {
+    if (delta_t_mag != 0.0) {
+      real forceT_stiff_mag = length(forceT_stiff);
+      double ratio = forceT_slide/forceT_stiff_mag;
+      forceT_stiff *= ratio;
+      if (use_contact_history) {
+        if (shear_body1 == body1) {
+          shear_disp[max_shear * shear_body1 + contact_id] = forceT_stiff/kt;
+        } else {
+          shear_disp[max_shear * shear_body1 + contact_id] = -forceT_stiff/kt;
+        }
+      }
+    } else {
+      forceT_stiff.x = 0.0;
+      forceT_stiff.y = 0.0;
+      forceT_stiff.z = 0.0;
+    }
+    forceT_damp.x = 0.0;
+    forceT_damp.y = 0.0;
+    forceT_damp.z = 0.0;
+  }
 
   // Accumulate normal and tangential forces
-  real3 force = forceN * normal[index];
-  if (relvel_t_mag >= min_slip_vel)
-    force -= (forceT / relvel_t_mag) * relvel_t;
+  real3 force = forceN_mag * normal[index];
+  force -= forceT_stiff;
+  force -= forceT_damp;
 
   // Body forces (in global frame) & torques (in local frame)
   // --------------------------------------------------------
