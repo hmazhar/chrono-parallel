@@ -49,11 +49,17 @@ void function_CalcContactForces(int index,                      // index of this
                                 real* mu,                // coefficient of friction (per body)
                                 real* cohesion,          // cohesion force (per body)
                                 int2* body_id,           // body IDs (per contact)
+                                int2* shape_id,          // shape IDs (per contact)
                                 real3* pt1,              // point on shape 1 (per contact)
                                 real3* pt2,              // point on shape 2 (per contact)
                                 real3* normal,           // contact normal (per contact)
                                 real* depth,             // penetration depth (per contact)
                                 real* eff_radius,        // effective contact radius (per contact)
+                                int3* shear_neigh,       // neighbor list of contacting bodies and shapes (max_shear per body)
+                                bool* shear_touch,       // flag if contact in neighbor list is persistent (max_shear per body)
+                                real3* shear_disp,       // accumulated shear displacement for each neighbor (max_shear per body)
+                                uint num_shapes,         // number of shapes
+                                real3* aabb_rigid,       // list of bounding box end points (two times number of shapes)
                                 int* ext_body_id,        // [output] body IDs (two per contact)
                                 real3* ext_body_force,   // [output] body force (two per contact)
                                 real3* ext_body_torque)  // [output] body torque (two per contact)
@@ -234,7 +240,9 @@ void function_CalcContactForces(int index,                      // index of this
 // -----------------------------------------------------------------------------
 void ChLcpSolverParallelDEM::host_CalcContactForces(custom_vector<int>& ext_body_id,
                                                     custom_vector<real3>& ext_body_force,
-                                                    custom_vector<real3>& ext_body_torque) {
+                                                    custom_vector<real3>& ext_body_torque,
+                                                    custom_vector<int2>& shape_pairs,
+                                                    custom_vector<bool>& shear_touch) {
 #pragma omp parallel for
   for (int index = 0; index < data_container->num_contacts; index++) {
     function_CalcContactForces(index,
@@ -254,11 +262,17 @@ void ChLcpSolverParallelDEM::host_CalcContactForces(custom_vector<int>& ext_body
                                data_container->host_data.mu.data(),
                                data_container->host_data.cohesion_data.data(),
                                data_container->host_data.bids_rigid_rigid.data(),
+                               shape_pairs.data(),
                                data_container->host_data.cpta_rigid_rigid.data(),
                                data_container->host_data.cptb_rigid_rigid.data(),
                                data_container->host_data.norm_rigid_rigid.data(),
                                data_container->host_data.dpth_rigid_rigid.data(),
                                data_container->host_data.erad_rigid_rigid.data(),
+                               data_container->host_data.shear_neigh.data(),
+                               shear_touch.data(),
+                               data_container->host_data.shear_disp.data(),
+                               data_container->num_shapes,
+                               data_container->host_data.aabb_rigid.data(),
                                ext_body_id.data(),
                                ext_body_force.data(),
                                ext_body_torque.data());
@@ -313,8 +327,30 @@ void ChLcpSolverParallelDEM::ProcessContacts() {
   custom_vector<int> ext_body_id(2 * data_container->num_contacts);
   custom_vector<real3> ext_body_force(2 * data_container->num_contacts);
   custom_vector<real3> ext_body_torque(2 * data_container->num_contacts);
+  custom_vector<int2> shape_pairs(data_container->num_contacts);
+  custom_vector<bool> shear_touch(max_shear * data_container->num_bodies);
 
-  host_CalcContactForces(ext_body_id, ext_body_force, ext_body_torque);
+  if (data_container->settings.solver.use_contact_history) {
+    thrust::fill(thrust_parallel, shear_touch.begin(), shear_touch.end(), false);
+#pragma omp parallel for
+    for (int i = 0; i < data_container->num_contacts; i++) {
+      int2 pair = I2(int(data_container->host_data.pair_rigid_rigid[i] >> 32),
+                     int(data_container->host_data.pair_rigid_rigid[i] & 0xffffffff));
+      shape_pairs[i] = pair;
+    }
+  }
+
+  host_CalcContactForces(ext_body_id, ext_body_force, ext_body_torque, shape_pairs, shear_touch);
+
+  if (data_container->settings.solver.use_contact_history) {
+#pragma omp parallel for
+    for (int index = 0; index < data_container->num_bodies; index++) {
+      for (int i = 0; i < max_shear; i++) {
+        if (shear_touch[max_shear * index + i] == false)
+          data_container->host_data.shear_neigh[max_shear * index + i].x = -1;
+      }
+    }
+  }
 
   // 2. Calculate contact forces and torques - per body basis
   //    Accumulate the contact forces and torques for all bodies that are
