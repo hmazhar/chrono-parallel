@@ -13,7 +13,6 @@
 #include "chrono_utils/ChUtilsCreators.h"
 #include "chrono_utils/ChUtilsInputOutput.h"
 
-#include "config.h"
 #include "subsys/ChVehicleModelData.h"
 #include "subsys/vehicle/Vehicle.h"
 #include "subsys/powertrain/SimplePowertrain.h"
@@ -147,7 +146,7 @@ void MyVehicle::Update(double time) {
 // =============================================================================
 int main(int argc, char* argv[]) {
   // Set path to ChronoVehicle data files
-  vehicle::SetDataPath(CHRONOVEHICLE_DATA_DIR);
+  vehicle::SetDataPath(CHRONO_VEHICLE_DATA_DIR);
 
   // --------------------------
   // Create output directories.
