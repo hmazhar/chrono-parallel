@@ -61,6 +61,16 @@ class CH_UTILS_API TireContactCallback {
 };
 
 // -----------------------------------------------------------------------------
+/// Callback class for specifying chassis contact geometry.
+class CH_UTILS_API ChassisContactCallback {
+ public:
+  /// A derived class must implement the function onCallback() which must append
+  /// the contact shape(s) to the provided chassis body.
+  virtual void onCallback(ChSharedPtr<ChBodyAuxRef> chassisBody  ///< Pointer to the wheel body
+                          ) = 0;
+};
+
+// -----------------------------------------------------------------------------
 /// Wrapper class for a Chrono::Vehicle vehicle and powertrain assembly.
 /// A VehicleSystem always uses rigid tires (attached through a user-provided
 /// callback object of type TireContactCallback) and uses driver inputs provided
@@ -86,6 +96,11 @@ class CH_UTILS_API VehicleSystem {
   /// If not set, all tire contact geometry defaults to cylinders.
   void SetTireContactCallback(TireContactCallback* cb) { m_tire_cb = cb; }
 
+  /// Set the callback object for specifying chassis contact geometry.
+  /// Note that this function must be called before Initialize().
+  /// If not set, no contact geometry is attached to the vehicle chassis.
+  void SetChassisContactCallback(ChassisContactCallback* cb) { m_chassis_cb = cb; }
+
   /// Initialize the vehicle model at the specified location and orientation.
   void Initialize(const ChVector<>& init_loc,     ///< initial location of the chassis reference frame
                   const ChQuaternion<>& init_rot  ///< initial orientation of the chassis reference frame
@@ -94,12 +109,19 @@ class CH_UTILS_API VehicleSystem {
   /// Update the vehicle model at the specified time.
   void Update(double time);
 
+  /// Get handle to the underlying vehicle subsystem.
+  ChSharedPtr<Vehicle> GetVehicle() const { return m_vehicle; }
+
+  /// Get handle to the underlying powertrain subsystem.
+  ChSharedPtr<SimplePowertrain> GetPowertrain() const { return m_powertrain; }
+
  private:
   ChSharedPtr<Vehicle> m_vehicle;
   ChSharedPtr<SimplePowertrain> m_powertrain;
   ChTireForces m_tire_forces;
   DriverInputsCallback* m_driver_cb;
   TireContactCallback* m_tire_cb;
+  ChassisContactCallback* m_chassis_cb;
 };
 
 }  // namespace utils
