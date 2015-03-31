@@ -236,17 +236,17 @@ bool TestLinActuator(utils::SystemType sys_type,  // type of system (PARALLEL_DE
   // Settings
   //---------
 
-  int threads = 20;
+  int threads = 1;
   bool thread_tuning = false;
 
-  double time_end = 5;
+  double time_end = 2;
   double time_step = 1e-3;
 
   double tolerance = 1e-5;
 
   int max_iteration_bilateral = 100;
-  int max_iteration_normal = 50;
-  int max_iteration_sliding = 100;
+  int max_iteration_normal = 0;
+  int max_iteration_sliding = 0;
   int max_iteration_spinning = 0;
 
   bool clamp_bilaterals = false;
@@ -270,12 +270,7 @@ bool TestLinActuator(utils::SystemType sys_type,  // type of system (PARALLEL_DE
   msystem->Set_G_acc(gravity);
 
   // Set number of threads.
-  int max_threads = msystem->GetParallelThreadNumber();
-  if (threads > max_threads)
-    threads = max_threads;
-  msystem->SetParallelThreadNumber(threads);
   omp_set_num_threads(threads);
-
   msystem->GetSettings()->max_threads = threads;
   msystem->GetSettings()->perform_thread_tuning = thread_tuning;
 
