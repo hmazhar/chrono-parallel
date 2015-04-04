@@ -30,29 +30,6 @@ using std::endl;
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// Specification of the vehicle model
-// -----------------------------------------------------------------------------
-
-enum WheelType { CYLINDRICAL, LUGGED };
-
-// Type of wheel/tire (controls both contact and visualization)
-WheelType wheel_type = CYLINDRICAL;
-
-// JSON files for vehicle model (using different wheel visualization meshes)
-std::string vehicle_file_cyl("hmmwv/vehicle/HMMWV_Vehicle_simple.json");
-std::string vehicle_file_lug("hmmwv/vehicle/HMMWV_Vehicle_simple_lugged.json");
-
-// JSON files for powertrain (simple)
-std::string simplepowertrain_file("hmmwv/powertrain/HMMWV_SimplePowertrain.json");
-
-// Initial vehicle position and orientation
-ChVector<> initLoc(-3.0, 0, 0.75);
-ChQuaternion<> initRot(1, 0, 0, 0);
-
-// Coefficient of friction
-float mu_t = 0.8;
-
-// -----------------------------------------------------------------------------
 // Specification of the terrain
 // -----------------------------------------------------------------------------
 
@@ -80,7 +57,30 @@ ChVector<> inertia_g = 0.4 * mass_g * r_g * r_g * ChVector<>(1, 1, 1);
 
 float mu_g = 0.8;
 
-int num_particles = 1000;
+int num_particles = 100;
+
+// -----------------------------------------------------------------------------
+// Specification of the vehicle model
+// -----------------------------------------------------------------------------
+
+enum WheelType { CYLINDRICAL, LUGGED };
+
+// Type of wheel/tire (controls both contact and visualization)
+WheelType wheel_type = CYLINDRICAL;
+
+// JSON files for vehicle model (using different wheel visualization meshes)
+std::string vehicle_file_cyl("hmmwv/vehicle/HMMWV_Vehicle_simple.json");
+std::string vehicle_file_lug("hmmwv/vehicle/HMMWV_Vehicle_simple_lugged.json");
+
+// JSON files for powertrain (simple)
+std::string simplepowertrain_file("hmmwv/powertrain/HMMWV_SimplePowertrain.json");
+
+// Initial vehicle position and orientation
+ChVector<> initLoc(-hdimX + 2.5, 0, 0.6);
+ChQuaternion<> initRot(1, 0, 0, 0);
+
+// Coefficient of friction
+float mu_t = 0.8;
 
 // -----------------------------------------------------------------------------
 // Simulation parameters
@@ -97,19 +97,23 @@ double time_end = 7;
 
 // Duration of the "hold time" (vehicle chassis fixed and no driver inputs).
 // This can be used to allow the granular material to settle.
-double time_hold = 2;
+double time_hold = 0.2;
 
 // Solver parameters
-double time_step = 1e-3;
+double time_step = 2e-4;
 
 double tolerance = 0.1;
 
 int max_iteration_bilateral = 100;
 int max_iteration_normal = 0;
-int max_iteration_sliding = 200;
+int max_iteration_sliding = 2000;
 int max_iteration_spinning = 0;
 
-float contact_recovery_speed = 0.1;
+float contact_recovery_speed = -1;
+
+// Periodically monitor maximum bilateral constraint violation
+bool monitor_bilaterals = false;
+int bilateral_frame_interval = 100;
 
 // Output
 bool povray_output = false;
@@ -172,7 +176,7 @@ class MyLuggedTire : public utils::TireContactCallback {
   }
 
   virtual void onCallback(ChSharedPtr<ChBody> wheelBody, double radius, double width) {
-    ChCollisionModelParallel* coll_model = (ChCollisionModelParallel*) wheelBody->GetCollisionModel();
+    ChCollisionModelParallel* coll_model = (ChCollisionModelParallel*)wheelBody->GetCollisionModel();
     coll_model->ClearModel();
 
     // Assemble the tire contact from 15 segments, properly offset.
@@ -204,7 +208,7 @@ class MyLuggedTire : public utils::TireContactCallback {
 // In addition, this version overrides the visualization assets of the provided
 // wheel body with the collision meshes.
 class MyLuggedTire_vis : public utils::TireContactCallback {
-public:
+ public:
   MyLuggedTire_vis() {
     std::string lugged_file("hmmwv/lugged_wheel_section.obj");
     utils::LoadConvexMesh(vehicle::GetDataFile(lugged_file), lugged_mesh, lugged_convex);
@@ -217,7 +221,7 @@ public:
     wheelBody->GetCollisionModel()->ClearModel();
     for (int j = 0; j < 15; j++) {
       utils::AddConvexCollisionModel(wheelBody, lugged_mesh, lugged_convex, VNULL,
-        Q_from_AngAxis(j * 24 * CH_C_DEG_TO_RAD, VECT_Y), false);
+                                     Q_from_AngAxis(j * 24 * CH_C_DEG_TO_RAD, VECT_Y), false);
     }
     // This cylinder acts like the rims
     utils::AddCylinderGeometry(wheelBody.get_ptr(), 0.223, 0.126);
@@ -226,11 +230,10 @@ public:
     wheelBody->GetMaterialSurface()->SetFriction(mu_t);
   }
 
-private:
+ private:
   ChConvexDecompositionHACDv2 lugged_convex;
   geometry::ChTriangleMeshConnected lugged_mesh;
 };
-
 
 // =============================================================================
 
@@ -306,6 +309,8 @@ int main(int argc, char* argv[]) {
   // Edit system settings.
   // ---------------------
 
+  system->GetSettings()->solver.use_full_inertia_tensor = false;
+
   system->GetSettings()->solver.tolerance = tolerance;
 
   system->GetSettings()->solver.solver_mode = SLIDING;
@@ -317,6 +322,8 @@ int main(int argc, char* argv[]) {
   system->GetSettings()->solver.contact_recovery_speed = contact_recovery_speed;
   system->ChangeSolverType(APGD);
 
+  system->GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_HYBRID_MPR;
+  system->GetSettings()->collision.collision_envelope = 0.1 * r_g;
   system->GetSettings()->collision.bins_per_axis = I3(10, 10, 10);
 
   // -------------------
@@ -389,11 +396,14 @@ int main(int argc, char* argv[]) {
   MyDriverInputs driver_cb(time_hold);
   vehicle->SetDriverInputsCallback(&driver_cb);
 
-  // Initially, fix the chassis (will be released after time_hold).
-  vehicle->GetVehicle()->GetChassis()->SetBodyFixed(true);
-
   // Initialize the vehicle at a height above the terrain.
   vehicle->Initialize(initLoc + ChVector<>(0, 0, vertical_offset), initRot);
+
+  // Initially, fix the chassis and wheel bodies (will be released after time_hold).
+  vehicle->GetVehicle()->GetChassis()->SetBodyFixed(true);
+  for (int i = 0; i < 2 * vehicle->GetVehicle()->GetNumberAxles(); i++) {
+    vehicle->GetVehicle()->GetWheelBody(i)->SetBodyFixed(true);
+  }
 
 // -----------------------
 // Perform the simulation.
@@ -436,8 +446,13 @@ int main(int argc, char* argv[]) {
     }
 
     // Release the vehicle chassis at the end of the hold time.
-    if (vehicle->GetVehicle()->GetChassis()->GetBodyFixed() && time > time_hold)
+    if (vehicle->GetVehicle()->GetChassis()->GetBodyFixed() && time > time_hold) {
+      cout << "Release vehicle t = " << time << endl;
       vehicle->GetVehicle()->GetChassis()->SetBodyFixed(false);
+      for (int i = 0; i < 2 * vehicle->GetVehicle()->GetNumberAxles(); i++) {
+        vehicle->GetVehicle()->GetWheelBody(i)->SetBodyFixed(false);
+      }
+    }
 
     // Update vehicle
     vehicle->Update(time);
@@ -452,6 +467,13 @@ int main(int argc, char* argv[]) {
 #else
     system->DoStepDynamics(time_step);
 #endif
+
+    // Periodically display maximum constraint violation
+    if (monitor_bilaterals && sim_frame % bilateral_frame_interval == 0) {
+      std::vector<double> cvec;
+      ////vehicle->GetVehicle()->LogConstraintViolations();
+      cout << "  Max. violation = " << system->CalculateConstraintViolation(cvec) << endl;
+    }
 
     // Update counters.
     time += time_step;

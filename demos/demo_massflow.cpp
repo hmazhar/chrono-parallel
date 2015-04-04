@@ -55,7 +55,7 @@ using std::endl;
 // -----------------------------------------------------------------------------
 
 // Comment the following line to use DVI contact
-#define DEM
+#define USE_DEM
 
 enum ProblemType { SETTLING, DROPPING };
 
@@ -78,7 +78,7 @@ double time_settling_min = 0.1;
 double time_settling_max = 1.0;
 double time_dropping_max = 6.0;
 
-#ifdef DEM
+#ifdef USE_DEM
 double time_step = 1e-5;
 int max_iteration = 20;
 #else
@@ -94,7 +94,7 @@ double tolerance = 500.0;
 int max_iteration_bilateral = 0;
 
 // Output
-#ifdef DEM
+#ifdef USE_DEM
 const std::string out_dir = "../MASSFLOW_DEM";
 #else
 const std::string out_dir = "../MASSFLOW_DVI";
@@ -152,7 +152,7 @@ double height_collector = 1.0e-2;  // height of collector walls
 // -----------------------------------------------------------------------------
 ChBody* CreateMechanism(ChSystemParallel* system) {
 // Create the common material
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_b;
   mat_b = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_b->SetYoungModulus(Y_c);
@@ -164,9 +164,9 @@ ChBody* CreateMechanism(ChSystemParallel* system) {
 #endif
 
 // Angled insert
-#ifdef DEM
-  ChSharedBodyDEMPtr insert(new ChBodyDEM(new ChCollisionModelParallel));
-  insert->SetMaterialSurfaceDEM(mat_b);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> insert(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  insert->SetMaterialSurface(mat_b);
 #else
   ChSharedBodyPtr insert(new ChBody(new ChCollisionModelParallel));
   insert->SetMaterialSurface(mat_b);
@@ -187,9 +187,9 @@ ChBody* CreateMechanism(ChSystemParallel* system) {
   system->AddBody(insert);
 
 // Static slot (back wall)
-#ifdef DEM
-  ChSharedBodyDEMPtr slot(new ChBodyDEM(new ChCollisionModelParallel));
-  slot->SetMaterialSurfaceDEM(mat_b);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> slot(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  slot->SetMaterialSurface(mat_b);
 #else
   ChSharedBodyPtr slot(new ChBody(new ChCollisionModelParallel));
   slot->SetMaterialSurface(mat_b);
@@ -210,9 +210,9 @@ ChBody* CreateMechanism(ChSystemParallel* system) {
   system->AddBody(slot);
 
 // Lateral walls
-#ifdef DEM
-  ChSharedBodyDEMPtr wall(new ChBodyDEM(new ChCollisionModelParallel));
-  wall->SetMaterialSurfaceDEM(mat_b);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> wall(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  wall->SetMaterialSurface(mat_b);
 #else
   ChSharedBodyPtr wall(new ChBody(new ChCollisionModelParallel));
   wall->SetMaterialSurface(mat_b);
@@ -238,20 +238,20 @@ ChBody* CreateMechanism(ChSystemParallel* system) {
   system->AddBody(wall);
 
 // Containing bin
-#ifdef DEM
-  utils::CreateBoxContainerDEM(system,
-                               -3,
-                               mat_b,
-                               ChVector<>(size_collector / 2, size_collector / 2, height_collector / 2),
-                               thickness / 2,
-                               ChVector<>(0, 0, -pos_collector));
+#ifdef USE_DEM
+  utils::CreateBoxContainer(system,
+                            -3,
+                            mat_b,
+                            ChVector<>(size_collector / 2, size_collector / 2, height_collector / 2),
+                            thickness / 2,
+                            ChVector<>(0, 0, -pos_collector));
 #else
-  utils::CreateBoxContainerDVI(system,
-                               -3,
-                               mat_b,
-                               ChVector<>(size_collector / 2, size_collector / 2, height_collector / 2),
-                               thickness / 2,
-                               ChVector<>(0, 0, -pos_collector));
+  utils::CreateBoxContainer(system,
+                            -3,
+                            mat_b,
+                            ChVector<>(size_collector / 2, size_collector / 2, height_collector / 2),
+                            thickness / 2,
+                            ChVector<>(0, 0, -pos_collector));
 #endif
 
   // Return the angled insert body
@@ -263,7 +263,7 @@ ChBody* CreateMechanism(ChSystemParallel* system) {
 // -----------------------------------------------------------------------------
 void CreateParticles(ChSystemParallel* system) {
 // Create a material for the granular material
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_g;
   mat_g = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_g->SetYoungModulus(Y_g);
@@ -278,7 +278,7 @@ void CreateParticles(ChSystemParallel* system) {
   utils::Generator gen(system);
 
   utils::MixtureIngredientPtr& m1 = gen.AddMixtureIngredient(utils::SPHERE, 1.0);
-#ifdef DEM
+#ifdef USE_DEM
   m1->setDefaultMaterialDEM(mat_g);
 #else
   m1->setDefaultMaterialDVI(mat_g);
@@ -360,7 +360,7 @@ bool CheckSettled(ChSystemParallel* sys, double threshold) {
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
 // Create system
-#ifdef DEM
+#ifdef USE_DEM
   cout << "Create DEM system" << endl;
   ChSystemParallelDEM* msystem = new ChSystemParallelDEM();
 #else
@@ -385,7 +385,7 @@ int main(int argc, char* argv[]) {
   msystem->GetSettings()->solver.max_iteration_bilateral = max_iteration_bilateral;
   msystem->GetSettings()->solver.tolerance = tolerance;
 
-#ifdef DEM
+#ifdef USE_DEM
   msystem->GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_R;
 #else
   msystem->GetSettings()->solver.solver_mode = SLIDING;

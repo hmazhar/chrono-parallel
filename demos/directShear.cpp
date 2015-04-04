@@ -64,7 +64,7 @@ using std::endl;
 // -----------------------------------------------------------------------------
 
 // Comment the following line to use DVI contact
-#define DEM
+#define USE_DEM
 
 enum ProblemType { SETTLING, PRESSING, SHEARING, TESTING };
 
@@ -109,7 +109,7 @@ double time_testing = 2;
 double settling_tol = 0.2;
 
 // Solver settings
-#ifdef DEM
+#ifdef USE_DEM
 double time_step = 1e-5;
 int max_iteration_bilateral = 100;
 #else
@@ -126,7 +126,7 @@ double bilateral_clamp_speed = 10e30;
 double tolerance = 1;
 
 // Output
-#ifdef DEM
+#ifdef USE_DEM
 const std::string out_dir = "../DIRECTSHEAR_DEM";
 #else
 const std::string out_dir = "../DIRECTSHEAR_DVI";
@@ -225,9 +225,9 @@ void CreateMechanismBodies(ChSystemParallel* system) {
 // Create the ground body -- always FIRST body in system
 // ----------------------
 
-#ifdef DEM
-  ChSharedPtr<ChBodyDEM> ground(new ChBodyDEM(new ChCollisionModelParallel));
-  ground->SetMaterialSurfaceDEM(mat_walls);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> ground(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  ground->SetMaterialSurface(mat_walls);
 #else
   ChSharedPtr<ChBody> ground(new ChBody(new ChCollisionModelParallel));
   ground->SetMaterialSurface(mat_walls);
@@ -259,9 +259,9 @@ void CreateMechanismBodies(ChSystemParallel* system) {
 // Initially, the shear box is fixed to ground.
 // During the shearing phase it may be released (if using an actuator)
 
-#ifdef DEM
-  ChSharedBodyDEMPtr box(new ChBodyDEM(new ChCollisionModelParallel));
-  box->SetMaterialSurfaceDEM(mat_walls);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> box(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  box->SetMaterialSurface(mat_walls);
 #else
   ChSharedBodyPtr box(new ChBody(new ChCollisionModelParallel));
   box->SetMaterialSurface(mat_walls);
@@ -303,9 +303,9 @@ void CreateMechanismBodies(ChSystemParallel* system) {
   double area = 4 * hdimX * hdimY;
   double mass = normalPressure * area / gravity;
 
-#ifdef DEM
-  ChSharedBodyDEMPtr plate(new ChBodyDEM(new ChCollisionModelParallel));
-  plate->SetMaterialSurfaceDEM(mat_walls);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> plate(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  plate->SetMaterialSurface(mat_walls);
 #else
   ChSharedBodyPtr plate(new ChBody(new ChCollisionModelParallel));
   plate->SetMaterialSurface(mat_walls);
@@ -375,7 +375,7 @@ int CreateGranularMaterial(ChSystemParallel* system) {
 // Create a material for the granular material
 // -------------------------------------------
 
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_g;
   mat_g = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_g->SetYoungModulus(Y_g);
@@ -395,7 +395,7 @@ int CreateGranularMaterial(ChSystemParallel* system) {
   utils::Generator gen(system);
 
   utils::MixtureIngredientPtr& m1 = gen.AddMixtureIngredient(utils::SPHERE, 1.0);
-#ifdef DEM
+#ifdef USE_DEM
   m1->setDefaultMaterialDEM(mat_g);
 #else
   m1->setDefaultMaterialDVI(mat_g);
@@ -432,7 +432,7 @@ void CreateBall(ChSystemParallel* system) {
 // Create a material for the ball
 // ------------------------------
 
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_g;
   mat_g = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_g->SetYoungModulus(Y_g);
@@ -448,9 +448,9 @@ void CreateBall(ChSystemParallel* system) {
 // Create the ball
 // ---------------
 
-#ifdef DEM
-  ChSharedBodyDEMPtr ball(new ChBodyDEM(new ChCollisionModelParallel));
-  ball->SetMaterialSurfaceDEM(mat_g);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> ball(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  ball->SetMaterialSurface(mat_g);
 #else
   ChSharedBodyPtr ball(new ChBody(new ChCollisionModelParallel));
   ball->SetMaterialSurface(mat_g);
@@ -534,7 +534,7 @@ int main(int argc, char* argv[]) {
 // Create system
 // -------------
 
-#ifdef DEM
+#ifdef USE_DEM
   cout << "Create DEM system" << endl;
   ChSystemParallelDEM* msystem = new ChSystemParallelDEM();
 #else
@@ -561,7 +561,7 @@ int main(int argc, char* argv[]) {
   msystem->GetSettings()->solver.clamp_bilaterals = clamp_bilaterals;
   msystem->GetSettings()->solver.bilateral_clamp_speed = bilateral_clamp_speed;
 
-#ifdef DEM
+#ifdef USE_DEM
   msystem->GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_R;
   msystem->GetSettings()->solver.contact_force_model = HERTZ;
   msystem->GetSettings()->solver.use_contact_history = true;

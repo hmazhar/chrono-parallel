@@ -37,7 +37,7 @@ using namespace chrono::collision;
 // -----------------------------------------------------------------------------
 ChSystemParallel* CreateSystem(utils::SystemType sys_type) {
   // Settings
-  int threads = 20;
+  int threads = 1;
   bool thread_tuning = false;
 
   double tolerance = 1e-5;
@@ -65,12 +65,7 @@ ChSystemParallel* CreateSystem(utils::SystemType sys_type) {
   }
 
   // Set number of threads.
-  int max_threads = system->GetParallelThreadNumber();
-  if (threads > max_threads)
-    threads = max_threads;
-  system->SetParallelThreadNumber(threads);
   omp_set_num_threads(threads);
-
   system->GetSettings()->max_threads = threads;
   system->GetSettings()->perform_thread_tuning = thread_tuning;
 
@@ -241,10 +236,10 @@ bool TestShaftBody(const char* test_name, utils::SystemType sys_type) {
   ChBody* bodyB_ptr;
   switch (sys_type) {
     case utils::PARALLEL_DEM:
-      bodyB_ptr = new ChBodyDEM(new ChCollisionModelParallel);
+      bodyB_ptr = new ChBody(new ChCollisionModelParallel, ChBody::DEM);
       break;
     case utils::PARALLEL_DVI:
-      bodyB_ptr = new ChBody(new ChCollisionModelParallel);
+      bodyB_ptr = new ChBody(new ChCollisionModelParallel, ChBody::DVI);
       break;
   }
   ChSharedPtr<ChBody> bodyB(bodyB_ptr);

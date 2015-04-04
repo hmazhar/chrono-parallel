@@ -28,7 +28,6 @@
 #include "physics/ChSystem.h"
 #include "physics/ChBody.h"
 #include "physics/ChBodyAuxRef.h"
-#include "physics/ChBodyDEM.h"
 #include "physics/ChContactDEM.h"
 #include "physics/ChGlobal.h"
 #include "physics/ChContactContainer.h"
@@ -92,6 +91,10 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   // based on the passed logging level and the state of that level, enable or
   // disable logging level
   void SetLoggingLevel(LOGGINGLEVEL level, bool state = true);
+
+  /// Calculate the (linearized) bilateral constraint violations.
+  /// Return the maximum constraint violation.
+  double CalculateConstraintViolation(std::vector<double>& cvec);
 
   ChParallelDataManager* data_manager;
 

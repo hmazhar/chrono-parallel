@@ -55,7 +55,7 @@ using std::endl;
 // -----------------------------------------------------------------------------
 
 // Comment the following line to use DVI contact
-#define DEM
+#define USE_DEM
 
 enum ProblemType { SETTLING, DROPPING };
 
@@ -78,7 +78,7 @@ double time_settling_min = 0.1;
 double time_settling_max = 0.8;
 double time_dropping = 0.06;
 
-#ifdef DEM
+#ifdef USE_DEM
 double time_step = 1e-5;
 int max_iteration = 20;
 #else
@@ -92,7 +92,7 @@ float contact_recovery_speed = 1.0e30;
 double tolerance = 500.0;
 
 // Output
-#ifdef DEM
+#ifdef USE_DEM
 const std::string out_dir = "../CRATER_DEM";
 #else
 const std::string out_dir = "../CRATER_DVI";
@@ -164,23 +164,23 @@ double h = 10e-2;
 int CreateObjects(ChSystemParallel* system) {
 
 	// Create the containing bin
-#ifdef DEM
+#ifdef USE_DEM
 	ChSharedPtr<ChMaterialSurfaceDEM> mat_c;
 	mat_c = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
 	mat_c->SetYoungModulus(Y_c);
 	mat_c->SetFriction(mu_c);
 	mat_c->SetRestitution(cr_c);
 
-	utils::CreateBoxContainerDEM(system, binId, mat_c, ChVector<>(hDimX, hDimY, hDimZ), hThickness);
+	utils::CreateBoxContainer(system, binId, mat_c, ChVector<>(hDimX, hDimY, hDimZ), hThickness);
 #else
 	ChSharedPtr<ChMaterialSurface> mat_c(new ChMaterialSurface);
 	mat_c->SetFriction(mu_c);
 
-	utils::CreateBoxContainerDVI(system, binId, mat_c, ChVector<>(hDimX, hDimY, hDimZ), hThickness);
+	utils::CreateBoxContainer(system, binId, mat_c, ChVector<>(hDimX, hDimY, hDimZ), hThickness);
 #endif
 
 // Create a material for the granular material
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_g;
   mat_g = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_g->SetYoungModulus(Y_g);
@@ -195,7 +195,7 @@ int CreateObjects(ChSystemParallel* system) {
   utils::Generator gen(system);
 
   utils::MixtureIngredientPtr& m1 = gen.AddMixtureIngredient(utils::SPHERE, 1.0);
-#ifdef DEM
+#ifdef USE_DEM
   m1->setDefaultMaterialDEM(mat_g);
 #else
   m1->setDefaultMaterialDVI(mat_g);
@@ -223,7 +223,7 @@ int CreateObjects(ChSystemParallel* system) {
 // -----------------------------------------------------------------------------
 void CreateFallingBall(ChSystemParallel* system, double z, double vz) {
 // Create a material for the falling ball
-#ifdef DEM
+#ifdef USE_DEM
   ChSharedPtr<ChMaterialSurfaceDEM> mat_b;
   mat_b = ChSharedPtr<ChMaterialSurfaceDEM>(new ChMaterialSurfaceDEM);
   mat_b->SetYoungModulus(1e8f);
@@ -235,9 +235,9 @@ void CreateFallingBall(ChSystemParallel* system, double z, double vz) {
 #endif
 
 // Create the falling ball
-#ifdef DEM
-  ChSharedBodyDEMPtr ball(new ChBodyDEM(new ChCollisionModelParallel));
-  ball->SetMaterialSurfaceDEM(mat_b);
+#ifdef USE_DEM
+  ChSharedPtr<ChBody> ball(new ChBody(new ChCollisionModelParallel, ChBody::DEM));
+  ball->SetMaterialSurface(mat_b);
 #else
   ChSharedBodyPtr ball(new ChBody(new ChCollisionModelParallel));
   ball->SetMaterialSurface(mat_b);
@@ -306,7 +306,7 @@ bool CheckSettled(ChSystem* sys, double threshold) {
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
 // Create system
-#ifdef DEM
+#ifdef USE_DEM
   cout << "Create DEM system" << endl;
   ChSystemParallelDEM* msystem = new ChSystemParallelDEM();
 #else
@@ -330,7 +330,7 @@ int main(int argc, char* argv[]) {
   // Edit system settings
   msystem->GetSettings()->solver.tolerance = tolerance;
 
-#ifdef DEM
+#ifdef USE_DEM
   msystem->GetSettings()->collision.narrowphase_algorithm = NARROWPHASE_R;
 
 #else
