@@ -21,6 +21,8 @@
 #include "chrono_opengl/ChOpenGLWindow.h"
 #endif
 
+#include "demo_utils.h"
+
 using namespace chrono;
 using namespace chrono::collision;
 
@@ -87,10 +89,10 @@ float mu_t = 0.8;
 // -----------------------------------------------------------------------------
 
 // Desired number of OpenMP threads (will be clamped to maximum available)
-int threads = 100;
+int threads = 20;
 
 // Perform dynamic tuning of number of threads?
-bool thread_tuning = true;
+bool thread_tuning = false;
 
 // Total simulation duration.
 double time_end = 7;
@@ -262,6 +264,8 @@ double CreateParticles(ChSystem* system) {
     center.z += 2 * r;
   }
 
+  cout << "Created " << gen.getTotalNumBodies() << " particles." << endl;
+
   return center.z;
 }
 
@@ -304,6 +308,8 @@ int main(int argc, char* argv[]) {
   system->SetParallelThreadNumber(threads);
   omp_set_num_threads(threads);
   cout << "Using " << threads << " threads" << endl;
+
+  system->GetSettings()->perform_thread_tuning = thread_tuning;
 
   // ---------------------
   // Edit system settings.
@@ -429,16 +435,19 @@ int main(int argc, char* argv[]) {
 
   while (time < time_end) {
     // If enabled, output data for PovRay postprocessing.
-    if (povray_output && sim_frame == next_out_frame) {
-      char filename[100];
-      sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(), out_frame + 1);
-      utils::WriteShapesPovray(system, filename);
+    if (sim_frame == next_out_frame) {
+      cout << endl;
+      cout << "---- Frame:          " << out_frame + 1 << endl;
+      cout << "     Sim frame:      " << sim_frame << endl;
+      cout << "     Time:           " << time << endl;
+      cout << "     Avg. contacts:  " << num_contacts / out_steps << endl;
+      cout << "     Execution time: " << exec_time << endl;
 
-      cout << "------------ Output frame:   " << out_frame + 1 << endl;
-      cout << "             Sim frame:      " << sim_frame << endl;
-      cout << "             Time:           " << time << endl;
-      cout << "             Avg. contacts:  " << num_contacts / out_steps << endl;
-      cout << "             Execution time: " << exec_time << endl;
+      if (povray_output) {
+        char filename[100];
+        sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(), out_frame + 1);
+        utils::WriteShapesPovray(system, filename);
+      }
 
       out_frame++;
       next_out_frame += out_steps;
@@ -447,7 +456,7 @@ int main(int argc, char* argv[]) {
 
     // Release the vehicle chassis at the end of the hold time.
     if (vehicle->GetVehicle()->GetChassis()->GetBodyFixed() && time > time_hold) {
-      cout << "Release vehicle t = " << time << endl;
+      cout << endl << "Release vehicle t = " << time << endl;
       vehicle->GetVehicle()->GetChassis()->SetBodyFixed(false);
       for (int i = 0; i < 2 * vehicle->GetVehicle()->GetNumberAxles(); i++) {
         vehicle->GetVehicle()->GetWheelBody(i)->SetBodyFixed(false);
@@ -466,6 +475,7 @@ int main(int argc, char* argv[]) {
       break;
 #else
     system->DoStepDynamics(time_step);
+    progressbar(out_steps + sim_frame - next_out_frame + 1, out_steps);
 #endif
 
     // Periodically display maximum constraint violation
