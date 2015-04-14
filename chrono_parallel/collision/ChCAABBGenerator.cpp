@@ -157,15 +157,15 @@ void ChCAABBGenerator::GenerateAABB() {
     aabb_min_rigid[index] = temp_min;
     aabb_max_rigid[index] = temp_max;
   }
-
+  //
   host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
   host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
   const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
   const real fluid_radius = data_manager->settings.fluid.kernel_radius;
   const uint num_fluid_bodies = data_manager->num_fluid_bodies;
 
-  aabb_min_rigid.resize(num_fluid_bodies);
-  aabb_max_rigid.resize(num_fluid_bodies);
+  aabb_min_fluid.resize(num_fluid_bodies);
+  aabb_max_fluid.resize(num_fluid_bodies);
 
 #pragma omp parallel for
   for (int index = 0; index < num_fluid_bodies; index++) {

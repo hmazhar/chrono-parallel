@@ -188,7 +188,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   min_bounding_point = res.first;
   max_bounding_point = res.second;
   global_origin = min_bounding_point;
-  real3 diagonal = max_bounding_point - min_bounding_point;
+  real3 diagonal = fabs(max_bounding_point - min_bounding_point);
 
   if (data_manager->settings.collision.fixed_bins == false) {
     bins_per_axis = function_Compute_Grid_Resolution(num_shapes, diagonal, density);
