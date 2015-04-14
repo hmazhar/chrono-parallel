@@ -19,7 +19,7 @@ ChSolverAPGD::ChSolverAPGD()
 }
 
 void ChSolverAPGD::UpdateR() {
-  const CompressedMatrix<real>& D_n_T = data_manager->host_data.D_n_T;
+  const SubMatrixType& D_n_T = _DNT_;
   const DynamicVector<real>& M_invk = data_manager->host_data.M_invk;
   const DynamicVector<real>& b = data_manager->host_data.b;
   DynamicVector<real>& R = data_manager->host_data.R;

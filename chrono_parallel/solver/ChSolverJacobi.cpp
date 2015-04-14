@@ -13,8 +13,8 @@ uint ChSolverJacobi::SolveJacobi(const uint max_iter,
   uint num_contacts = data_manager->num_rigid_contacts;
   diagonal.resize(size, false);
   ml_old = ml;
-  CompressedMatrix<real> Nshur_n = data_manager->host_data.D_n_T * data_manager->host_data.M_invD_n;
-  CompressedMatrix<real> Nshur_t = data_manager->host_data.D_t_T * data_manager->host_data.M_invD_t;
+  CompressedMatrix<real> Nshur_n = _DNT_ * _MINVDN_;
+  CompressedMatrix<real> Nshur_t = _DTT_ * _MINVDT_;
 
   for (size_t i = 0; i < num_contacts; ++i) {
     diagonal[i * 1 + 0] = Nshur_n(i, i);
@@ -36,21 +36,21 @@ uint ChSolverJacobi::SolveJacobi(const uint max_iter,
       real E1 = data_manager->host_data.E[a];
       real E2 = data_manager->host_data.E[b];
       real E3 = data_manager->host_data.E[c];
-      ml[a] = ml[a] -
-              omega * Dinv *
-                  ((row(Nshur_n, i * 1 + 0), blaze::subvector(ml_old, 0, 1 * num_contacts)) + E1 * ml_old[a] - mb[a]);
+      ml[a] =
+          ml[a] -
+          omega * Dinv * ((row(Nshur_n, i * 1 + 0), subvector(ml_old, 0, 1 * num_contacts)) + E1 * ml_old[a] - mb[a]);
       ml[b] = ml[b] -
-              omega * Dinv * ((row(Nshur_t, i * 2 + 0), blaze::subvector(ml_old, num_contacts, 2 * num_contacts)) +
+              omega * Dinv * ((row(Nshur_t, i * 2 + 0), subvector(ml_old, num_contacts, 2 * num_contacts)) +
                               E2 * ml_old[b] - mb[b]);
       ml[c] = ml[c] -
-              omega * Dinv * ((row(Nshur_t, i * 2 + 1), blaze::subvector(ml_old, num_contacts, 2 * num_contacts)) +
+              omega * Dinv * ((row(Nshur_t, i * 2 + 1), subvector(ml_old, num_contacts, 2 * num_contacts)) +
                               E3 * ml_old[c] - mb[c]);
 
       // Project_Single(i, ml.data());
     }
     Project(ml.data());
     ml_old = ml;
-    residual = 0;  // Res4Blaze(ml, mb);
+    residual = 0;         // Res4Blaze(ml, mb);
     objective_value = 0;  // GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value);
   }

@@ -62,7 +62,7 @@ typedef blaze::DenseSubvector<const DynamicVector<real> > ConstSubVectorType;
 // They aren't names to be easy to understant, but for length
 #define _num_dof_ data_manager->num_dof
 #define _num_bil_ data_manager->num_bilaterals
-#define _num_r_c_ data_manager->num_contacts
+#define _num_r_c_ data_manager->num_rigid_contacts
 #define _num_uni_ data_manager->num_unilaterals
 
 #define _DB_ submatrix(data_manager->host_data.D, 0, _num_uni_, _num_dof_, _num_bil_)
@@ -98,7 +98,6 @@ struct host_container {
   host_vector<real3> aabb_min_rigid;  // List of bounding boxes minimum point
   host_vector<real3> aabb_max_rigid;  // List of bounding boxes maximum point
   host_vector<real3> convex_data;     // list of convex points
-
 
   host_vector<real3> aabb_min_fluid;  // List of bounding boxes minimum point
   host_vector<real3> aabb_max_fluid;  // List of bounding boxes maximum point
@@ -188,11 +187,11 @@ struct host_container {
   // This matrix, if used will hold D^TxM^-1xD in sparse form
   CompressedMatrix<real> Nshur;
   // The D Matrix hold the Jacobian for the entire system
-  CompressedMatrix<real> D_n, D_t, D_s, D_b;
+  CompressedMatrix<real> D;
   // D_T is the transpose of the D matrix, note that D_T is actually computed
   // first and D is taken as the transpose. This is due to the way that blaze
   // handles sparse matrix allocation, it is easier to do it on a per row basis
-  CompressedMatrix<real> D_n_T, D_t_T, D_s_T, D_b_T;
+  CompressedMatrix<real> D_T;
   // M_inv is the inverse mass matrix, This matrix, if holding the full inertia
   // tensor is block diagonal
   CompressedMatrix<real> M_inv;
@@ -201,7 +200,7 @@ struct host_container {
   // performed in two steps, first R = Minv_D*x, and then D_T*R where R is just
   // a temporary variable used here for illustrative purposes. In reality the
   // entire operation happens inline without a temp variable.
-  CompressedMatrix<real> M_invD_n, M_invD_t, M_invD_s, M_invD_b;
+  CompressedMatrix<real> M_invD;
 
   DynamicVector<real> R_full;  // The right hand side of the system
   DynamicVector<real> R;       // The rhs of the system, changes during solve

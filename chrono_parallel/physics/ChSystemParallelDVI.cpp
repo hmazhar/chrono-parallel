@@ -8,7 +8,6 @@ ChSystemParallelDVI::ChSystemParallelDVI(unsigned int max_objects) : ChSystemPar
   // Set this so that the CD can check what type of system it is (needed for narrowphase)
   data_manager->settings.system_type = SYSTEM_DVI;
 
-
   data_manager->system_timer.AddTimer("ChSolverParallel_solverA");
   data_manager->system_timer.AddTimer("ChSolverParallel_solverB");
   data_manager->system_timer.AddTimer("ChSolverParallel_solverC");
@@ -64,47 +63,20 @@ void ChSystemParallelDVI::CalculateContactForces() {
     Fc = 0;
     return;
   }
-
+  CompressedMatrix<real>& D = data_manager->host_data.D;
   DynamicVector<real>& gamma = data_manager->host_data.gamma;
-
-  switch (data_manager->settings.solver.solver_mode) {
-    case NORMAL: {
-      const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-      SubVectorType gamma_n = blaze::subvector(gamma, 0, num_contacts);
-      Fc = D_n * gamma_n;
-    } break;
-    case SLIDING: {
-      const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-      const CompressedMatrix<real>& D_t = data_manager->host_data.D_t;
-      SubVectorType gamma_n = blaze::subvector(gamma, 0, num_contacts);
-      SubVectorType gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
-      Fc = D_n * gamma_n + D_t * gamma_t;
-    } break;
-    case SPINNING: {
-      const CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-      const CompressedMatrix<real>& D_t = data_manager->host_data.D_t;
-      const CompressedMatrix<real>& D_s = data_manager->host_data.D_s;
-      SubVectorType gamma_n = blaze::subvector(gamma, 0, num_contacts);
-      SubVectorType gamma_t = blaze::subvector(gamma, num_contacts, 2 * num_contacts);
-      SubVectorType gamma_s = blaze::subvector(gamma, 3 * num_contacts, 3 * num_contacts);
-      Fc = D_n * gamma_n + D_t * gamma_t + D_s * gamma_s;
-    } break;
-  }
-
-  Fc = Fc / data_manager->settings.step_size;
+  Fc = D * gamma / data_manager->settings.step_size;
 }
 
 real3 ChSystemParallelDVI::GetBodyContactForce(uint body_id) const {
   assert(data_manager->Fc_current);
-  return R3(data_manager->host_data.Fc[body_id * 6 + 0],
-            data_manager->host_data.Fc[body_id * 6 + 1],
+  return R3(data_manager->host_data.Fc[body_id * 6 + 0], data_manager->host_data.Fc[body_id * 6 + 1],
             data_manager->host_data.Fc[body_id * 6 + 2]);
 }
 
 real3 ChSystemParallelDVI::GetBodyContactTorque(uint body_id) const {
   assert(data_manager->Fc_current);
-  return R3(data_manager->host_data.Fc[body_id * 6 + 3],
-            data_manager->host_data.Fc[body_id * 6 + 4],
+  return R3(data_manager->host_data.Fc[body_id * 6 + 3], data_manager->host_data.Fc[body_id * 6 + 4],
             data_manager->host_data.Fc[body_id * 6 + 5]);
 }
 

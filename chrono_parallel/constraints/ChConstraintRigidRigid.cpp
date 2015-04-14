@@ -264,7 +264,7 @@ void ChConstraintRigidRigid::Build_b() {
       bi = inv_h * depth;
     } else {
       bi = std::max(inv_h * depth, -data_manager->settings.solver.contact_recovery_speed);
-      //bi = std::min(bi, inv_h * data_manager->settings.solver.cohesion_epsilon);
+      // bi = std::min(bi, inv_h * data_manager->settings.solver.cohesion_epsilon);
     }
 
     data_manager->host_data.b[index * 1 + 0] = bi;
@@ -281,48 +281,26 @@ void ChConstraintRigidRigid::Build_s() {
   }
 
   int2* ids = data_manager->host_data.bids_rigid_rigid.data();
-  const CompressedMatrix<real>& D_t_T = data_manager->host_data.D_t_T;
+  const SubMatrixType& D_t_T = _DTT_;
   DynamicVector<real> v_new;
 
   const DynamicVector<real>& M_invk = data_manager->host_data.M_invk;
   const DynamicVector<real>& gamma = data_manager->host_data.gamma;
 
-  const CompressedMatrix<real>& M_invD_n = data_manager->host_data.M_invD_n;
-  const CompressedMatrix<real>& M_invD_t = data_manager->host_data.M_invD_t;
-  const CompressedMatrix<real>& M_invD_s = data_manager->host_data.M_invD_s;
-  const CompressedMatrix<real>& M_invD_b = data_manager->host_data.M_invD_b;
+  const SubMatrixType& M_invD_n = _MINVDN_;
+  const SubMatrixType& M_invD_t = _MINVDT_;
+  const SubMatrixType& M_invD_s = _MINVDS_;
+  const SubMatrixType& M_invD_b = _MINVDB_;
+  const CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
 
   uint num_contacts = data_manager->num_rigid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
 
-  ConstSubVectorType gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
-  ConstSubVectorType gamma_n = blaze::subvector(gamma, 0, num_contacts);
+  blaze::DenseSubvector<const DynamicVector<real> > gamma_b = subvector(gamma, num_unilaterals, num_bilaterals);
+  blaze::DenseSubvector<const DynamicVector<real> > gamma_n = subvector(gamma, 0, num_contacts);
 
-  // Compute new velocity based on the lagrange multipliers
-  switch (data_manager->settings.solver.solver_mode) {
-    case NORMAL: {
-      v_new = M_invk + M_invD_n * gamma_n + M_invD_b * gamma_b;
-    } break;
-
-    case SLIDING: {
-      ConstSubVectorType gamma_t =
-          blaze::subvector(gamma, num_contacts, num_contacts * 2);
-
-      v_new = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_b * gamma_b;
-
-    } break;
-
-    case SPINNING: {
-      ConstSubVectorType gamma_t =
-          blaze::subvector(gamma, num_contacts, num_contacts * 2);
-      ConstSubVectorType gamma_s =
-          blaze::subvector(gamma, num_contacts * 3, num_contacts * 3);
-
-      v_new = M_invk + M_invD_n * gamma_n + M_invD_t * gamma_t + M_invD_s * gamma_s + M_invD_b * gamma_b;
-
-    } break;
-  }
+  v_new = M_invk + M_invD * gamma;
 
 #pragma omp parallel for
   for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
@@ -393,13 +371,14 @@ void ChConstraintRigidRigid::Build_E() {
   }
 }
 
-void inline SetRow3(CompressedMatrix<real>& D, const int row, const int col, const real3& A) {
+template <typename T>
+void inline SetRow3(T& D, const int row, const int col, const real3& A) {
   D.set(row, col + 0, A.x);
   D.set(row, col + 1, A.y);
   D.set(row, col + 2, A.z);
 }
-
-void inline SetRow6(CompressedMatrix<real>& D, const int row, const int col, const real3& A, const real3& B) {
+template <typename T>
+void inline SetRow6(T& D, const int row, const int col, const real3& A, const real3& B) {
   D.set(row, col + 0, A.x);
   D.set(row, col + 1, A.y);
   D.set(row, col + 2, A.z);
@@ -408,14 +387,14 @@ void inline SetRow6(CompressedMatrix<real>& D, const int row, const int col, con
   D.set(row, col + 4, B.y);
   D.set(row, col + 5, B.z);
 }
-
-void inline SetCol3(CompressedMatrix<real>& D, const int row, const int col, const real3& A) {
+template <typename T>
+void inline SetCol3(T& D, const int row, const int col, const real3& A) {
   D.set(row + 0, col, A.x);
   D.set(row + 1, col, A.y);
   D.set(row + 2, col, A.z);
 }
-
-void inline SetCol6(CompressedMatrix<real>& D, const int row, const int col, const real3& A, const real3& B) {
+template <typename T>
+void inline SetCol6(T& D, const int row, const int col, const real3& A, const real3& B) {
   D.set(row + 0, col, A.x);
   D.set(row + 1, col, A.y);
   D.set(row + 2, col, A.z);
@@ -434,17 +413,7 @@ void ChConstraintRigidRigid::Build_D() {
   int2* ids = data_manager->host_data.bids_rigid_rigid.data();
   real4* rot = data_manager->host_data.rot_rigid.data();
 
-  CompressedMatrix<real>& D_n_T = data_manager->host_data.D_n_T;
-  CompressedMatrix<real>& D_t_T = data_manager->host_data.D_t_T;
-  CompressedMatrix<real>& D_s_T = data_manager->host_data.D_s_T;
-
-  CompressedMatrix<real>& D_n = data_manager->host_data.D_n;
-  CompressedMatrix<real>& D_t = data_manager->host_data.D_t;
-  CompressedMatrix<real>& D_s = data_manager->host_data.D_s;
-
-  CompressedMatrix<real>& M_invD_n = data_manager->host_data.M_invD_n;
-  CompressedMatrix<real>& M_invD_t = data_manager->host_data.M_invD_t;
-  CompressedMatrix<real>& M_invD_s = data_manager->host_data.M_invD_s;
+  SubMatrixType D_n_T = _DNT_;
 
   const CompressedMatrix<real>& M_inv = data_manager->host_data.M_inv;
 
@@ -471,6 +440,7 @@ void ChConstraintRigidRigid::Build_D() {
     SetRow6(D_n_T, row * 1 + 0, body_id.y * 6, U, -T6);
 
     if (solver_mode == SLIDING || solver_mode == SPINNING) {
+      SubMatrixType D_t_T = _DTT_;
       SetRow6(D_t_T, row * 2 + 0, body_id.x * 6, -V, T4);
       SetRow6(D_t_T, row * 2 + 1, body_id.x * 6, -W, T5);
 
@@ -479,6 +449,7 @@ void ChConstraintRigidRigid::Build_D() {
     }
 
     if (solver_mode == SPINNING) {
+      SubMatrixType D_s_T = _DST_;
       Compute_Jacobian_Rolling(rot[body_id.x], U, V, W, TA, TB, TC);
       Compute_Jacobian_Rolling(rot[body_id.y], U, V, W, TD, TE, TF);
 
@@ -491,162 +462,119 @@ void ChConstraintRigidRigid::Build_D() {
       SetRow3(D_s_T, row * 3 + 2, body_id.y * 6 + 3, TF);
     }
   }
-
-  LOG(INFO) << "ChConstraintRigidRigid::Build_D - Compute Transpose";
-  switch (data_manager->settings.solver.solver_mode) {
-    case NORMAL:
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
-      D_n = trans(D_n_T);
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
-      M_invD_n = M_inv * D_n;
-      break;
-    case SLIDING:
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
-      D_n = trans(D_n_T);
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_t";
-      D_t = trans(D_t_T);
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
-      M_invD_n = M_inv * D_n;
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_t";
-      M_invD_t = M_inv * D_t;
-      break;
-    case SPINNING:
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_n";
-      D_n = trans(D_n_T);
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_t";
-      D_t = trans(D_t_T);
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - D_s";
-      D_s = trans(D_s_T);
-
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_n";
-      M_invD_n = M_inv * D_n;
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_t";
-      M_invD_t = M_inv * D_t;
-      LOG(INFO) << "ChConstraintRigidRigid::Build_D - M_invD_s";
-      M_invD_s = M_inv * D_s;
-      break;
-  }
 }
 
 void ChConstraintRigidRigid::GenerateSparsity() {
   LOG(INFO) << "ChConstraintRigidRigid::GenerateSparsity";
   SOLVERMODE solver_mode = data_manager->settings.solver.solver_mode;
 
-  CompressedMatrix<real>& D_n_T = data_manager->host_data.D_n_T;
-  CompressedMatrix<real>& D_t_T = data_manager->host_data.D_t_T;
-  CompressedMatrix<real>& D_s_T = data_manager->host_data.D_s_T;
+  CompressedMatrix<real>& D_n_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& D_t_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& D_s_T = data_manager->host_data.D_T;
 
   const int2* ids = data_manager->host_data.bids_rigid_rigid.data();
 
-#pragma omp parallel sections
-  {
-#pragma omp section
-    {
-      for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
-        int2 body_id = ids[index];
-        int row = index;
+  for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
+    int2 body_id = ids[index];
+    int row = index;
+    int off = 0;
 
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 0, 1);
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 1, 1);
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 2, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 0, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 1, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 2, 1);
 
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 3, 1);
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 4, 1);
-        D_n_T.append(row * 1 + 0, body_id.x * 6 + 5, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 3, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 4, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.x * 6 + 5, 1);
 
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 0, 1);
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 1, 1);
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 2, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 0, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 1, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 2, 1);
 
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 3, 1);
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 4, 1);
-        D_n_T.append(row * 1 + 0, body_id.y * 6 + 5, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 3, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 4, 1);
+    D_n_T.append(off + row * 1 + 0, body_id.y * 6 + 5, 1);
 
-        D_n_T.finalize(row * 1 + 0);
-      }
+    D_n_T.finalize(off + row * 1 + 0);
+  }
+
+  if (solver_mode == SLIDING || solver_mode == SPINNING) {
+    for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
+      int2 body_id = ids[index];
+      int row = index;
+      int off = data_manager->num_rigid_contacts;
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 0, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 1, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 2, 1);
+
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 3, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 4, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.x * 6 + 5, 1);
+
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 0, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 1, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 2, 1);
+
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 3, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 4, 1);
+      D_t_T.append(off + row * 2 + 0, body_id.y * 6 + 5, 1);
+
+      D_t_T.finalize(off + row * 2 + 0);
+
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 0, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 1, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 2, 1);
+
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 3, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 4, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.x * 6 + 5, 1);
+
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 0, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 1, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 2, 1);
+
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 3, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 4, 1);
+      D_t_T.append(off + row * 2 + 1, body_id.y * 6 + 5, 1);
+
+      D_t_T.finalize(off + row * 2 + 1);
     }
-#pragma omp section
-    {
-      if (solver_mode == SLIDING || solver_mode == SPINNING) {
-        for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
-          int2 body_id = ids[index];
-          int row = index;
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 0, 1);
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 1, 1);
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 2, 1);
+  }
 
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 3, 1);
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 4, 1);
-          D_t_T.append(row * 2 + 0, body_id.x * 6 + 5, 1);
+  if (solver_mode == SPINNING) {
+    for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
+      int2 body_id = ids[index];
+      int row = index;
+      int off = 3 * data_manager->num_rigid_contacts;
+      D_s_T.append(off + row * 3 + 0, body_id.x * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 0, body_id.x * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 0, body_id.x * 6 + 5, 0);
 
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 0, 1);
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 1, 1);
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 2, 1);
+      D_s_T.append(off + row * 3 + 0, body_id.y * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 0, body_id.y * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 0, body_id.y * 6 + 5, 0);
 
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 3, 1);
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 4, 1);
-          D_t_T.append(row * 2 + 0, body_id.y * 6 + 5, 1);
+      D_s_T.finalize(off + row * 3 + 0);
 
-          D_t_T.finalize(row * 2 + 0);
+      D_s_T.append(off + row * 3 + 1, body_id.x * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 1, body_id.x * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 1, body_id.x * 6 + 5, 0);
 
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 0, 1);
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 1, 1);
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 2, 1);
+      D_s_T.append(off + row * 3 + 1, body_id.y * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 1, body_id.y * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 1, body_id.y * 6 + 5, 0);
 
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 3, 1);
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 4, 1);
-          D_t_T.append(row * 2 + 1, body_id.x * 6 + 5, 1);
+      D_s_T.finalize(off + row * 3 + 1);
 
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 0, 1);
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 1, 1);
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 2, 1);
+      D_s_T.append(off + row * 3 + 2, body_id.x * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 2, body_id.x * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 2, body_id.x * 6 + 5, 0);
 
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 3, 1);
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 4, 1);
-          D_t_T.append(row * 2 + 1, body_id.y * 6 + 5, 1);
+      D_s_T.append(off + row * 3 + 2, body_id.y * 6 + 3, 0);
+      D_s_T.append(off + row * 3 + 2, body_id.y * 6 + 4, 0);
+      D_s_T.append(off + row * 3 + 2, body_id.y * 6 + 5, 0);
 
-          D_t_T.finalize(row * 2 + 1);
-        }
-      }
-    }
-#pragma omp section
-    {
-      if (solver_mode == SPINNING) {
-        for (int index = 0; index < data_manager->num_rigid_contacts; index++) {
-          int2 body_id = ids[index];
-          int row = index;
-          D_s_T.append(row * 3 + 0, body_id.x * 6 + 3, 0);
-          D_s_T.append(row * 3 + 0, body_id.x * 6 + 4, 0);
-          D_s_T.append(row * 3 + 0, body_id.x * 6 + 5, 0);
-
-          D_s_T.append(row * 3 + 0, body_id.y * 6 + 3, 0);
-          D_s_T.append(row * 3 + 0, body_id.y * 6 + 4, 0);
-          D_s_T.append(row * 3 + 0, body_id.y * 6 + 5, 0);
-
-          D_s_T.finalize(row * 3 + 0);
-
-          D_s_T.append(row * 3 + 1, body_id.x * 6 + 3, 0);
-          D_s_T.append(row * 3 + 1, body_id.x * 6 + 4, 0);
-          D_s_T.append(row * 3 + 1, body_id.x * 6 + 5, 0);
-
-          D_s_T.append(row * 3 + 1, body_id.y * 6 + 3, 0);
-          D_s_T.append(row * 3 + 1, body_id.y * 6 + 4, 0);
-          D_s_T.append(row * 3 + 1, body_id.y * 6 + 5, 0);
-
-          D_s_T.finalize(row * 3 + 1);
-
-          D_s_T.append(row * 3 + 2, body_id.x * 6 + 3, 0);
-          D_s_T.append(row * 3 + 2, body_id.x * 6 + 4, 0);
-          D_s_T.append(row * 3 + 2, body_id.x * 6 + 5, 0);
-
-          D_s_T.append(row * 3 + 2, body_id.y * 6 + 3, 0);
-          D_s_T.append(row * 3 + 2, body_id.y * 6 + 4, 0);
-          D_s_T.append(row * 3 + 2, body_id.y * 6 + 5, 0);
-
-          D_s_T.finalize(row * 3 + 2);
-        }
-      }
+      D_s_T.finalize(off + row * 3 + 2);
     }
   }
 }
-

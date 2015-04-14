@@ -24,12 +24,13 @@ real ChSolverPDIP::Res4(DynamicVector<real>& gamma, DynamicVector<real>& tmp) {
 }
 
 void ChSolverPDIP::SchurComplementProduct(DynamicVector<real>& src, DynamicVector<real>& dst) {
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
+
   dst = D_T * (M_invD * src);
 }
 
-void ChSolverPDIP::getConstraintVector(DynamicVector<real>& src,
-                                       DynamicVector<real>& dst,
-                                       const uint size) {
+void ChSolverPDIP::getConstraintVector(DynamicVector<real>& src, DynamicVector<real>& dst, const uint size) {
 #pragma omp parallel for
   for (int i = 0; i < data_manager->num_rigid_contacts; i++) {
     dst[i] = 0.5 * (pow(src[_index_ + 1], 2) + pow(src[_index_ + 2], 2) -
@@ -124,6 +125,8 @@ void ChSolverPDIP::updateNewtonStepVector(DynamicVector<real>& gamma,
                                           DynamicVector<real>& f,
                                           real t,
                                           const uint size) {
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
   updateConstraintGradient(gamma, size);
   r_d = D_T * (M_invD * gamma) + r + trans(grad_f) * lambda;
   MultiplyByDiagMatrix(lambda, f, r_g);
@@ -131,6 +134,8 @@ void ChSolverPDIP::updateNewtonStepVector(DynamicVector<real>& gamma,
 }
 
 void ChSolverPDIP::conjugateGradient(DynamicVector<real>& x) {
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
   real rsold_cg = 0;
   real rsnew_cg = 0;
   real alpha_cg = 0;
@@ -153,6 +158,8 @@ void ChSolverPDIP::conjugateGradient(DynamicVector<real>& x) {
 }
 
 void ChSolverPDIP::buildPreconditioner(const uint size) {
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
   prec_cg.resize(size);
   CompressedMatrix<real> A = D_T * M_invD + M_hat + B * Dinv * diaglambda * grad_f;
 #pragma omp parallel for
@@ -169,6 +176,8 @@ void ChSolverPDIP::applyPreconditioning(DynamicVector<real>& src, DynamicVector<
 }
 
 int ChSolverPDIP::preconditionedConjugateGradient(DynamicVector<real>& x, const uint size) {
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
   buildPreconditioner(size);
   int iter = 0;
   real rsold_cg = 0;
@@ -208,7 +217,6 @@ uint ChSolverPDIP::SolvePDIP(const uint max_iter,
 
   real& residual = data_manager->measures.solver.residual;
   real& objective_value = data_manager->measures.solver.objective_value;
-
 
   data_manager->system_timer.start("ChSolverParallel_solverA");
   int totalKrylovIterations = 0;
