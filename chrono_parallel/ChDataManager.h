@@ -99,6 +99,10 @@ struct host_container {
   host_vector<real3> aabb_max_rigid;  // List of bounding boxes maximum point
   host_vector<real3> convex_data;     // list of convex points
 
+
+  host_vector<real3> aabb_min_fluid;  // List of bounding boxes minimum point
+  host_vector<real3> aabb_max_fluid;  // List of bounding boxes maximum point
+
   // Contact data
   host_vector<real3> norm_rigid_rigid;
   host_vector<real3> cpta_rigid_rigid;

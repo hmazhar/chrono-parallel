@@ -73,9 +73,41 @@ struct collision_settings {
   // the type of narrowphase used at runtime.
   NARROWPHASETYPE narrowphase_algorithm;
   real grid_density;
-  //use fixed number of bins instead of tuning them
+  // use fixed number of bins instead of tuning them
   bool fixed_bins;
 };
+
+// Fluid settings structure
+// Currently only one phase is supported
+struct fluid_settings {
+  fluid_settings() {
+    kernel_radius = .01;
+    volume = 4.0 / 3.0 * 3.14159265359 * pow(kernel_radius, 3);
+    compliance = 0;
+    epsilon = 10e-3;
+    tau = 4 * .01;
+    cohesion = 0;
+    mu = 0;
+    density = 1000;
+    mass = 1;
+    fluid_is_rigid = false;
+    max_velocity = 3;
+    viscosity = 0;
+  }
+  real kernel_radius;
+  real volume;
+  real compliance;
+  real epsilon;  // Regularization parameter
+  real tau;      // Constraint relaxation time
+  real cohesion;
+  real mu;  // friction
+  real density;
+  real mass;
+  real viscosity;
+  bool fluid_is_rigid;
+  real max_velocity;  // limit on the maximum speed the fluid can move at
+};
+
 // solver_settings, like the name implies is the structure that contains all
 // settings associated with the parallel solver.
 struct solver_settings {
@@ -223,6 +255,9 @@ struct settings_container {
   collision_settings collision;
   // The settings for the solver
   solver_settings solver;
+  // The settings for the fluid
+  fluid_settings fluid;
+
   // System level settings
   // If set to true chrono parallel will automatically check to see if increasing
   // the number of threads will improve performance. If performance is improved

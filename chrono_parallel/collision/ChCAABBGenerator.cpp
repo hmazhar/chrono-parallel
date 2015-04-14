@@ -37,52 +37,6 @@ static void ComputeAABBBox(const real3& dim,
   real3 pos = quatRotate(lpositon, rotation) + positon;
   minp = pos - temp;
   maxp = pos + temp;
-
-  // cout<<minp.x<<" "<<minp.y<<" "<<minp.z<<"  |  "<<maxp.x<<" "<<maxp.y<<" "<<maxp.z<<endl;
-  //    real3 pos = quatRotate(lpositon, rotation) + positon; //new position
-  //    real4 q1 = mult(rotation, lrotation); //full rotation
-  //    real4 q = R4(q1.y, q1.z, q1.w, q1.x);
-  //    real t[3] = { pos.x, pos.y, pos.z };
-  //    real mina[3] = { -dim.x, -dim.y, -dim.z };
-  //    real maxa[3] = { dim.x, dim.y, dim.z };
-  //    real minb[3] = { 0, 0, 0 };
-  //    real maxb[3] = { 0, 0, 0 };
-  //    real m[3][3];
-  //    real qx2 = q.x * q.x;
-  //    real qy2 = q.y * q.y;
-  //    real qz2 = q.z * q.z;
-  //    m[0][0] = 1 - 2 * qy2 - 2 * qz2;
-  //    m[1][0] = 2 * q.x * q.y + 2 * q.z * q.w;
-  //    m[2][0] = 2 * q.x * q.z - 2 * q.y * q.w;
-  //    m[0][1] = 2 * q.x * q.y - 2 * q.z * q.w;
-  //    m[1][1] = 1 - 2 * qx2 - 2 * qz2;
-  //    m[2][1] = 2 * q.y * q.z + 2 * q.x * q.w   ;
-  //    m[0][2] = 2 * q.x * q.z + 2 * q.y * q.w;
-  //    m[1][2] = 2 * q.y * q.z - 2 * q.x * q.w;
-  //    m[2][2] = 1 - 2 * qx2 - 2 * qy2;
-  //
-  //    // For all three axes
-  //    for (int i = 0; i < 3; i++) {
-  //        // Start by adding in translation
-  //        minb[i] = maxb[i] = t[i];
-  //
-  //        // Form extent by summing smaller and larger terms respectively
-  //        for (int j = 0; j < 3; j++) {
-  //            real e = m[i][j] * mina[j];
-  //            real f = m[i][j] * maxa[j];
-  //
-  //            if (e < f) {
-  //                minb[i] += e;
-  //                maxb[i] += f;
-  //            } else {
-  //                minb[i] += f;
-  //                maxb[i] += e;
-  //            }
-  //        }
-  //    }
-
-  //    minp = R3(minb[0], minb[1], minb[2]);
-  //    maxp = R3(maxb[0], maxb[1], maxb[2]);
 }
 
 static void ComputeAABBCone(const real3& dim,
@@ -202,6 +156,21 @@ void ChCAABBGenerator::GenerateAABB() {
 
     aabb_min_rigid[index] = temp_min;
     aabb_max_rigid[index] = temp_max;
+  }
+
+  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+  const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
+  const real fluid_radius = data_manager->settings.fluid.kernel_radius;
+  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
+
+  aabb_min_rigid.resize(num_fluid_bodies);
+  aabb_max_rigid.resize(num_fluid_bodies);
+
+#pragma omp parallel for
+  for (int index = 0; index < num_fluid_bodies; index++) {
+    aabb_min_fluid[index] = pos_fluid[index] - R3(fluid_radius) - collision_envelope;
+    aabb_max_fluid[index] = pos_fluid[index] + R3(fluid_radius) + collision_envelope;
   }
 
   LOG(TRACE) << "AABB END";
