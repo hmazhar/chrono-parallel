@@ -34,6 +34,8 @@ class CH_PARALLEL_API ChCBroadphase {
   void DetermineBoundingBox();
   void OffsetAABB();
   void ComputeTiledGrid();
+  void ProjectRigidOntoTiledGrid();
+  void AddFluidToGrid();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
@@ -49,7 +51,20 @@ class CH_PARALLEL_API ChCBroadphase {
   real tile_size;
   real inv_tile_size;
   int3 tiles_per_axis;
-  uint rigid_tiles_active;
+  // TILED GRID INFORMATION RIGID=============================================================================
+  host_vector<uint> rigid_tiles_intersected;  // The number of tiles intersected by the rigid aabbs
+  host_vector<uint> rigid_tile_number;        // The tile numbers which were intersected by rigid aabbs
+  uint num_rigid_tile_intersections;          // How many tiles do the rigid aabbs intersect
+  uint rigid_tiles_active;                    // The number of unique tiles intersected
+  // TILED GRID INFORMATION FLUID=============================================================================
+  host_vector<uint> fluid_tile_number;       // The tile number containing the centroid of each fluid, aka active tiles
+  host_vector<int> fluid_aabb_number;        // The corresponding fluid num for each fluid_tile_number, -1 is rigid
+  host_vector<bool> fluid_flag;              // This flag is 1 if the fluid is not in a cell with a rigid, 0 if it is
+  host_vector<uint> fluid_interactions;      // The number of interactions for each fluid particle
+  host_vector<uint> fluid_tile_start_index;  //
+  uint num_fluid_tile_intersections;         //
+  uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
+  uint fluid_tiles_active;                   // The number of unique tiles
   // BINNED GRID INFORMATION==================================================================================
   real3 inv_bin_size;
   uint num_bins_active;

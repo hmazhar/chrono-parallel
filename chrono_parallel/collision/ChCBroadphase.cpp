@@ -200,6 +200,9 @@ void ChCBroadphase::OffsetAABB() {
 }
 // COMPUTE TILED GRID=======================================================================================
 void ChCBroadphase::ComputeTiledGrid() {
+  if (num_aabb_fluid == 0) {
+  //  return;
+  }
   const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
   const real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
   tile_size = data_manager->settings.fluid.kernel_radius * 2;
@@ -207,6 +210,10 @@ void ChCBroadphase::ComputeTiledGrid() {
   real3 diagonal = (fabs(max_bounding_point - min_bounding_point));
   tiles_per_axis = I3(diagonal / R3(tile_size));
   inv_tile_size = 1.0 / tile_size;
+
+  LOG(TRACE) << "tile_size: " << tile_size;
+  LOG(TRACE) << "tiles_per_axis: (" << tiles_per_axis.x << ", " << tiles_per_axis.y << ", " << tiles_per_axis.z << ")";
+
 }
 
 // =========================================================================================================
@@ -228,6 +235,57 @@ void ChCBroadphase::ComputeOneLevelGrid() {
   LOG(TRACE) << "bin_size_vec: (" << bin_size_vec.x << ", " << bin_size_vec.y << ", " << bin_size_vec.z << ")";
 }
 
+void ChCBroadphase::ProjectRigidOntoTiledGrid() {
+  if (num_aabb_fluid == 0) {
+  //  return;
+  }
+  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
+  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
+
+  rigid_tiles_intersected.resize(num_aabb_rigid + 1);
+  rigid_tiles_intersected[num_aabb_rigid] = 0;
+
+#pragma omp parallel for
+  for (int index = 0; index < num_aabb_rigid; index++) {
+    int3 gmin = HashMin(aabb_min_rigid[index], inv_tile_size);
+    int3 gmax = HashMax(aabb_max_rigid[index], inv_tile_size);
+    rigid_tiles_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
+  }
+  Thrust_Exclusive_Scan(rigid_tiles_intersected);
+  num_rigid_tile_intersections = rigid_tiles_intersected.back();
+  LOG(TRACE) << "num_rigid_tile_intersections: " << num_rigid_tile_intersections;
+  rigid_tile_number.resize(num_rigid_tile_intersections);
+
+#pragma omp parallel for
+  for (int index = 0; index < num_aabb_rigid; index++) {
+    uint count = 0, i, j, k;
+    int3 gmin = HashMin(aabb_min_rigid[index], inv_tile_size);
+    int3 gmax = HashMax(aabb_max_rigid[index], inv_tile_size);
+    uint mInd = rigid_tiles_intersected[index];
+    for (i = gmin.x; i <= gmax.x; i++) {
+      for (j = gmin.y; j <= gmax.y; j++) {
+        for (k = gmin.z; k <= gmax.z; k++) {
+          rigid_tile_number[mInd + count] = Hash_Index(I3(i, j, k), tiles_per_axis);
+          count++;
+        }
+      }
+    }
+  }
+  // The AABB number is NOT important here we only want to know the bins
+  LOG(TRACE) << "Thrust_Sort rigid_tile_number: ";
+  Thrust_Sort(rigid_tile_number);
+  rigid_tiles_active = Thrust_Unique(rigid_tile_number);
+  LOG(TRACE) << "rigid_tiles_active: " << rigid_tiles_active;
+  // At the end of this step we have a list of all of the tiles that have rigid bodies
+}
+// DETERMINE TILE NUMBERS FOR FLUID=========================================================================
+void ChCBroadphase::AddFluidToGrid() {
+  fluid_tile_number.resize(num_aabb_fluid);
+#pragma omp parallel for
+  for (int i = 0; i < num_aabb_fluid; i++) {
+    fluid_tile_number[i] = Hash_Index(HashMin(trans_fluid_pos[i], inv_tile_size), tiles_per_axis);
+  }
+}
 // =========================================================================================================
 // use spatial subdivision to detect the list of POSSIBLE collisions
 // let user define their own narrow-phase collision detection
@@ -320,6 +378,8 @@ void ChCBroadphase::DetectPossibleCollisions() {
   LOG(TRACE) << "Number of AABBs: " << num_aabb_rigid << ", " << num_aabb_fluid;
   DetermineBoundingBox();
   OffsetAABB();
+  ComputeTiledGrid();
+  ProjectRigidOntoTiledGrid();
   ComputeOneLevelGrid();
   OneLevelBroadphase();
 }
