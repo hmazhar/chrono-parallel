@@ -28,13 +28,13 @@ using namespace collision;
 namespace opengl {
 using namespace glm;
 
-#define LEFT -.95
+#define LEFT -.98
 #define TOP .95
 #define BOTTOM -.95
 #define RIGHT .55
 #define CENTER 0
-#define SPACING sy * 35.0
-#define SCALE .001
+#define SPACING sy * 45.0
+#define SCALE .0007
 ChOpenGLHUD::ChOpenGLHUD() : ChOpenGLBase() {
   time_total = time_text = time_geometry = 0;
   fps = 0;
@@ -132,15 +132,17 @@ void ChOpenGLHUD::GenerateHelp() {
 }
 
 void ChOpenGLHUD::GenerateCamera() {
-  sprintf(buffer, "Camera Pos :  [%04f, %04f, %04f]", render_camera->camera_position.x,
+  sprintf(buffer, "CAM POS [%07.5f, %07.5f, %07.5f]", render_camera->camera_position.x,
           render_camera->camera_position.y, render_camera->camera_position.z);
   text.Render(buffer, LEFT, TOP - SPACING * 1, sx, sy);
-  sprintf(buffer, "Camera Look:  [%04f, %04f, %04f]", render_camera->camera_look_at.x, render_camera->camera_look_at.y,
+  sprintf(buffer, "CAM EYE [%07.5f, %07.5f, %07.5f]", render_camera->camera_look_at.x, render_camera->camera_look_at.y,
           render_camera->camera_look_at.z);
   text.Render(buffer, LEFT, TOP - SPACING * 2, sx, sy);
-  sprintf(buffer, "Camera Up  :  [%04f, %04f, %04f]", render_camera->camera_up.x, render_camera->camera_up.y,
+  sprintf(buffer, "CAM UPV [%07.5f, %07.5f, %07.5f]", render_camera->camera_up.x, render_camera->camera_up.y,
           render_camera->camera_up.z);
   text.Render(buffer, LEFT, TOP - SPACING * 3, sx, sy);
+  sprintf(buffer, "--------------------------------");
+  text.Render(buffer, LEFT, TOP - SPACING * 4, sx, sy);
 }
 
 void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
@@ -164,30 +166,33 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
   int average_contacts_per_body = num_bodies > 0 ? num_contacts / num_bodies : 0;
 
   sprintf(buffer, "MODEL INFO");
-  text.Render(buffer, RIGHT, TOP - SPACING * 0, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 5, sx, sy);
   sprintf(buffer, "BODIES     %04d", num_bodies);
-  text.Render(buffer, RIGHT, TOP - SPACING * 1, sx, sy);
-
+  text.Render(buffer, LEFT, TOP - SPACING * 6, sx, sy);
   sprintf(buffer, "AABB       %04d", num_shapes);
-  text.Render(buffer, RIGHT, TOP - SPACING * 2, sx, sy);
-
+  text.Render(buffer, LEFT, TOP - SPACING * 7, sx, sy);
   sprintf(buffer, "CONTACTS   %04d", num_contacts);
-  text.Render(buffer, RIGHT, TOP - SPACING * 3, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 8, sx, sy);
   sprintf(buffer, "BILATERALS %04d", num_bilaterals);
-  text.Render(buffer, RIGHT, TOP - SPACING * 4, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 9, sx, sy);
+
+  sprintf(buffer, "--------------------------------");
+  text.Render(buffer, LEFT, TOP - SPACING * 10, sx, sy);
 
   sprintf(buffer, "TIMING INFO");
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 11, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 22, sx, sy);
   sprintf(buffer, "STEP     %04f", physics_system->GetTimerStep());
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 10, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 23, sx, sy);
   sprintf(buffer, "BROAD    %04f", physics_system->GetTimerCollisionBroad());
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 9, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 24, sx, sy);
   sprintf(buffer, "NARROW   %04f", physics_system->GetTimerCollisionNarrow());
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 8, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 25, sx, sy);
   sprintf(buffer, "SOLVE    %04f", physics_system->GetTimerLcp());
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 7, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 26, sx, sy);
   sprintf(buffer, "UPDATE   %04f", physics_system->GetTimerUpdate());
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 6, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 27, sx, sy);
+  sprintf(buffer, "--------------------------------");
+  text.Render(buffer, LEFT, TOP - SPACING * 28, sx, sy);
 }
 
 void ChOpenGLHUD::GenerateSolver(ChSystem* physics_system) {
@@ -200,13 +205,15 @@ void ChOpenGLHUD::GenerateSolver(ChSystem* physics_system) {
   double dlambda = dhist.size() > 0 ? dhist.back() : 0.0;
 
   sprintf(buffer, "SOLVER INFO");
-  text.Render(buffer, RIGHT, TOP - SPACING * 6, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 11, sx, sy);
   sprintf(buffer, "ITERS    %04d", int(iters));
-  text.Render(buffer, RIGHT, TOP - SPACING * 7, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 12, sx, sy);
   sprintf(buffer, "RESIDUAL %04f", residual);
-  text.Render(buffer, RIGHT, TOP - SPACING * 8, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 13, sx, sy);
   sprintf(buffer, "CORRECT  %04f", dlambda);
-  text.Render(buffer, RIGHT, TOP - SPACING * 9, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 14, sx, sy);
+  sprintf(buffer, "--------------------------------");
+  text.Render(buffer, LEFT, TOP - SPACING * 15, sx, sy);
 }
 
 void ChOpenGLHUD::GenerateCD(ChSystem* physics_system) {
@@ -217,17 +224,17 @@ void ChOpenGLHUD::GenerateCD(ChSystem* physics_system) {
     real3 max_pt = parallel_sys->data_manager->measures.collision.max_bounding_point;
     real3 center = (min_pt + max_pt) * .5;
     sprintf(buffer, "COLLISION INFO");
-    text.Render(buffer, RIGHT, TOP - SPACING * 11, sx, sy);
+    text.Render(buffer, LEFT, TOP - SPACING * 16, sx, sy);
     sprintf(buffer, "DIMS  [%d,%d,%d]", bins_per_axis.x, bins_per_axis.y, bins_per_axis.z);
-    text.Render(buffer, RIGHT, TOP - SPACING * 12, sx, sy);
-    sprintf(buffer, "SX    %f", bin_size_vec.x);
-    text.Render(buffer, RIGHT, TOP - SPACING * 13, sx, sy);
-    sprintf(buffer, "SY    %f", bin_size_vec.y);
-    text.Render(buffer, RIGHT, TOP - SPACING * 14, sx, sy);
-    sprintf(buffer, "SZ    %f", bin_size_vec.z);
-    text.Render(buffer, RIGHT, TOP - SPACING * 15, sx, sy);
-    sprintf(buffer, "RIGID %d", parallel_sys->data_manager->num_rigid_contacts);
-    text.Render(buffer, RIGHT, TOP - SPACING * 16, sx, sy);
+    text.Render(buffer, LEFT, TOP - SPACING * 17, sx, sy);
+    sprintf(buffer, "SIZE  [%07.5f,%07.5f,%07.5f]", bin_size_vec.x, bin_size_vec.y, bin_size_vec.z);
+    text.Render(buffer, LEFT, TOP - SPACING * 18, sx, sy);
+
+    sprintf(buffer, "R: %d B: %d F: %d", parallel_sys->data_manager->num_rigid_contacts,
+            parallel_sys->data_manager->num_rigid_fluid_contacts, parallel_sys->data_manager->num_fluid_contacts);
+    text.Render(buffer, LEFT, TOP - SPACING * 20, sx, sy);
+    sprintf(buffer, "--------------------------------");
+    text.Render(buffer, LEFT, TOP - SPACING * 21, sx, sy);
   } else {
     // ChCollisionSystemBullet* collision_system = (ChCollisionSystemBullet*)physics_system->GetCollisionSystem();
     // btDbvtBroadphase * broadphase = (btDbvtBroadphase* )
@@ -237,22 +244,22 @@ void ChOpenGLHUD::GenerateCD(ChSystem* physics_system) {
 
 void ChOpenGLHUD::GenerateRenderer() {
   sprintf(buffer, "RENDER INFO");
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 4, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 29, sx, sy);
   sprintf(buffer, "GEOMETRY %04f", time_geometry);
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 3, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 30, sx, sy);
   sprintf(buffer, "TEXT     %04f", time_text);
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 2, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 31, sx, sy);
   sprintf(buffer, "TOTAL    %04f", time_total);
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 1, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 32, sx, sy);
   sprintf(buffer, "FPS      %04d", int(fps));
-  text.Render(buffer, RIGHT, BOTTOM + SPACING * 0, sx, sy);
+  text.Render(buffer, LEFT, TOP - SPACING * 33, sx, sy);
 }
 
 void ChOpenGLHUD::GenerateStats(ChSystem* physics_system) {
   sprintf(buffer, "Press h for help");
   text.Render(buffer, CENTER, TOP, sx, sy);
 
-  sprintf(buffer, "TIME:  %04f  | %04f", physics_system->GetChTime(), physics_system->GetStep());
+  sprintf(buffer, "TIME:  %04f  [%04f]", physics_system->GetChTime(), physics_system->GetStep());
   text.Render(buffer, LEFT, TOP, sx, sy);
 
   GenerateCamera();
@@ -264,7 +271,6 @@ void ChOpenGLHUD::GenerateStats(ChSystem* physics_system) {
 void ChOpenGLHUD::GenerateExtraStats(ChSystem* physics_system) {
   if (ChSystemParallelDVI* parallel_sys = dynamic_cast<ChSystemParallelDVI*>(physics_system)) {
     ChTimerParallel& system_timer = parallel_sys->data_manager->system_timer;
-
 
     sprintf(buffer, "Compute N:  %04f", system_timer.GetTime("ChLcpSolverParallel_N"));
     text.Render(buffer, LEFT, BOTTOM + SPACING * 6, sx, sy);
@@ -281,12 +287,13 @@ void ChOpenGLHUD::GenerateExtraStats(ChSystem* physics_system) {
     sprintf(buffer, "Solve:  %04f", system_timer.GetTime("ChSolverParallel_Solve"));
     text.Render(buffer, LEFT, BOTTOM + SPACING * 2, sx, sy);
 
-    sprintf(buffer, "ShurProduct:  %04f [%d]", system_timer.GetTime("ShurProduct"), system_timer.GetRuns("ShurProduct"));
+    sprintf(buffer, "ShurProduct:  %04f [%d]", system_timer.GetTime("ShurProduct"),
+            system_timer.GetRuns("ShurProduct"));
     text.Render(buffer, LEFT, BOTTOM + SPACING * 1, sx, sy);
 
-    sprintf(buffer, "Project:  %04f [%d]", system_timer.GetTime("ChSolverParallel_Project"), system_timer.GetRuns("ChSolverParallel_Project"));
+    sprintf(buffer, "Project:  %04f [%d]", system_timer.GetTime("ChSolverParallel_Project"),
+            system_timer.GetRuns("ChSolverParallel_Project"));
     text.Render(buffer, LEFT, BOTTOM + SPACING * 0, sx, sy);
-
 
     //    sprintf(buffer, "TimerA:  %04f",
     //    parallel_sys->data_manager->system_timer.GetTime("ChSolverParallel_solverA"));
