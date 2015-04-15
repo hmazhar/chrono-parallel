@@ -225,7 +225,7 @@ void ChOpenGLViewer::Render() {
 #pragma omp parallel for
       for (int i = 0; i < parallel_system->data_manager->num_fluid_bodies; i++) {
         real3 pos = parallel_system->data_manager->host_data.pos_fluid[i];
-        cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
+        fluid_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
 
       fluid.Update(fluid_data);

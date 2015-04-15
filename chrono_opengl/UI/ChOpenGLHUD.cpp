@@ -147,27 +147,29 @@ void ChOpenGLHUD::GenerateCamera() {
 
 void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
   int num_shapes = 0;
-  int num_bodies = 0;
+  int num_rigid_bodies = 0;
+  int num_fluid_bodies = 0;
   int num_contacts = 0;
   int num_bilaterals = 0;
   if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
-    num_shapes = parallel_system->data_manager->num_rigid_shapes;
-    num_bodies = parallel_system->data_manager->num_rigid_bodies + parallel_system->GetNphysicsItems();
+    num_shapes = parallel_system->data_manager->num_rigid_shapes + parallel_system->data_manager->num_fluid_bodies;
+    num_rigid_bodies = parallel_system->data_manager->num_rigid_bodies + parallel_system->GetNphysicsItems();
+    num_fluid_bodies = parallel_system->data_manager->num_fluid_bodies;
     num_contacts = parallel_system->GetNcontacts();
     num_bilaterals = parallel_system->data_manager->num_bilaterals;
   } else {
     ChCollisionSystemBullet* collision_system = (ChCollisionSystemBullet*)physics_system->GetCollisionSystem();
     num_shapes = collision_system->GetBulletCollisionWorld()->getNumCollisionObjects();
-    num_bodies = physics_system->GetNbodiesTotal() + physics_system->GetNphysicsItems();
+    num_rigid_bodies = physics_system->GetNbodiesTotal() + physics_system->GetNphysicsItems();
     num_contacts = physics_system->GetContactContainer()->GetNcontacts();
     num_bilaterals = parallel_system->data_manager->num_bilaterals;
   }
 
-  int average_contacts_per_body = num_bodies > 0 ? num_contacts / num_bodies : 0;
+  // int average_contacts_per_body = num_rigid_bodies > 0 ? num_contacts / num_rigid_bodies : 0;
 
   sprintf(buffer, "MODEL INFO");
   text.Render(buffer, LEFT, TOP - SPACING * 5, sx, sy);
-  sprintf(buffer, "BODIES     %04d", num_bodies);
+  sprintf(buffer, "BODIES R,F %04d, %04d", num_rigid_bodies, num_fluid_bodies);
   text.Render(buffer, LEFT, TOP - SPACING * 6, sx, sy);
   sprintf(buffer, "AABB       %04d", num_shapes);
   text.Render(buffer, LEFT, TOP - SPACING * 7, sx, sy);
