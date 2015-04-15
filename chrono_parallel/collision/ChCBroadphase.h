@@ -31,17 +31,27 @@ class CH_PARALLEL_API ChCBroadphase {
   // functions
   ChCBroadphase();
   void DetectPossibleCollisions();
+  void DetermineBoundingBox();
+  void ComputeOneLevelGrid();
+  void OneLevelBroadphase();
+
   ChParallelDataManager* data_manager;
+
  private:
   uint num_bins_active;
   uint number_of_bin_intersections;
   uint number_of_contacts_possible;
+
+  uint num_aabb_rigid;
+  uint num_aabb_fluid;
 
   custom_vector<uint> bins_intersected;
   custom_vector<uint> bin_number;
   custom_vector<uint> aabb_number;
   custom_vector<uint> bin_start_index;
   custom_vector<uint> num_contact;
+
+  real3 inv_bin_size_vec;
 
 };
 }

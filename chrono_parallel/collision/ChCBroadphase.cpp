@@ -156,53 +156,75 @@ ChCBroadphase::ChCBroadphase() {
   number_of_bin_intersections = 0;
   data_manager = 0;
 }
-// =========================================================================================================
-// use spatial subdivision to detect the list of POSSIBLE collisions
-// let user define their own narrow-phase collision detection
-void ChCBroadphase::DetectPossibleCollisions() {
-  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
-  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
 
-  host_vector<long long>& contact_pairs = data_manager->host_data.pair_rigid_rigid;
-  real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
-  real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
-  real3& bin_size_vec = data_manager->measures.collision.bin_size_vec;
-  real3& global_origin = data_manager->measures.collision.global_origin;
-  int3& bins_per_axis = data_manager->settings.collision.bins_per_axis;
-  const real density = data_manager->settings.collision.grid_density;
-  const host_vector<short2>& fam_data = data_manager->host_data.fam_rigid;
-  const host_vector<bool>& obj_active = data_manager->host_data.active_rigid;
-  const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
-  uint num_shapes = data_manager->num_rigid_shapes;
+// DETERMINE BOUNDS ========================================================================================
 
-  LOG(TRACE) << "Number of AABBs: " << num_shapes;
-  contact_pairs.clear();
-  // STEP 2: determine the bounds on the total space and subdivide based on the bins per axis
-  // create a zero volume bounding box using the first aabb
-  bbox res = bbox(aabb_min_rigid[0], aabb_min_rigid[0]);
+void ChCBroadphase::DetermineBoundingBox() {
   bbox_transformation unary_op;
   bbox_reduction binary_op;
-  // Grow the initial bounding box to contain all of the aabbs
-  res = transform_reduce(thrust_parallel, aabb_min_rigid.begin(), aabb_min_rigid.end(), unary_op, res, binary_op);
-  res = transform_reduce(thrust_parallel, aabb_max_rigid.begin(), aabb_max_rigid.end(), unary_op, res, binary_op);
-  min_bounding_point = res.first;
-  max_bounding_point = res.second;
-  global_origin = min_bounding_point;
-  real3 diagonal = fabs(max_bounding_point - min_bounding_point);
+
+  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
+  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
+  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+  // Determine the bounds on the total space, create a zero volume bounding box using the first aabb
+  bbox res(aabb_min_rigid[0], aabb_min_rigid[0]);
+  res = transform_reduce(aabb_min_rigid.begin(), aabb_min_rigid.end(), unary_op, res, binary_op);
+  res = transform_reduce(aabb_max_rigid.begin(), aabb_max_rigid.end(), unary_op, res, binary_op);
+  res = transform_reduce(aabb_min_fluid.begin(), aabb_min_fluid.end(), unary_op, res, binary_op);
+  res = transform_reduce(aabb_max_fluid.begin(), aabb_max_fluid.end(), unary_op, res, binary_op);
+
+  data_manager->measures.collision.min_bounding_point = res.first;
+  data_manager->measures.collision.max_bounding_point = res.second;
+  data_manager->measures.collision.global_origin = res.first;
+
+  thrust::constant_iterator<real3> offset(res.first);
+
+  transform(aabb_min_rigid.begin(), aabb_min_rigid.end(), offset, aabb_min_rigid.begin(), thrust::minus<real3>());
+  transform(aabb_max_rigid.begin(), aabb_max_rigid.end(), offset, aabb_max_rigid.begin(), thrust::minus<real3>());
+  transform(aabb_min_fluid.begin(), aabb_min_fluid.end(), offset, aabb_min_fluid.begin(), thrust::minus<real3>());
+  transform(aabb_max_fluid.begin(), aabb_max_fluid.end(), offset, aabb_max_fluid.begin(), thrust::minus<real3>());
+
+  LOG(TRACE) << "Minimum bounding point: (" << res.first.x << ", " << res.first.y << ", " << res.first.z << ")";
+  LOG(TRACE) << "Maximum bounding point: (" << res.second.x << ", " << res.second.y << ", " << res.second.z << ")";
+}
+
+// =========================================================================================================
+void ChCBroadphase::ComputeOneLevelGrid() {
+  const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
+  const real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
+  int3& bins_per_axis = data_manager->settings.collision.bins_per_axis;
+  real3& bin_size_vec = data_manager->measures.collision.bin_size_vec;
+  const real density = data_manager->settings.collision.grid_density;
+
+  real3 diagonal = max_bounding_point - min_bounding_point;
+  int num_shapes = num_aabb_rigid;
 
   if (data_manager->settings.collision.fixed_bins == false) {
     bins_per_axis = function_Compute_Grid_Resolution(num_shapes, diagonal, density);
   }
   bin_size_vec = diagonal / R3(bins_per_axis.x, bins_per_axis.y, bins_per_axis.z);
-  real3 inv_bin_size_vec = 1.0 / bin_size_vec;
+  inv_bin_size_vec = 1.0 / bin_size_vec;
+  LOG(TRACE) << "bin_size_vec: (" << bin_size_vec.x << ", " << bin_size_vec.y << ", " << bin_size_vec.z << ")";
+}
 
-  thrust::constant_iterator<real3> offset(global_origin);
-  transform(aabb_min_rigid.begin(), aabb_min_rigid.end(), offset, aabb_min_rigid.begin(), thrust::minus<real3>());
-  transform(aabb_max_rigid.begin(), aabb_max_rigid.end(), offset, aabb_max_rigid.begin(), thrust::minus<real3>());
+// =========================================================================================================
+// use spatial subdivision to detect the list of POSSIBLE collisions
+// let user define their own narrow-phase collision detection
 
-  LOG(TRACE) << "Minimum bounding point: (" << res.first.x << ", " << res.first.y << ", " << res.first.z << ")";
-  LOG(TRACE) << "Maximum bounding point: (" << res.second.x << ", " << res.second.y << ", " << res.second.z << ")";
-  LOG(TRACE) << "Bin size vector: (" << bin_size_vec.x << ", " << bin_size_vec.y << ", " << bin_size_vec.z << ")";
+void ChCBroadphase::OneLevelBroadphase() {
+  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
+  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
+  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+
+  host_vector<long long>& contact_pairs = data_manager->host_data.pair_rigid_rigid;
+  int3& bins_per_axis = data_manager->settings.collision.bins_per_axis;
+  const host_vector<short2>& fam_data = data_manager->host_data.fam_rigid;
+  const host_vector<bool>& obj_active = data_manager->host_data.active_rigid;
+  const host_vector<uint>& obj_data_id = data_manager->host_data.id_rigid;
+
+  uint num_shapes = num_aabb_rigid;
 
   bins_intersected.resize(num_shapes + 1);
   bins_intersected[num_shapes] = 0;
@@ -250,7 +272,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 #pragma omp parallel for
   for (int i = 0; i < num_bins_active; i++) {
     function_Count_AABB_AABB_Intersection(i, aabb_min_rigid, aabb_max_rigid, bin_number, aabb_number, bin_start_index,
-                                          fam_data, obj_active, obj_data_ID, num_contact);
+                                          fam_data, obj_active, obj_data_id, num_contact);
   }
 
   thrust::exclusive_scan(num_contact.begin(), num_contact.end(), num_contact.begin());
@@ -261,7 +283,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 #pragma omp parallel for
   for (int index = 0; index < num_bins_active; index++) {
     function_Store_AABB_AABB_Intersection(index, aabb_min_rigid, aabb_max_rigid, bin_number, aabb_number,
-                                          bin_start_index, num_contact, fam_data, obj_active, obj_data_ID,
+                                          bin_start_index, num_contact, fam_data, obj_active, obj_data_id,
                                           contact_pairs);
   }
 
@@ -274,6 +296,15 @@ void ChCBroadphase::DetectPossibleCollisions() {
   LOG(TRACE) << "Number of possible collisions: " << number_of_contacts_possible;
 
   return;
+}
+
+void ChCBroadphase::DetectPossibleCollisions() {
+  num_aabb_rigid = data_manager->num_rigid_shapes;
+  num_aabb_fluid = data_manager->num_fluid_bodies;
+  LOG(TRACE) << "Number of AABBs: " << num_aabb_rigid << ", " << num_aabb_fluid;
+  DetermineBoundingBox();
+  ComputeOneLevelGrid();
+  OneLevelBroadphase();
 }
 }
 }
