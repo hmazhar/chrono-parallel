@@ -33,29 +33,35 @@ class CH_PARALLEL_API ChCBroadphase {
   void DetectPossibleCollisions();
   void DetermineBoundingBox();
   void OffsetAABB();
+  void ComputeTiledGrid();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
   ChParallelDataManager* data_manager;
 
  private:
+  // GENERAL INFORMATION======================================================================================
+  // trans_pos_fluid holds the transformed fluid position, used only in the CD
+  host_vector<real3> trans_fluid_pos;
+  uint num_aabb_rigid;
+  uint num_aabb_fluid;
+  // TILED GRID INFORMATION===================================================================================
+  real tile_size;
+  real inv_tile_size;
+  int3 tiles_per_axis;
+  uint rigid_tiles_active;
+  // BINNED GRID INFORMATION==================================================================================
+  real3 inv_bin_size;
   uint num_bins_active;
   uint number_of_bin_intersections;
   uint number_of_contacts_possible;
-
-  uint num_aabb_rigid;
-  uint num_aabb_fluid;
-
-  // trans_pos_fluid holds the transformed fluid position, used only in the CD
-  host_vector<real3> trans_fluid_pos;
 
   custom_vector<uint> bins_intersected;
   custom_vector<uint> bin_number;
   custom_vector<uint> aabb_number;
   custom_vector<uint> bin_start_index;
   custom_vector<uint> num_contact;
-
-  real3 inv_bin_size_vec;
+  // =========================================================================================================
 };
 }
 }

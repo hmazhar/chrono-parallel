@@ -15,27 +15,27 @@ namespace collision {
 
 // Function to Count AABB Bin intersections=================================================================
 inline void function_Count_AABB_BIN_Intersection(const uint index,
-                                                 const real3& inv_bin_size_vec,
+                                                 const real3& inv_bin_size,
                                                  const host_vector<real3>& aabb_min_data,
                                                  const host_vector<real3>& aabb_max_data,
                                                  host_vector<uint>& bins_intersected) {
-  int3 gmin = HashMin(aabb_min_data[index], inv_bin_size_vec);
-  int3 gmax = HashMax(aabb_max_data[index], inv_bin_size_vec);
+  int3 gmin = HashMin(aabb_min_data[index], inv_bin_size);
+  int3 gmax = HashMax(aabb_max_data[index], inv_bin_size);
   bins_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
 }
 
 // Function to Store AABB Bin Intersections=================================================================
 inline void function_Store_AABB_BIN_Intersection(const uint index,
                                                  const int3& bins_per_axis,
-                                                 const real3& inv_bin_size_vec,
+                                                 const real3& inv_bin_size,
                                                  const host_vector<real3>& aabb_min_data,
                                                  const host_vector<real3>& aabb_max_data,
                                                  const host_vector<uint>& bins_intersected,
                                                  host_vector<uint>& bin_number,
                                                  host_vector<uint>& aabb_number) {
   uint count = 0, i, j, k;
-  int3 gmin = HashMin(aabb_min_data[index], inv_bin_size_vec);
-  int3 gmax = HashMax(aabb_max_data[index], inv_bin_size_vec);
+  int3 gmin = HashMin(aabb_min_data[index], inv_bin_size);
+  int3 gmax = HashMax(aabb_max_data[index], inv_bin_size);
   uint mInd = bins_intersected[index];
   for (i = gmin.x; i <= gmax.x; i++) {
     for (j = gmin.y; j <= gmax.y; j++) {
@@ -183,6 +183,7 @@ void ChCBroadphase::DetermineBoundingBox() {
   LOG(TRACE) << "Minimum bounding point: (" << res.first.x << ", " << res.first.y << ", " << res.first.z << ")";
   LOG(TRACE) << "Maximum bounding point: (" << res.second.x << ", " << res.second.y << ", " << res.second.z << ")";
 }
+// OFFSET AABB =============================================================================================
 void ChCBroadphase::OffsetAABB() {
   host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
   host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
@@ -197,6 +198,17 @@ void ChCBroadphase::OffsetAABB() {
   trans_fluid_pos.resize(pos_fluid.size());
   transform(pos_fluid.begin(), pos_fluid.end(), offset, trans_fluid_pos.begin(), thrust::minus<real3>());
 }
+// COMPUTE TILED GRID=======================================================================================
+void ChCBroadphase::ComputeTiledGrid() {
+  const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
+  const real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
+  tile_size = data_manager->settings.fluid.kernel_radius * 2;
+
+  real3 diagonal = (fabs(max_bounding_point - min_bounding_point));
+  tiles_per_axis = I3(diagonal / R3(tile_size));
+  inv_tile_size = 1.0 / tile_size;
+}
+
 // =========================================================================================================
 void ChCBroadphase::ComputeOneLevelGrid() {
   const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
@@ -205,14 +217,14 @@ void ChCBroadphase::ComputeOneLevelGrid() {
   real3& bin_size_vec = data_manager->measures.collision.bin_size_vec;
   const real density = data_manager->settings.collision.grid_density;
 
-  real3 diagonal = max_bounding_point - min_bounding_point;
+  real3 diagonal = (fabs(max_bounding_point - min_bounding_point));
   int num_shapes = num_aabb_rigid;
 
   if (data_manager->settings.collision.fixed_bins == false) {
     bins_per_axis = function_Compute_Grid_Resolution(num_shapes, diagonal, density);
   }
   bin_size_vec = diagonal / R3(bins_per_axis.x, bins_per_axis.y, bins_per_axis.z);
-  inv_bin_size_vec = 1.0 / bin_size_vec;
+  inv_bin_size = 1.0 / bin_size_vec;
   LOG(TRACE) << "bin_size_vec: (" << bin_size_vec.x << ", " << bin_size_vec.y << ", " << bin_size_vec.z << ")";
 }
 
@@ -239,7 +251,7 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    function_Count_AABB_BIN_Intersection(i, inv_bin_size_vec, aabb_min_rigid, aabb_max_rigid, bins_intersected);
+    function_Count_AABB_BIN_Intersection(i, inv_bin_size, aabb_min_rigid, aabb_max_rigid, bins_intersected);
   }
 
   Thrust_Exclusive_Scan(bins_intersected);
@@ -253,7 +265,7 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    function_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size_vec, aabb_min_rigid, aabb_max_rigid,
+    function_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size, aabb_min_rigid, aabb_max_rigid,
                                          bins_intersected, bin_number, aabb_number);
   }
 
