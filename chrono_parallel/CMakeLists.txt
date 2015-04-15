@@ -88,6 +88,8 @@ SOURCE_GROUP(solver FILES ${ChronoEngine_Parallel_SOLVER})
 SET(ChronoEngine_Parallel_CONSTRAINTS
     constraints/ChConstraintRigidRigid.cpp
     constraints/ChConstraintRigidRigid.h
+    constraints/ChConstraintRigidFluid.cpp
+    constraints/ChConstraintRigidFluid.h
     constraints/ChConstraintBilateral.cpp
     constraints/ChConstraintBilateral.h
     )
