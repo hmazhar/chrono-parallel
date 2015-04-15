@@ -20,6 +20,7 @@ void ChLcpSolverParallel::ComputeMassMatrix() {
   LOG(INFO) << "ChLcpSolverParallel::ComputeMassMatrix()";
   uint num_bodies = data_manager->num_rigid_bodies;
   uint num_shafts = data_manager->num_shafts;
+  uint num_fluid_bodies = data_manager->num_fluid_bodies;
   uint num_dof = data_manager->num_dof;
   bool use_full_inertia_tensor = data_manager->settings.solver.use_full_inertia_tensor;
   const custom_vector<real>& shaft_inr = data_manager->host_data.shaft_inr;
@@ -38,7 +39,7 @@ void ChLcpSolverParallel::ComputeMassMatrix() {
 
   // Each rigid object has 3 mass entries and 9 inertia entries
   // Each shaft has one inertia entry
-  M_inv.reserve(num_bodies * 12 + num_shafts * 1);
+  M_inv.reserve(num_bodies * 12 + num_shafts * 1 + num_fluid_bodies * 3);
   // The mass matrix is square and each rigid body has 6 DOF
   // Shafts have one DOF
   M_inv.resize(num_dof, num_dof);
@@ -84,10 +85,20 @@ void ChLcpSolverParallel::ComputeMassMatrix() {
       M_inv.finalize(i * 6 + 5);
     }
   }
-
+  int offset = num_bodies * 6;
   for (int i = 0; i < num_shafts; i++) {
-    M_inv.append(num_bodies * 6 + i, num_bodies * 6 + i, shaft_inr[i]);
-    M_inv.finalize(num_bodies * 6 + i);
+    M_inv.append(offset + i, offset + i, shaft_inr[i]);
+    M_inv.finalize(offset + i);
+  }
+  offset = num_bodies * 6 + num_shafts;
+  real inv_fluid_mass = 1.0 / data_manager->settings.fluid.mass;
+  for (int i = 0; i < num_fluid_bodies; i++) {
+    M_inv.append(offset + i * 3 + 0, offset + i * 3 + 0, inv_fluid_mass);
+    M_inv.finalize(offset + i * 3 + 0);
+    M_inv.append(offset + i * 3 + 1, offset + i * 3 + 1, inv_fluid_mass);
+    M_inv.finalize(offset + i * 3 + 1);
+    M_inv.append(offset + i * 3 + 2, offset + i * 3 + 2, inv_fluid_mass);
+    M_inv.finalize(offset + i * 3 + 2);
   }
 
   M_invk = v + M_inv * hf;
