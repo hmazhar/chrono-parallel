@@ -32,6 +32,7 @@ class CH_PARALLEL_API ChCBroadphase {
   ChCBroadphase();
   void DetectPossibleCollisions();
   void DetermineBoundingBox();
+  void OffsetAABB();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
@@ -45,6 +46,9 @@ class CH_PARALLEL_API ChCBroadphase {
   uint num_aabb_rigid;
   uint num_aabb_fluid;
 
+  // trans_pos_fluid holds the transformed fluid position, used only in the CD
+  host_vector<real3> trans_fluid_pos;
+
   custom_vector<uint> bins_intersected;
   custom_vector<uint> bin_number;
   custom_vector<uint> aabb_number;
@@ -52,7 +56,6 @@ class CH_PARALLEL_API ChCBroadphase {
   custom_vector<uint> num_contact;
 
   real3 inv_bin_size_vec;
-
 };
 }
 }

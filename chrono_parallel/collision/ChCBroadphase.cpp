@@ -180,15 +180,23 @@ void ChCBroadphase::DetermineBoundingBox() {
 
   thrust::constant_iterator<real3> offset(res.first);
 
+  LOG(TRACE) << "Minimum bounding point: (" << res.first.x << ", " << res.first.y << ", " << res.first.z << ")";
+  LOG(TRACE) << "Maximum bounding point: (" << res.second.x << ", " << res.second.y << ", " << res.second.z << ")";
+}
+void ChCBroadphase::OffsetAABB() {
+  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
+  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
+  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+  thrust::constant_iterator<real3> offset(data_manager->measures.collision.global_origin);
   transform(aabb_min_rigid.begin(), aabb_min_rigid.end(), offset, aabb_min_rigid.begin(), thrust::minus<real3>());
   transform(aabb_max_rigid.begin(), aabb_max_rigid.end(), offset, aabb_max_rigid.begin(), thrust::minus<real3>());
   transform(aabb_min_fluid.begin(), aabb_min_fluid.end(), offset, aabb_min_fluid.begin(), thrust::minus<real3>());
   transform(aabb_max_fluid.begin(), aabb_max_fluid.end(), offset, aabb_max_fluid.begin(), thrust::minus<real3>());
-
-  LOG(TRACE) << "Minimum bounding point: (" << res.first.x << ", " << res.first.y << ", " << res.first.z << ")";
-  LOG(TRACE) << "Maximum bounding point: (" << res.second.x << ", " << res.second.y << ", " << res.second.z << ")";
+  host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
+  trans_fluid_pos.resize(pos_fluid.size());
+  transform(pos_fluid.begin(), pos_fluid.end(), offset, trans_fluid_pos.begin(), thrust::minus<real3>());
 }
-
 // =========================================================================================================
 void ChCBroadphase::ComputeOneLevelGrid() {
   const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
@@ -288,13 +296,9 @@ void ChCBroadphase::OneLevelBroadphase() {
   }
 
   thrust::stable_sort(thrust_parallel, contact_pairs.begin(), contact_pairs.end());
-
   number_of_contacts_possible = Thrust_Unique(contact_pairs);
-
   contact_pairs.resize(number_of_contacts_possible);
-
   LOG(TRACE) << "Number of possible collisions: " << number_of_contacts_possible;
-
   return;
 }
 
@@ -303,6 +307,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   num_aabb_fluid = data_manager->num_fluid_bodies;
   LOG(TRACE) << "Number of AABBs: " << num_aabb_rigid << ", " << num_aabb_fluid;
   DetermineBoundingBox();
+  OffsetAABB();
   ComputeOneLevelGrid();
   OneLevelBroadphase();
 }
