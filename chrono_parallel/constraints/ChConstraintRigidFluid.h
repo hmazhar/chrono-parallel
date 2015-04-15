@@ -9,11 +9,11 @@ class CH_PARALLEL_API ChConstraintRigidFluid {
   ChConstraintRigidFluid() { data_manager = 0; }
   ~ChConstraintRigidFluid() {}
   void Setup(ChParallelDataManager* data_container_) { data_manager = data_container_; }
-  void Build_D(SOLVERMODE solver_mode);
-  void Build_b(SOLVERMODE solver_mode);
-  void Build_E(SOLVERMODE solver_mode);
+  void Build_D();
+  void Build_b();
+  void Build_E();
   void Project(real* gamma);
-  void GenerateSparsity(SOLVERMODE solver_mode);
+  void GenerateSparsity();
 
  protected:
   // Pointer to the system's data manager

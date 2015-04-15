@@ -45,6 +45,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   // Perform any setup tasks for all constraint types
   rigid_rigid.Setup(data_manager);
   bilateral.Setup(data_manager);
+  rigid_fluid.Setup(data_manager);
   // Clear and reset solver history data and counters
   solver->current_iteration = 0;
   data_manager->measures.solver.total_iteration = 0;
@@ -183,8 +184,10 @@ void ChLcpSolverParallelDVI::ComputeD() {
 
   rigid_rigid.GenerateSparsity();
   bilateral.GenerateSparsity();
+  rigid_fluid.GenerateSparsity();
   rigid_rigid.Build_D();
   bilateral.Build_D();
+  rigid_fluid.Build_D();
   LOG(INFO) << "ChLcpSolverParallelDVI::ComputeD - D";
 
   D = trans(D_T);
@@ -207,6 +210,7 @@ void ChLcpSolverParallelDVI::ComputeE() {
 
   rigid_rigid.Build_E();
   bilateral.Build_E();
+  rigid_fluid.Build_E();
   data_manager->system_timer.stop("ChLcpSolverParallel_E");
 }
 
@@ -231,7 +235,7 @@ void ChLcpSolverParallelDVI::ComputeR() {
 
   rigid_rigid.Build_b();
   bilateral.Build_b();
-
+  rigid_fluid.Build_b();
   R = -b - D_T * M_invk;
 
   data_manager->system_timer.stop("ChLcpSolverParallel_R");
@@ -252,27 +256,28 @@ void ChLcpSolverParallelDVI::SetR() {
   uint num_rigid_contacts = data_manager->num_rigid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
+  uint num_rigid_fluid = data_manager->num_rigid_fluid_contacts * 3;
   R.resize(data_manager->num_constraints);
   reset(R);
 
+  subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
+  subvector(R, num_unilaterals + num_bilaterals, num_rigid_fluid) =
+      subvector(R_full, num_unilaterals + num_bilaterals, num_rigid_fluid);
   switch (data_manager->settings.solver.local_solver_mode) {
     case BILATERAL: {
-      subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
     } break;
 
     case NORMAL: {
-      subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
       subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
     } break;
+
     case SLIDING: {
-      subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
       subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
       subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
           subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);
     } break;
 
     case SPINNING: {
-      subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
       subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
       subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
           subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);

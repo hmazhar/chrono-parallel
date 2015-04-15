@@ -25,6 +25,7 @@
 #include "chrono_parallel/ChDataManager.h"
 #include "chrono_parallel/physics/ChIntegratorParallel.h"
 #include "chrono_parallel/constraints/ChConstraintRigidRigid.h"
+#include "chrono_parallel/constraints/ChConstraintRigidFluid.h"
 #include "chrono_parallel/constraints/ChConstraintBilateral.h"
 #include "chrono_parallel/math/ChParallelMath.h"
 #include "chrono_parallel/solver/ChSolverParallel.h"
@@ -82,6 +83,7 @@ class CH_PARALLEL_API ChLcpSolverParallelDVI : public ChLcpSolverParallel {
 
  private:
   ChConstraintRigidRigid rigid_rigid;
+  ChConstraintRigidFluid rigid_fluid;
 };
 
 class CH_PARALLEL_API ChLcpSolverParallelDEM : public ChLcpSolverParallel {

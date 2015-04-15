@@ -114,6 +114,7 @@ class CH_PARALLEL_API ChSolverParallel {
 
   ChConstraintRigidRigid* rigid_rigid;
   ChConstraintBilateral* bilateral;
+  ChConstraintRigidFluid* rigid_fluid;
 
   // Pointer to the system's data manager
   ChParallelDataManager* data_manager;

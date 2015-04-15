@@ -100,7 +100,7 @@ void ChConstraintRigidFluid::Project(real* gamma) {
   }
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-void ChConstraintRigidFluid::Build_D(SOLVERMODE solver_mode) {
+void ChConstraintRigidFluid::Build_D() {
   uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
@@ -172,7 +172,7 @@ void ChConstraintRigidFluid::Build_D(SOLVERMODE solver_mode) {
   }
   data_manager->system_timer.stop("ChSolverParallel_solverC");
 }
-void ChConstraintRigidFluid::Build_b(SOLVERMODE solver_mode) {
+void ChConstraintRigidFluid::Build_b() {
   uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
@@ -192,7 +192,7 @@ void ChConstraintRigidFluid::Build_b(SOLVERMODE solver_mode) {
     data_manager->host_data.b[num_unilaterals + num_bilaterals + index * 3 + 2] = 0;
   }
 }
-void ChConstraintRigidFluid::Build_E(SOLVERMODE solver_mode) {
+void ChConstraintRigidFluid::Build_E() {
   uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
@@ -216,7 +216,7 @@ void ChConstraintRigidFluid::Build_E(SOLVERMODE solver_mode) {
   }
 }
 
-void ChConstraintRigidFluid::GenerateSparsity(SOLVERMODE solver_mode) {
+void ChConstraintRigidFluid::GenerateSparsity() {
   uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
