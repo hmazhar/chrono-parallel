@@ -19,6 +19,7 @@ using namespace geometry;
 
 ChFluidContainer::ChFluidContainer(ChSystemParallel* physics_system) {
   system = physics_system;
+  system->AddFluid(this);
 }
 
 ChFluidContainer::~ChFluidContainer() {

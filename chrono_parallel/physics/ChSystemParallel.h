@@ -99,6 +99,8 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
 
   ChParallelDataManager* data_manager;
 
+  void AddFluid(ChFluidContainer* fluid);
+
  protected:
   double timer_collision, old_timer, old_timer_cd;
   bool detect_optimal_threads;
@@ -113,7 +115,7 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   void AddShaft(ChSharedPtr<ChShaft> shaft);
 
   std::vector<ChShaft*> shaftlist;
-  ChSharedPtr<ChFluidContainer> fluid_container;
+  ChFluidContainer* fluid_container;
 };
 
 class CH_PARALLEL_API ChSystemParallelDVI : public ChSystemParallel {
