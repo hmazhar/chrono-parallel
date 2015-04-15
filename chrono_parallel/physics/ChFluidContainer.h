@@ -39,7 +39,8 @@ class CH_PARALLEL_API ChFluidContainer : public ChPhysicsItem {
   ChFluidContainer& operator=(const ChFluidContainer& other);  // Assignment operator
 
   void AddFluid(const std::vector<real3>& positions, const std::vector<real3>& velocities);
-
+  void Update(double ChTime);
+  void UpdatePosition(double ChTime);
   // Position of the node - in absolute csys.
   real3 GetPos(int i);
   // Position of the node - in absolute csys.

@@ -135,6 +135,10 @@ int ChSystemParallel::Integrate_Y() {
     otherphysicslist[i]->Update(ChTime);
   }
 
+  if (!fluid_container.IsNull()) {
+    fluid_container->UpdatePosition(ChTime);
+  }
+
   data_manager->system_timer.stop("update");
 
   //=============================================================================================
@@ -369,6 +373,9 @@ void ChSystemParallel::UpdateShafts() {
 // Update all fluid nodes
 // currently a stub
 void ChSystemParallel::UpdateFluidBodies() {
+  if (!fluid_container.IsNull()) {
+    fluid_container->Update(ChTime);
+  }
 }
 
 //
@@ -542,15 +549,14 @@ void ChSystemParallel::RecomputeThreads() {
       old_timer = sum_of_elems / 10.0;
       current_threads += 2;
       omp_set_num_threads(current_threads);
-#if PRINT_LEVEL == 1
-      cout << "current threads increased to " << current_threads << endl;
-#endif
+
+      LOG(TRACE) << "current threads increased to " << current_threads;
+
     } else {
       current_threads = data_manager->settings.max_threads;
       omp_set_num_threads(data_manager->settings.max_threads);
-#if PRINT_LEVEL == 1
-      cout << "current threads increased to " << current_threads << endl;
-#endif
+
+      LOG(TRACE) << "current threads increased to " << current_threads;
     }
   } else if (frame_threads == 10 && detect_optimal_threads) {
     double current_timer = sum_of_elems / 10.0;
@@ -559,9 +565,7 @@ void ChSystemParallel::RecomputeThreads() {
     if (old_timer < current_timer) {
       current_threads -= 2;
       omp_set_num_threads(current_threads);
-#if PRINT_LEVEL == 1
-      cout << "current threads reduced back to " << current_threads << endl;
-#endif
+      LOG(TRACE) << "current threads reduced back to " << current_threads;
     }
   }
 
