@@ -126,6 +126,7 @@ bool ChOpenGLViewer::Initialize() {
   grid_data.push_back(glm::vec3(0, 0, 0));
 
   cloud.Initialize(cloud_data, white, &cloud_shader);
+  fluid.Initialize(cloud_data, pacifica, &sphere_shader);
   grid.Initialize(grid_data, darkriver, &cloud_shader);
 
   contact_renderer.Initialize(darkred, &cloud_shader);
@@ -217,6 +218,19 @@ void ChOpenGLViewer::Render() {
         ChVector<> pos = abody->GetPos();
         cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
+    }
+
+    if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
+      fluid_data.resize(parallel_system->data_manager->num_fluid_bodies);
+#pragma omp parallel for
+      for (int i = 0; i < parallel_system->data_manager->num_fluid_bodies; i++) {
+        real3 pos = parallel_system->data_manager->host_data.pos_fluid[i];
+        cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
+      }
+
+      fluid.Update(fluid_data);
+      glm::mat4 model(1);
+      fluid.Draw(projection, view * model);
     }
 
     if (render_mode == POINTS) {
