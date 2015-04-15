@@ -22,65 +22,36 @@
 
 #include <math.h>
 
-#include "physics/ChNodeXYZ.h"
-#include "lcp/ChLcpVariablesNode.h"
 #include "chrono_parallel/ChParallelDefines.h"
 #include "chrono_parallel/math/real.h"
 #include "chrono_parallel/ChDataManager.h"
 namespace chrono {
 
 // Forward references (for parent hierarchy pointer)
-class ChSystem;
+class ChSystemParallel;
 
 class CH_PARALLEL_API ChFluidContainer : public ChPhysicsItem {
  public:
-  ChFluidContainer(real r);
+  ChFluidContainer(ChSystemParallel* system);
   ~ChFluidContainer();
 
   ChFluidContainer(const ChFluidContainer& other);             // Copy constructor
   ChFluidContainer& operator=(const ChFluidContainer& other);  // Assignment operator
 
-  //
-  // FUNCTIONS
-  //
-
-  bool GetCollide() { return true; }
-  real GetDensity() { return data_manager->host_data.den_fluid[body_id]; }
+  void AddFluid(const std::vector<real3>& positions, const std::vector<real3>& velocities);
 
   // Position of the node - in absolute csys.
-  ChVector<> GetPos() {
-    real3 pos = data_manager->host_data.pos_fluid[body_id];
-    return ChVector<>(pos.x, pos.y, pos.z);
-  }
+  real3 GetPos(int i);
   // Position of the node - in absolute csys.
-  void SetPos(const ChVector<>& mpos) { data_manager->host_data.pos_fluid[body_id] = R3(mpos.x, mpos.y, mpos.z); }
-
-  void AddCollisionModelsToSystem() {}
+  void SetPos(const int& i, const real3& mpos);
 
   // Velocity of the node - in absolute csys.
-  ChVector<> GetPos_dt() {
-    real3 vel = data_manager->host_data.vel_fluid[body_id];
-    return ChVector<>(vel.x, vel.y, vel.z);
-  }
+  real3 GetPos_dt(int i);
   // Velocity of the node - in absolute csys.
-  void SetPos_dt(const ChVector<>& mposdt) {
-    data_manager->host_data.vel_fluid[body_id] = R3(mposdt.x, mposdt.y, mposdt.z);
-  }
+  void SetPos_dt(const int& i, const real3& mposdt);
 
-  // Acceleration of the node - in absolute csys.
-  ChVector<> GetPos_dtdt() { return ChVector<>(0); }
-  // Acceleration of the node - in absolute csys.
-  void SetPos_dtdt(const ChVector<>& mposdtdt) {}
-  /// Set the body identifier
-  void SetId(int identifier) { body_id = identifier; }
-  /// Set the body identifier
-  unsigned int GetId() { return body_id; }
-
-  //
-  // DATA
-
-  unsigned int body_id;
-  ChParallelDataManager* data_manager;
+ private:
+  ChSystemParallel* system;
 };
 }
 #endif
