@@ -124,8 +124,11 @@ void ChLcpSolverParallelDVI::ComputeD() {
   }
 
   uint num_shafts = data_manager->num_shafts;
+  uint num_fluid_bodies = data_manager->num_fluid_bodies;
   uint num_dof = data_manager->num_dof;
   uint num_rigid_contacts = data_manager->num_rigid_contacts;
+  uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
+  uint num_fluid_contacts = data_manager->num_fluid_contacts;
   uint num_bilaterals = data_manager->num_bilaterals;
   uint nnz_bilaterals = data_manager->nnz_bilaterals;
 
@@ -137,13 +140,27 @@ void ChLcpSolverParallelDVI::ComputeD() {
   int num_tangential = 2 * num_rigid_contacts;
   int num_spinning = 3 * num_rigid_contacts;
 
+  int nnz_rigid_fluid = 9 * 3 * num_rigid_fluid_contacts;
+  int nnz_fluid_fluid = 6 * num_fluid_contacts;
+
+  uint num_rigid_fluid = num_rigid_fluid_contacts * 3;
+  uint num_fluid_fluid = num_fluid_contacts * 3;
+
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    int max_interactions = data_manager->settings.fluid.max_interactions;
+    nnz_fluid_fluid = num_fluid_bodies * 6 * max_interactions + num_fluid_bodies * 18 * max_interactions;
+    num_fluid_fluid = num_fluid_bodies + num_fluid_bodies * 3;
+  }
+
   CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
   CompressedMatrix<real>& D = data_manager->host_data.D;
   CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
 
   const CompressedMatrix<real>& M_inv = data_manager->host_data.M_inv;
-  int nnz_total = nnz_bilaterals;
-  int num_rows = num_bilaterals;
+
+  int nnz_total = nnz_bilaterals + nnz_rigid_fluid + nnz_fluid_fluid;
+  int num_rows = num_bilaterals + num_rigid_fluid + num_fluid_fluid;
+
   switch (data_manager->settings.solver.solver_mode) {
     case NORMAL:
       nnz_total += nnz_normal;
