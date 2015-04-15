@@ -43,6 +43,7 @@ void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<r
   const DynamicVector<real>& E = data_manager->host_data.E;
 
   uint num_rigid_contacts = data_manager->num_rigid_contacts;
+  uint num_rigid_fluid_contacts = data_manager->num_rigid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
   output.reset();
@@ -70,7 +71,6 @@ void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<r
         blaze::DynamicVector<real> tmp = M_invD_b * x_b + M_invD_n * x_n;
         o_b = D_b_T * tmp + E_b * x_b;
         o_n = D_n_T * tmp + E_n * x_n;
-
       } break;
 
       case SLIDING: {

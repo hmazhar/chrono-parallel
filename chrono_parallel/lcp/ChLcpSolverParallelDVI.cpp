@@ -33,8 +33,17 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
     rigid_rigid.offset = 6;
     data_manager->num_unilaterals = 6 * data_manager->num_rigid_contacts;
   }
+
+  uint num_rigid_fluid = data_manager->num_rigid_fluid_contacts * 3;
+  uint num_fluid_fluid = data_manager->num_fluid_contacts * 3;
+
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    num_fluid_fluid = data_manager->num_fluid_bodies + data_manager->num_fluid_bodies * 3;
+  }
+
   // This is the total number of constraints
-  data_manager->num_constraints = data_manager->num_unilaterals + data_manager->num_bilaterals;
+  data_manager->num_constraints =
+      data_manager->num_unilaterals + data_manager->num_bilaterals + num_rigid_fluid + num_fluid_fluid;
 
   // Generate the mass matrix and compute M_inv_k
   ComputeMassMatrix();
@@ -54,6 +63,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   // Set pointers to constraint objects and perform setup actions for solver
   solver->rigid_rigid = &rigid_rigid;
   solver->bilateral = &bilateral;
+  solver->rigid_fluid = &rigid_fluid;
   solver->Setup(data_manager);
 
   ComputeD();
