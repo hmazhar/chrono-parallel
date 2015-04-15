@@ -22,11 +22,11 @@ SOURCE_GROUP("" FILES ${ChronoEngine_Parallel_BASE})
 
 SET(ChronoEngine_Parallel_PHYSICS
     physics/ChSystemParallel.h
-    physics/ChNodeFluid.h
+    physics/ChFluidContainer.h
     physics/ChSystemParallel.cpp
     physics/ChSystemParallelDVI.cpp
     physics/ChSystemParallelDEM.cpp
-    physics/ChNodeFluid.cpp
+    physics/ChFluidContainer.cpp
     )
 
 SOURCE_GROUP(physics FILES ${ChronoEngine_Parallel_PHYSICS})

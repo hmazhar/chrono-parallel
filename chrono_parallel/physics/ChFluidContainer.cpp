@@ -1,11 +1,11 @@
+
 #include <stdlib.h>
 #include <algorithm>
 
-#include "chrono_parallel/physics/ChNodeFluid.h"
 #include "physics/ChSystem.h"
 #include "core/ChLinearAlgebra.h"
 #include "core/ChMemory.h"  // must be last include (memory leak debugger). In .cpp only.
-
+#include <chrono_parallel/physics/ChFluidContainer.h>
 namespace chrono {
 
 using namespace collision;
@@ -16,20 +16,20 @@ using namespace geometry;
 
 /// CLASS FOR A 3DOF FLUID NODE
 
-ChNodeFluid::ChNodeFluid(real r) {
+ChFluidContainer::ChFluidContainer(real r) {
   body_id = 0;
   data_manager = 0;
 }
 
-ChNodeFluid::~ChNodeFluid() {
+ChFluidContainer::~ChFluidContainer() {
 }
 
-ChNodeFluid::ChNodeFluid(const ChNodeFluid& other) : ChPhysicsItem(other) {
+ChFluidContainer::ChFluidContainer(const ChFluidContainer& other) : ChPhysicsItem(other) {
   this->body_id = other.body_id;
   this->data_manager = other.data_manager;
 }
 
-ChNodeFluid& ChNodeFluid::operator=(const ChNodeFluid& other) {
+ChFluidContainer& ChFluidContainer::operator=(const ChFluidContainer& other) {
   if (&other == this)
     return *this;
 

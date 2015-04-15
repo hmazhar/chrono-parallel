@@ -13,11 +13,12 @@
 // =============================================================================
 // OpenGL viewer, this class draws the system to the screen and handles input
 // =============================================================================
+
 #include "chrono_parallel/ChApiParallel.h"
 #include "chrono_opengl/ChOpenGLViewer.h"
 #include "chrono_opengl/ChOpenGLMaterials.h"
 
-#include "chrono_parallel/physics/ChNodeFluid.h"
+#include <chrono_parallel/physics/ChFluidContainer.h>
 
 #include "assets/ChBoxShape.h"
 #include "assets/ChSphereShape.h"

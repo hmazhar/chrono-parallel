@@ -32,13 +32,13 @@ namespace chrono {
 // Forward references (for parent hierarchy pointer)
 class ChSystem;
 
-class CH_PARALLEL_API ChNodeFluid : public ChPhysicsItem {
+class CH_PARALLEL_API ChFluidContainer : public ChPhysicsItem {
  public:
-  ChNodeFluid(real r);
-  ~ChNodeFluid();
+  ChFluidContainer(real r);
+  ~ChFluidContainer();
 
-  ChNodeFluid(const ChNodeFluid& other);             // Copy constructor
-  ChNodeFluid& operator=(const ChNodeFluid& other);  // Assignment operator
+  ChFluidContainer(const ChFluidContainer& other);             // Copy constructor
+  ChFluidContainer& operator=(const ChFluidContainer& other);  // Assignment operator
 
   //
   // FUNCTIONS

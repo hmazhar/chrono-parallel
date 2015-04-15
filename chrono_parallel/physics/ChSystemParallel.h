@@ -41,7 +41,7 @@
 #include "chrono_parallel/collision/ChCNarrowphaseMPR.h"
 #include "chrono_parallel/collision/ChCNarrowphaseR.h"
 #include "chrono_parallel/math/ChParallelMath.h"
-#include "chrono_parallel/physics/ChNodeFluid.h"
+#include <chrono_parallel/physics/ChFluidContainer.h>
 namespace chrono {
 
 class CH_PARALLEL_API ChSystemParallel : public ChSystem {
@@ -113,7 +113,7 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   void AddShaft(ChSharedPtr<ChShaft> shaft);
 
   std::vector<ChShaft*> shaftlist;
-  ChSharedPtr<ChNodeFluid> fluid_container;
+  ChSharedPtr<ChFluidContainer> fluid_container;
 };
 
 class CH_PARALLEL_API ChSystemParallelDVI : public ChSystemParallel {
