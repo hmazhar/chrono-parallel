@@ -37,6 +37,7 @@ class CH_PARALLEL_API ChCBroadphase {
   void ProjectRigidOntoTiledGrid();
   void AddFluidToGrid();
   void FlagTiles();
+  void FluidContacts();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
@@ -65,6 +66,8 @@ class CH_PARALLEL_API ChCBroadphase {
   host_vector<uint> fluid_tile_start_index;  //
   uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
   uint fluid_tiles_active;                   // The number of unique tiles
+  uint num_fluid_flagged;                    // number of fluid objects flagged to go into the regular CD
+
   // BINNED GRID INFORMATION==================================================================================
   real3 inv_bin_size;
   uint num_bins_active;
