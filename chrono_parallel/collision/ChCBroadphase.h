@@ -36,6 +36,7 @@ class CH_PARALLEL_API ChCBroadphase {
   void ComputeTiledGrid();
   void ProjectRigidOntoTiledGrid();
   void AddFluidToGrid();
+  void FlagTiles();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
@@ -62,7 +63,6 @@ class CH_PARALLEL_API ChCBroadphase {
   host_vector<bool> fluid_flag;              // This flag is 1 if the fluid is not in a cell with a rigid, 0 if it is
   host_vector<uint> fluid_interactions;      // The number of interactions for each fluid particle
   host_vector<uint> fluid_tile_start_index;  //
-  uint num_fluid_tile_intersections;         //
   uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
   uint fluid_tiles_active;                   // The number of unique tiles
   // BINNED GRID INFORMATION==================================================================================

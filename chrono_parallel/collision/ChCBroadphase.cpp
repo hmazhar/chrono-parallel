@@ -201,7 +201,7 @@ void ChCBroadphase::OffsetAABB() {
 // COMPUTE TILED GRID=======================================================================================
 void ChCBroadphase::ComputeTiledGrid() {
   if (num_aabb_fluid == 0) {
-  //  return;
+    //  return;
   }
   const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
   const real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
@@ -213,7 +213,6 @@ void ChCBroadphase::ComputeTiledGrid() {
 
   LOG(TRACE) << "tile_size: " << tile_size;
   LOG(TRACE) << "tiles_per_axis: (" << tiles_per_axis.x << ", " << tiles_per_axis.y << ", " << tiles_per_axis.z << ")";
-
 }
 
 // =========================================================================================================
@@ -237,7 +236,7 @@ void ChCBroadphase::ComputeOneLevelGrid() {
 
 void ChCBroadphase::ProjectRigidOntoTiledGrid() {
   if (num_aabb_fluid == 0) {
-  //  return;
+    //  return;
   }
   host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
   host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
@@ -272,9 +271,9 @@ void ChCBroadphase::ProjectRigidOntoTiledGrid() {
     }
   }
   // The AABB number is NOT important here we only want to know the bins
-  LOG(TRACE) << "Thrust_Sort rigid_tile_number: ";
   Thrust_Sort(rigid_tile_number);
   rigid_tiles_active = Thrust_Unique(rigid_tile_number);
+  rigid_tile_number.resize(rigid_tiles_active);
   LOG(TRACE) << "rigid_tiles_active: " << rigid_tiles_active;
   // At the end of this step we have a list of all of the tiles that have rigid bodies
 }
@@ -286,6 +285,29 @@ void ChCBroadphase::AddFluidToGrid() {
     fluid_tile_number[i] = Hash_Index(HashMin(trans_fluid_pos[i], inv_tile_size), tiles_per_axis);
   }
 }
+
+// =========================================================================================================
+void ChCBroadphase::FlagTiles() {
+  // Add the rigid tiles to the fluid ones
+  LOG(TRACE) << "fluid_tile_number size: " << num_aabb_fluid + rigid_tiles_active;
+  fluid_tile_number.resize(num_aabb_fluid + rigid_tiles_active);
+  // Copy the flagged tile numbers into the list
+  thrust::copy(rigid_tile_number.begin(), rigid_tile_number.end(), fluid_tile_number.begin() + num_aabb_fluid);
+  // Add -1 for the tiles flagged with rigid bodies, if a tile has a -1 in it it means that
+  // a rigid body is in this tile
+  fluid_aabb_number.resize(num_aabb_fluid + rigid_tiles_active);
+  // Fill fluid_aabb_number with a sequence representing the fluid particle numbers
+  thrust::sequence(fluid_aabb_number.begin(), fluid_aabb_number.begin() + num_aabb_fluid, 0);
+  // Fill the extra AABB indices with -1, this means that a rigid body is in this tile
+  thrust::fill(fluid_aabb_number.begin() + num_aabb_fluid, fluid_aabb_number.end(), -1);
+  Thrust_Sort_By_Key(fluid_tile_number, fluid_aabb_number);
+
+  fluid_tile_start_index.resize(num_aabb_fluid + rigid_tiles_active + 1);
+  fluid_tile_start_index[num_aabb_fluid + rigid_tiles_active] = 0;
+  fluid_tiles_active = Thrust_Reduce_By_Key(fluid_tile_number, fluid_tile_number, fluid_tile_start_index);
+  LOG(TRACE) << "fluid_tiles_active: " << fluid_tiles_active;
+}
+
 // =========================================================================================================
 // use spatial subdivision to detect the list of POSSIBLE collisions
 // let user define their own narrow-phase collision detection
@@ -380,6 +402,8 @@ void ChCBroadphase::DetectPossibleCollisions() {
   OffsetAABB();
   ComputeTiledGrid();
   ProjectRigidOntoTiledGrid();
+  AddFluidToGrid();
+  FlagTiles();
   ComputeOneLevelGrid();
   OneLevelBroadphase();
 }
