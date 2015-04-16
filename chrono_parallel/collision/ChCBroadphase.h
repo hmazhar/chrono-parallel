@@ -64,10 +64,11 @@ class CH_PARALLEL_API ChCBroadphase {
   host_vector<bool> fluid_flag;              // This flag is 1 if the fluid is not in a cell with a rigid, 0 if it is
   host_vector<uint> fluid_interactions;      // The number of interactions for each fluid particle
   host_vector<uint> fluid_tile_start_index;  //
+  host_vector<uint> tile_active;             // does the tile have stuff in it?
   uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
   uint fluid_tiles_active;                   // The number of unique tiles
   uint num_fluid_flagged;                    // number of fluid objects flagged to go into the regular CD
-
+  uint num_active_fluid_aabb_tiles;          // total number of tiles intersected by fluid
   // BINNED GRID INFORMATION==================================================================================
   real3 inv_bin_size;
   uint num_bins_active;
