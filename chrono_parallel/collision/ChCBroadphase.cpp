@@ -158,24 +158,20 @@ void function_Check_Neighbors(const int& current_number,
                               const host_vector<uint>& fluid_tile_start_index,
                               const host_vector<int>& fluid_aabb_number,
                               const host_vector<real3>& trans_fluid_pos,
-                              host_vector<bool>& fluid_flag,
-                              uint& count) {
+                              uint& count,
+                              uint& count_rigid) {
   uint start = fluid_tile_start_index[tile_number];
   uint end = fluid_tile_start_index[tile_number + 1];
 
-  //  if (end - start == 1) {
-  //    return;  // Ignore tiles with one object
-  //  }
-  std::cout << "function_Check_Neighbors" << start << " " << end << std::endl;
+  std::cout << "function_Check_Neighbors " << start << " " << end << std::endl;
   for (uint i = start; i < end; i++) {
     int neighbor_number = fluid_aabb_number[i];
-    std::cout << "neighbor_number" << neighbor_number << " " << current_number << " " << tile_number << " " << i
-              << std::endl;
+    std::cout << "neighbor_number " << neighbor_number << " " << current_number << std::endl;
     if (current_number == neighbor_number) {
       continue;  // Skip the same body
     }
-    if (neighbor_number == -1) {
-      fluid_flag[current_number] = 0;  // the neighbor is a rigid body, flag it;
+    if (neighbor_number < 0) {
+      count_rigid++;
       continue;
     }
     // otherwise it is a fluid particle
@@ -192,21 +188,25 @@ void function_Store_Neighbors(const int& current_number,
                               const real3& current_pos,
                               const real kernel_radius,
                               const uint& offset,
+                              const uint& offset_rigid,
                               const host_vector<uint>& fluid_tile_start_index,
                               const host_vector<int>& fluid_aabb_number,
                               const host_vector<real3>& trans_fluid_pos,
                               uint& count,
-                              host_vector<int2>& bids_fluid_fluid) {
+                              uint& count_rigid,
+                              host_vector<int2>& bids_fluid_fluid,
+                              host_vector<long long>& bids_rigid_fluid) {
   uint start = fluid_tile_start_index[tile_number];
   uint end = fluid_tile_start_index[tile_number + 1];
-
-  //  if (end - start == 1) {
-  //    return;  // Ignore tiles with one object
-  //  }
   for (uint i = start; i < end; i++) {
     int neighbor_number = fluid_aabb_number[i];
     if (current_number == neighbor_number || neighbor_number == -1) {
       continue;  // Skip the same body and boudnary ones
+    }
+    if (neighbor_number < 0) {
+      bids_rigid_fluid[offset_rigid + count_rigid] = ((long long)current_number << 32 | (long long)neighbor_number);
+      count_rigid++;
+      continue;
     }
     real3 neighbor_pos = trans_fluid_pos[neighbor_number];
     if (function_Check_Sphere(current_pos, neighbor_pos, kernel_radius)) {
@@ -326,6 +326,7 @@ void ChCBroadphase::ProjectRigidOntoTiledGrid() {
   num_rigid_tile_intersections = rigid_tiles_intersected.back();
   LOG(TRACE) << "num_rigid_tile_intersections: " << num_rigid_tile_intersections;
   rigid_tile_number.resize(num_rigid_tile_intersections);
+  rigid_tile_aabb.resize(num_rigid_tile_intersections);
 
 #pragma omp parallel for
   for (int index = 0; index < num_aabb_rigid; index++) {
@@ -337,16 +338,23 @@ void ChCBroadphase::ProjectRigidOntoTiledGrid() {
       for (j = gmin.y; j <= gmax.y; j++) {
         for (k = gmin.z; k <= gmax.z; k++) {
           rigid_tile_number[mInd + count] = Hash_Index(I3(i, j, k), tiles_per_axis);
+          rigid_tile_aabb[mInd + count] = -index - 1;
           count++;
         }
       }
     }
   }
-  // The AABB number is NOT important here we only want to know the bins
-  Thrust_Sort(rigid_tile_number);
-  rigid_tiles_active = Thrust_Unique(rigid_tile_number);
-  rigid_tile_number.resize(rigid_tiles_active);
-  LOG(TRACE) << "rigid_tiles_active: " << rigid_tiles_active;
+  // The AABB number is NOT important here we only want to know the bins (maybe)
+  // Thrust_Sort(rigid_tile_number);
+  // Thrust_Sort_By_Key(rigid_tile_number, rigid_tile_aabb);
+  // Thrust_Unique();
+  // rigid_tiles_active = Thrust_Reduce_By_Key(rigid_tile_number, rigid_tile_number, rigid_tile_start_index);
+
+  // rigid_tile_start_index.resize(rigid_tiles_active + 1);
+  // rigid_tile_start_index[rigid_tiles_active] = 0;
+  // Thrust_Exclusive_Scan(rigid_tile_start_index);
+
+  // LOG(TRACE) << "rigid_tiles_active: " << rigid_tiles_active;
   // At the end of this step we have a list of all of the tiles that have rigid bodies
 }
 // DETERMINE TILE NUMBERS FOR FLUID=========================================================================
@@ -361,25 +369,26 @@ void ChCBroadphase::AddFluidToGrid() {
 // =========================================================================================================
 void ChCBroadphase::FlagTiles() {
   // Add the rigid tiles to the fluid ones
-  LOG(TRACE) << "fluid_tile_number size: " << num_aabb_fluid + rigid_tiles_active;
-  fluid_tile_number.resize(num_aabb_fluid + rigid_tiles_active);
+  LOG(TRACE) << "fluid_tile_number size: " << num_aabb_fluid + num_rigid_tile_intersections;
+  fluid_tile_number.resize(num_aabb_fluid + num_rigid_tile_intersections);
   // Copy the flagged tile numbers into the list
   thrust::copy(rigid_tile_number.begin(), rigid_tile_number.end(), fluid_tile_number.begin() + num_aabb_fluid);
   // Add -1 for the tiles flagged with rigid bodies, if a tile has a -1 in it it means that
   // a rigid body is in this tile
-  fluid_aabb_number.resize(num_aabb_fluid + rigid_tiles_active);
+  fluid_aabb_number.resize(num_aabb_fluid + num_rigid_tile_intersections);
   // Fill fluid_aabb_number with a sequence representing the fluid particle numbers
   thrust::sequence(fluid_aabb_number.begin(), fluid_aabb_number.begin() + num_aabb_fluid, 0);
   // Fill the extra AABB indices with -1, this means that a rigid body is in this tile
-  thrust::fill(fluid_aabb_number.begin() + num_aabb_fluid, fluid_aabb_number.end(), -1);
+  thrust::copy(rigid_tile_aabb.begin(), rigid_tile_aabb.end(), fluid_aabb_number.begin() + num_aabb_fluid);
+  // thrust::fill(fluid_aabb_number.begin() + num_aabb_fluid, fluid_aabb_number.end(), -1);
 
   Thrust_Sort_By_Key(fluid_tile_number, fluid_aabb_number);
   LOG(TRACE) << "fluid_tile_number: ";
-  for (int i = 0; i < fluid_tile_number.size(); i++) {
-    std::cout << fluid_tile_number[i] << " " << fluid_aabb_number[i] << std::endl;
-  }
+  //  for (int i = 0; i < fluid_tile_number.size(); i++) {
+  //    std::cout << fluid_tile_number[i] << " " << fluid_aabb_number[i] << std::endl;
+  //  }
 
-  fluid_tile_start_index.resize(num_aabb_fluid + rigid_tiles_active);
+  fluid_tile_start_index.resize(num_aabb_fluid + num_rigid_tile_intersections);
   fluid_tiles_active = Thrust_Reduce_By_Key(fluid_tile_number, fluid_tile_number, fluid_tile_start_index);
 
   fluid_tile_start_index.resize(fluid_tiles_active + 1);
@@ -387,19 +396,19 @@ void ChCBroadphase::FlagTiles() {
 
   Thrust_Exclusive_Scan(fluid_tile_start_index);
   LOG(TRACE) << "fluid_tile_start_index: ";
-  for (int i = 0; i < fluid_tile_start_index.size(); i++) {
-    std::cout << fluid_tile_number[i] << " " << fluid_tile_start_index[i] << std::endl;
-  }
+  //  for (int i = 0; i < fluid_tile_start_index.size(); i++) {
+  //    std::cout << fluid_tile_number[i] << " " << fluid_tile_start_index[i] << std::endl;
+  //  }
   tile_active.resize(tiles_per_axis.x * tiles_per_axis.y * tiles_per_axis.z);
   Thrust_Fill(tile_active, -1);
   for (int i = 0; i < fluid_tiles_active; i++) {
     tile_active[fluid_tile_number[i]] = i;
   }
-  LOG(TRACE) << "tile_active: ";
+  //  LOG(TRACE) << "tile_active: ";
 
-  for (int i = 0; i < tile_active.size(); i++) {
-    std::cout << i << " " << tile_active[i] << std::endl;
-  }
+  //  for (int i = 0; i < tile_active.size(); i++) {
+  //    std::cout << i << " " << tile_active[i] << std::endl;
+  //  }
 
   LOG(TRACE) << "fluid_tiles_active: " << fluid_tiles_active;
 }
@@ -412,16 +421,17 @@ void ChCBroadphase::FluidContacts() {
 
   fluid_interactions.resize(num_aabb_fluid + 1);
   fluid_interactions[num_aabb_fluid] = 0;
+  rigid_interactions.resize(num_aabb_fluid + 1);
+  rigid_interactions[num_aabb_fluid] = 0;
   const real radius = data_manager->settings.fluid.kernel_radius;
-  // Count contacts for each fluid particle
-  // fluid_aabb_number is longer than num_aabb_fluid and contains extra -1's
-  //#pragma omp parallel for
+// Count contacts for each fluid particle
+// fluid_aabb_number is longer than num_aabb_fluid and contains extra -1's
+#pragma omp parallel for
   for (int index = 0; index < num_aabb_fluid; index++) {
     real3 current_pos = trans_fluid_pos[index];
     int3 tile_position = HashMin(current_pos, inv_tile_size);
     uint tile_number = Hash_Index(tile_position, tiles_per_axis);
-    uint count = 0;
-    std::cout << "tile_pos:" << tile_position.x << " " << tile_position.y << " " << tile_position.z << std::endl;
+    uint count = 0, count_rigid = 0;
     // Our grid does NOT wrap, so clamp it
     for (int a = tile_position.x - 1; a <= tile_position.x + 1; a++) {
       if (a < 0 || a >= tiles_per_axis.x) {
@@ -440,30 +450,53 @@ void ChCBroadphase::FluidContacts() {
           if (tile_active[tile_number] == -1) {
             continue;
           }
-          std::cout << "a b c:" << a << " " << b << " " << c << " " << tile_number << " " << tiles_per_axis.x << " "
-                    << tiles_per_axis.y << " " << tiles_per_axis.z << std::endl;
 
-          function_Check_Neighbors(index, tile_active[tile_number], current_pos, radius, fluid_tile_start_index,
-                                   fluid_aabb_number, trans_fluid_pos, fluid_flag, count);
+          uint start = fluid_tile_start_index[tile_active[tile_number]];
+          uint end = fluid_tile_start_index[tile_active[tile_number] + 1];
+
+          for (uint i = start; i < end; i++) {
+            int neighbor_number = fluid_aabb_number[i];
+            if (index == neighbor_number) {
+              continue;  // Skip the same body or any lesser ones
+            }
+            if (neighbor_number < 0) {
+              count_rigid++;
+              continue;
+            }
+            if (index >= neighbor_number) {
+              continue;  // Skip the same body or any lesser ones
+            }
+            // otherwise it is a fluid particle
+            real3 neighbor_pos = trans_fluid_pos[neighbor_number];
+            if (function_Check_Sphere(current_pos, neighbor_pos, radius)) {
+              count++;
+            }
+          }
         }
       }
     }
 
     fluid_interactions[index] = count;
+    rigid_interactions[index] = count_rigid;
   }
 
   Thrust_Exclusive_Scan(fluid_interactions);
+  Thrust_Exclusive_Scan(rigid_interactions);
   number_of_fluid_interactions = fluid_interactions.back();
-  LOG(TRACE) << "fluid_interactions " << number_of_fluid_interactions;
+  number_of_rigid_interactions = rigid_interactions.back();
+  LOG(TRACE) << "number_of_fluid_interactions " << number_of_fluid_interactions;
+  LOG(TRACE) << "number_of_rigid_interactions " << number_of_rigid_interactions;
   data_manager->host_data.bids_fluid_fluid.resize(number_of_fluid_interactions);
+  data_manager->host_data.pair_rigid_fluid.resize(number_of_rigid_interactions);
 
-  //#pragma omp parallel for
+#pragma omp parallel for
   for (int index = 0; index < num_aabb_fluid; index++) {
     real3 current_pos = trans_fluid_pos[index];
     int3 tile_position = HashMin(current_pos, inv_tile_size);
     uint tile_number = Hash_Index(tile_position, tiles_per_axis);
     uint offset = fluid_interactions[index];
-    uint count = 0;
+    uint offset_rigid = rigid_interactions[index];
+    uint count = 0, count_rigid = 0;
 
     for (int a = tile_position.x - 1; a <= tile_position.x + 1; a++) {
       if (a < 0 || a >= tiles_per_axis.x) {
@@ -483,33 +516,86 @@ void ChCBroadphase::FluidContacts() {
           if (tile_active[tile_number] == -1) {
             continue;
           }
-          function_Store_Neighbors(index, tile_active[tile_number], current_pos, radius, offset, fluid_tile_start_index,
-                                   fluid_aabb_number, trans_fluid_pos, count, data_manager->host_data.bids_fluid_fluid);
+
+          uint start = fluid_tile_start_index[tile_active[tile_number]];
+          uint end = fluid_tile_start_index[tile_active[tile_number] + 1];
+          for (uint i = start; i < end; i++) {
+            int neighbor_number = fluid_aabb_number[i];
+            if (index == neighbor_number) {
+              continue;  // Skip the same body and boudnary ones
+            }
+            if (neighbor_number < 0) {
+              data_manager->host_data.pair_rigid_fluid[offset_rigid + count_rigid] =
+                  ((long long)index + num_aabb_fluid << 32 | (long long)((neighbor_number + 1) * -1));
+              count_rigid++;
+              continue;
+            }
+            if (index >= neighbor_number) {
+              continue;  // Skip the same body and boudnary ones
+            }
+            real3 neighbor_pos = trans_fluid_pos[neighbor_number];
+            if (function_Check_Sphere(current_pos, neighbor_pos, radius)) {
+              data_manager->host_data.bids_fluid_fluid[offset + count] = I2(index, neighbor_number);
+              count++;
+            }
+          }
         }
       }
     }
   }
-  // fluid particles marked with 0 are in contact with a rigid body
-  num_fluid_flagged = Thrust_Count(fluid_flag, 0);
-  LOG(TRACE) << "num_fluid_flagged " << num_fluid_flagged;
-  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
-  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+
+  thrust::stable_sort(data_manager->host_data.pair_rigid_fluid.begin(), data_manager->host_data.pair_rigid_fluid.end());
+  number_of_rigid_interactions = Thrust_Unique(data_manager->host_data.pair_rigid_fluid);
+
+  LOG(TRACE) << "number_of_rigid_interactions " << number_of_rigid_interactions;
+  //
+  //  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+  //  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+
   // Sort the fluid by the flag and resize the aabb list
   // the fluid_aabb_number vector holds the actual number of the fluid particle (needed in narrowphase)
 
-  auto zip_start = thrust::make_zip_iterator(
-      thrust::make_tuple(fluid_aabb_number.begin(), aabb_min_fluid.begin(), aabb_max_fluid.begin()));
+  // auto zip_start = thrust::make_zip_iterator(
+  //    thrust::make_tuple(fluid_aabb_number.begin(), aabb_min_fluid.begin(), aabb_max_fluid.begin()));
 
-  thrust::sort_by_key(fluid_flag.begin(), fluid_flag.end(), zip_start);
+  // thrust::sort_by_key(fluid_flag.begin(), fluid_flag.end(), zip_start);
   // resize everything to the flagged fluid particles
-  fluid_aabb_number.resize(num_fluid_flagged);
-  aabb_min_fluid.resize(num_fluid_flagged);
-  aabb_max_fluid.resize(num_fluid_flagged);
+  // fluid_aabb_number.resize(num_fluid_flagged);
+  // aabb_min_fluid.resize(num_fluid_flagged);
+  // aabb_max_fluid.resize(num_fluid_flagged);
 
-  uint num_rigid_bodies = data_manager->num_rigid_bodies;
-  thrust::constant_iterator<uint> offset(num_rigid_bodies);
+  // uint num_rigid_bodies = data_manager->num_rigid_bodies;
+  // thrust::constant_iterator<uint> offset(num_rigid_bodies);
   // Need to make sure that fluid number does not clash with object number, offset by the number of rigid_bodies
-  transform(fluid_aabb_number.begin(), fluid_aabb_number.end(), offset, fluid_aabb_number.begin(), thrust::plus<int>());
+  // transform(fluid_aabb_number.begin(), fluid_aabb_number.end(), offset, fluid_aabb_number.begin(),
+  // thrust::plus<int>());
+}
+
+void ChCBroadphase::CheckRigidFluidPairs() {
+  host_vector<bool> rigid_fluid_pairs(number_of_rigid_interactions);
+  Thrust_Fill(rigid_fluid_pairs, 1);
+#pragma omp parallel for
+  for (int i = 0; i < number_of_rigid_interactions; i++) {
+    long long pair = data_manager->host_data.pair_rigid_fluid[i];
+    int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
+
+    // get the aabbs
+
+    real3 aabb_min_fluid = aabb_min_fluid[pair2.x - num_aabb_fluid];
+    real3 aabb_max_fluid = aabb_max_fluid[pair2.x - num_aabb_fluid];
+
+    real3 aabb_min_rigid = aabb_min_rigid[pair2.y];
+    real3 aabb_max_rigid = aabb_max_rigid[pair2.y];
+
+    if (overlap(aabb_min_fluid, aabb_max_fluid, aabb_min_rigid, aabb_max_rigid)) {
+      rigid_fluid_pairs[i] = 0;
+    }
+  }
+  Thrust_Sort_By_Key(rigid_fluid_pairs, data_manager->host_data.pair_rigid_fluid);
+
+  uint count_active = Thrust_Count(rigid_fluid_pairs, 0);
+
+  rigid_fluid_pairs.resize(count_active);
 }
 
 // =========================================================================================================
@@ -609,6 +695,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   AddFluidToGrid();
   FlagTiles();
   FluidContacts();
+  CheckRigidFluidPairs();
   ComputeOneLevelGrid();
   OneLevelBroadphase();
 }

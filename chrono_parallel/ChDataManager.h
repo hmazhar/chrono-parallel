@@ -122,6 +122,7 @@ struct host_container {
   host_vector<real3> cpta_rigid_fluid;
   host_vector<real> dpth_rigid_fluid;
   host_vector<int2> bids_rigid_fluid;
+  host_vector<long long> pair_rigid_fluid;
 
   host_vector<int2> bids_fluid_fluid;
 

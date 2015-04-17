@@ -38,6 +38,7 @@ class CH_PARALLEL_API ChCBroadphase {
   void AddFluidToGrid();
   void FlagTiles();
   void FluidContacts();
+  void CheckRigidFluidPairs();
   void ComputeOneLevelGrid();
   void OneLevelBroadphase();
 
@@ -57,12 +58,16 @@ class CH_PARALLEL_API ChCBroadphase {
   host_vector<uint> rigid_tiles_intersected;  // The number of tiles intersected by the rigid aabbs
   host_vector<uint> rigid_tile_number;        // The tile numbers which were intersected by rigid aabbs
   uint num_rigid_tile_intersections;          // How many tiles do the rigid aabbs intersect
-  uint rigid_tiles_active;                    // The number of unique tiles intersected
+  //uint rigid_tiles_active;                    // The number of unique tiles intersected
+  host_vector<uint> rigid_tile_start_index;
+  host_vector<int> rigid_tile_aabb;
+  uint number_of_rigid_interactions;
   // TILED GRID INFORMATION FLUID=============================================================================
   host_vector<uint> fluid_tile_number;       // The tile number containing the centroid of each fluid, aka active tiles
   host_vector<int> fluid_aabb_number;        // The corresponding fluid num for each fluid_tile_number, -1 is rigid
   host_vector<bool> fluid_flag;              // This flag is 1 if the fluid is not in a cell with a rigid, 0 if it is
   host_vector<uint> fluid_interactions;      // The number of interactions for each fluid particle
+  host_vector<uint> rigid_interactions;
   host_vector<uint> fluid_tile_start_index;  //
   host_vector<uint> tile_active;             // does the tile have stuff in it?
   uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
