@@ -454,7 +454,10 @@ void ChOpenGLViewer::RenderAABB() {
     host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
     host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
 
-    model_box.resize(data_manager->num_rigid_shapes);
+    host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
+    host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+
+    model_box.resize(data_manager->num_rigid_shapes + data_manager->num_fluid_bodies);
 #pragma omp parallel for
     for (int i = 0; i < data_manager->num_rigid_shapes; i++) {
       real3 min_p = aabb_min_rigid[i] + data_manager->measures.collision.global_origin;
@@ -466,6 +469,18 @@ void ChOpenGLViewer::RenderAABB() {
       glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(center.x, center.y, center.z));
       model = glm::scale(model, glm::vec3(radius.x, radius.y, radius.z));
       model_box[i] = (model);
+    }
+#pragma omp parallel for
+    for (int i = 0; i < data_manager->num_fluid_bodies; i++) {
+      real3 min_p = aabb_min_fluid[i] + data_manager->measures.collision.global_origin;
+      real3 max_p = aabb_max_fluid[i] + data_manager->measures.collision.global_origin;
+
+      real3 radius = (max_p - min_p) * .5;
+      real3 center = (min_p + max_p) * .5;
+
+      glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(center.x, center.y, center.z));
+      model = glm::scale(model, glm::vec3(radius.x, radius.y, radius.z));
+      model_box[i + data_manager->num_rigid_shapes] = (model);
     }
     if (model_box.size() > 0) {
       box.Update(model_box);
