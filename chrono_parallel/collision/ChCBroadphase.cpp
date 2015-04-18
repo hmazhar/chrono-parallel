@@ -253,8 +253,8 @@ inline void function_Store_AABB_AABB_Intersection(const uint index,
         shapeA = shapeB;
         shapeB = t;
       }
-      potential_contacts[offset + count] =
-          ((long long)shapeA << 32 | (long long)shapeB);  // the two indicies of the shapes that make up the contact
+      // the two indicies of the shapes that make up the contact
+      potential_contacts[offset + count] = ((long long)shapeA << 32 | (long long)shapeB);
       count++;
     }
   }
@@ -324,8 +324,9 @@ ChCBroadphase::ChCBroadphase() {
 void ChCBroadphase::DetectPossibleCollisions() {
   const host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
   const host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
-
-  num_shapes = data_manager->num_rigid_shapes + data_manager->num_fluid_bodies;
+  const uint num_rigid_shapes = data_manager->num_rigid_shapes;
+  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
+  num_shapes = num_rigid_shapes + num_fluid_bodies;
 
   LOG(TRACE) << "Number of AABBs: " << num_shapes;
 
@@ -416,9 +417,17 @@ void ChCBroadphase::DetectPossibleCollisions() {
 
   Thrust_Exclusive_Scan(leaf_start_index);
 
-  const custom_vector<short2>& fam_data = data_manager->host_data.fam_rigid;
-  const custom_vector<bool>& obj_active = data_manager->host_data.active_rigid;
-  const custom_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+  host_vector<short2> fam_data = data_manager->host_data.fam_rigid;
+  host_vector<bool> obj_active = data_manager->host_data.active_rigid;
+  host_vector<uint> obj_data_id = data_manager->host_data.id_rigid;
+
+  fam_data.resize(num_rigid_shapes + num_fluid_bodies);
+  obj_active.resize(num_rigid_shapes + num_fluid_bodies);
+  obj_data_id.resize(num_rigid_shapes + num_fluid_bodies);
+
+  thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(0, 0));
+  thrust::fill(obj_active.begin() + num_rigid_shapes, obj_active.end(), 1);
+  thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_shapes);
 
   num_contact.resize(num_active_leaves + 1);
   num_contact[num_active_leaves] = 0;
@@ -426,11 +435,11 @@ void ChCBroadphase::DetectPossibleCollisions() {
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
     function_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
-                                          fam_data, obj_active, obj_data_ID, num_contact);
+                                          fam_data, obj_active, obj_data_id, num_contact);
   }
   Thrust_Exclusive_Scan(num_contact);
 
-  custom_vector<long long>& contact_pairs = data_manager->host_data.pair_rigid_rigid;
+  host_vector<long long> contact_pairs;  // = data_manager->host_data.pair_rigid_rigid;
 
   number_of_contacts_possible = num_contact.back();
   LOG(TRACE) << "number_of_contacts_possible: " << number_of_contacts_possible;
@@ -442,7 +451,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
     function_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
-                                          num_contact, fam_data, obj_active, obj_data_ID, contact_pairs);
+                                          num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
   }
 
   thrust::stable_sort(thrust_parallel, contact_pairs.begin(), contact_pairs.end());
