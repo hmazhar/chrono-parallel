@@ -108,16 +108,16 @@ void ChCAABBGenerator::GenerateAABB() {
   const host_vector<real3>& convex_data = data_manager->host_data.convex_data;
   const host_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
   const host_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
-  uint num_rigid_shapes = data_manager->num_rigid_shapes;
-
+  const uint num_rigid_shapes = data_manager->num_rigid_shapes;
+  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
   real collision_envelope = data_manager->settings.collision.collision_envelope;
-  host_vector<real3>& aabb_min_rigid = data_manager->host_data.aabb_min_rigid;
-  host_vector<real3>& aabb_max_rigid = data_manager->host_data.aabb_max_rigid;
+  host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
+  host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
 
   LOG(TRACE) << "AABB START";
 
-  aabb_min_rigid.resize(num_rigid_shapes);
-  aabb_max_rigid.resize(num_rigid_shapes);
+  aabb_min.resize(num_rigid_shapes + num_fluid_bodies);
+  aabb_max.resize(num_rigid_shapes + num_fluid_bodies);
 
 #pragma omp parallel for
   for (int index = 0; index < num_rigid_shapes; index++) {
@@ -154,23 +154,18 @@ void ChCAABBGenerator::GenerateAABB() {
       continue;
     }
 
-    aabb_min_rigid[index] = temp_min;
-    aabb_max_rigid[index] = temp_max;
+    aabb_min[index] = temp_min;
+    aabb_max[index] = temp_max;
   }
   //
-  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
-  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
+
   const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
   const real fluid_radius = data_manager->settings.fluid.kernel_radius;
-  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
-
-  aabb_min_fluid.resize(num_fluid_bodies);
-  aabb_max_fluid.resize(num_fluid_bodies);
 
 #pragma omp parallel for
   for (int index = 0; index < num_fluid_bodies; index++) {
-    aabb_min_fluid[index] = pos_fluid[index] - R3(fluid_radius) - collision_envelope;
-    aabb_max_fluid[index] = pos_fluid[index] + R3(fluid_radius) + collision_envelope;
+    aabb_min[index + num_rigid_shapes] = pos_fluid[index] - R3(fluid_radius) - collision_envelope;
+    aabb_max[index + num_rigid_shapes] = pos_fluid[index] + R3(fluid_radius) + collision_envelope;
   }
 
   LOG(TRACE) << "AABB END";

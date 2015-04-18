@@ -33,59 +33,32 @@ class CH_PARALLEL_API ChCBroadphase {
   void DetectPossibleCollisions();
   void DetermineBoundingBox();
   void OffsetAABB();
-  void ComputeTiledGrid();
-  void ProjectRigidOntoTiledGrid();
-  void AddFluidToGrid();
-  void FlagTiles();
-  void FluidContacts();
-  void CheckRigidFluidPairs();
-  void ComputeOneLevelGrid();
-  void OneLevelBroadphase();
+  void ComputeTopLevelResolution();
 
   ChParallelDataManager* data_manager;
+  uint num_shapes;
+  real level_one_density;
+  real lelel_two_density;
 
  private:
-  // GENERAL INFORMATION======================================================================================
-  // trans_pos_fluid holds the transformed fluid position, used only in the CD
-  host_vector<real3> trans_fluid_pos;
-  uint num_aabb_rigid;
-  uint num_aabb_fluid;
-  // TILED GRID INFORMATION===================================================================================
-  real tile_size;
-  real inv_tile_size;
-  int3 tiles_per_axis;
-  // TILED GRID INFORMATION RIGID=============================================================================
-  host_vector<uint> rigid_tiles_intersected;  // The number of tiles intersected by the rigid aabbs
-  host_vector<uint> rigid_tile_number;        // The tile numbers which were intersected by rigid aabbs
-  uint num_rigid_tile_intersections;          // How many tiles do the rigid aabbs intersect
-  //uint rigid_tiles_active;                    // The number of unique tiles intersected
-  host_vector<uint> rigid_tile_start_index;
-  host_vector<int> rigid_tile_aabb;
-  uint number_of_rigid_interactions;
-  // TILED GRID INFORMATION FLUID=============================================================================
-  host_vector<uint> fluid_tile_number;       // The tile number containing the centroid of each fluid, aka active tiles
-  host_vector<int> fluid_aabb_number;        // The corresponding fluid num for each fluid_tile_number, -1 is rigid
-  host_vector<bool> fluid_flag;              // This flag is 1 if the fluid is not in a cell with a rigid, 0 if it is
-  host_vector<uint> fluid_interactions;      // The number of interactions for each fluid particle
-  host_vector<uint> rigid_interactions;
-  host_vector<uint> fluid_tile_start_index;  //
-  host_vector<uint> tile_active;             // does the tile have stuff in it?
-  uint number_of_fluid_interactions;         // The number of total fluid-fluid contacts
-  uint fluid_tiles_active;                   // The number of unique tiles
-  uint num_fluid_flagged;                    // number of fluid objects flagged to go into the regular CD
-  uint num_active_fluid_aabb_tiles;          // total number of tiles intersected by fluid
-  // BINNED GRID INFORMATION==================================================================================
-  real3 inv_bin_size;
-  uint num_bins_active;
+  uint num_active_bins;
   uint number_of_bin_intersections;
   uint number_of_contacts_possible;
+  uint number_of_leaf_intersections;
+  uint num_active_leaves;
 
-  custom_vector<uint> bins_intersected;
-  custom_vector<uint> bin_number;
-  custom_vector<uint> aabb_number;
-  custom_vector<uint> bin_start_index;
-  custom_vector<uint> num_contact;
-  // =========================================================================================================
+  real3 inv_bin_size;
+  host_vector<uint> bins_intersected;
+  host_vector<uint> bin_number;
+  host_vector<uint> bin_aabb_number;
+  host_vector<uint> bin_start_index;
+  host_vector<uint> num_contact;
+
+  host_vector<uint> leaves_intersected;
+  host_vector<uint> leaves_per_bin;
+  host_vector<uint> leaf_number;
+  host_vector<uint> leaf_aabb_number;
+  host_vector<uint> leaf_start_index;
 };
 }
 }
