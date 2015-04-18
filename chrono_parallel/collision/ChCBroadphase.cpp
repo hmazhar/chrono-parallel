@@ -49,21 +49,21 @@ void function_Store_AABB_Bin_Intersection(const uint index,
 // For each bin determine the grid size and store it========================================================
 void function_Count_Leaves(const uint index,
                            const real density,
-                           const real3& bin_size_vec,
+                           const real3& bin_size,
                            const host_vector<uint>& bin_start_index,
                            host_vector<uint>& leaves_per_bin) {
   uint start = bin_start_index[index];
   uint end = bin_start_index[index + 1];
   uint num_aabb_in_cell = end - start;
 
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size_vec, density);
+  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
 
   leaves_per_bin[index] = cell_res.x * cell_res.y * cell_res.z;
 }
 // Count the number of AABB leaf intersections for each bin=================================================
 void function_Count_AABB_Leaf_Intersection(const uint index,
                                            const real density,
-                                           const real3& bin_size_vec,
+                                           const real3& bin_size,
                                            const int3& bins_per_axis,
                                            const host_vector<uint>& bin_start_index,
                                            const host_vector<uint>& bin_number,
@@ -75,10 +75,10 @@ void function_Count_AABB_Leaf_Intersection(const uint index,
   uint end = bin_start_index[index + 1];
   uint count = 0;
   uint num_aabb_in_cell = end - start;
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size_vec, density);
-  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size_vec;
+  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
+  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size;
   int3 bin_index = Hash_Decode(bin_number[index], bins_per_axis);
-  real3 bin_position = R3(bin_index.x * bin_size_vec.x, bin_index.y * bin_size_vec.y, bin_index.z * bin_size_vec.z);
+  real3 bin_position = R3(bin_index.x * bin_size.x, bin_index.y * bin_size.y, bin_index.z * bin_size.z);
 
   for (uint i = start; i < end; i++) {
     uint shape = shape_number[i];
@@ -105,7 +105,7 @@ void function_Count_AABB_Leaf_Intersection(const uint index,
 // Store the AABB leaf intersections for each bin===========================================================
 void function_Write_AABB_Leaf_Intersection(const uint& index,
                                            const real density,
-                                           const real3& bin_size_vec,
+                                           const real3& bin_size,
                                            const int3& bin_resolution,
                                            const host_vector<uint>& bin_start_index,
                                            const host_vector<uint>& bin_number,
@@ -121,12 +121,12 @@ void function_Write_AABB_Leaf_Intersection(const uint& index,
   uint mInd = leaves_intersected[index];
   uint count = 0;
   uint num_aabb_in_cell = end - start;
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size_vec, density);
-  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size_vec;
+  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
+  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size;
 
   int3 bin_index = Hash_Decode(bin_number[index], bin_resolution);
 
-  real3 bin_position = R3(bin_index.x * bin_size_vec.x, bin_index.y * bin_size_vec.y, bin_index.z * bin_size_vec.z);
+  real3 bin_position = R3(bin_index.x * bin_size.x, bin_index.y * bin_size.y, bin_index.z * bin_size.z);
 
   for (uint i = start; i < end; i++) {
     uint shape = bin_shape_number[i];
@@ -290,7 +290,7 @@ void ChCBroadphase::OffsetAABB() {
 void ChCBroadphase::ComputeTopLevelResolution() {
   const real3& min_bounding_point = data_manager->measures.collision.min_bounding_point;
   const real3& max_bounding_point = data_manager->measures.collision.max_bounding_point;
-  real3& bin_size_vec = data_manager->measures.collision.bin_size_vec;
+  real3& bin_size = data_manager->measures.collision.bin_size;
   const real3& global_origin = data_manager->measures.collision.global_origin;
   const real density = data_manager->settings.collision.grid_density;
 
@@ -302,11 +302,12 @@ void ChCBroadphase::ComputeTopLevelResolution() {
   if (data_manager->settings.collision.fixed_bins == false) {
     bins_per_axis = function_Compute_Grid_Resolution(num_shapes, diagonal, density);
   }
-  bin_size_vec = diagonal / R3(bins_per_axis.x, bins_per_axis.y, bins_per_axis.z);
-  LOG(TRACE) << "bin_size_vec: (" << bin_size_vec.x << ", " << bin_size_vec.y << ", " << bin_size_vec.z << ")";
+  bin_size = diagonal / R3(bins_per_axis.x, bins_per_axis.y, bins_per_axis.z);
+  LOG(TRACE) << "bins_per_axis: (" << bins_per_axis.x << ", " << bins_per_axis.y << ", " << bins_per_axis.z << ")";
+  LOG(TRACE) << "bin_size: (" << bin_size.x << ", " << bin_size.y << ", " << bin_size.z << ")";
 
   // Store the inverse for use later
-  inv_bin_size = 1.0 / bin_size_vec;
+  inv_bin_size = 1.0 / bin_size;
 }
 // =========================================================================================================
 ChCBroadphase::ChCBroadphase() {
@@ -333,7 +334,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   ComputeTopLevelResolution();
 
   int3 bins_per_axis = data_manager->settings.collision.bins_per_axis;
-  real3 bin_size_vec = data_manager->measures.collision.bin_size_vec;
+  real3 bin_size = data_manager->measures.collision.bin_size;
   // =========================================================================================================
 
   bins_intersected.resize(num_shapes + 1);
@@ -376,8 +377,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 // Count leaves in each bin===================================================================================
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size_vec, bin_start_index,
-                          leaves_per_bin);
+    function_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size, bin_start_index, leaves_per_bin);
   }
 
   Thrust_Exclusive_Scan(leaves_per_bin);
@@ -386,7 +386,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   leaves_intersected[num_active_bins] = 0;
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec, bins_per_axis,
+    function_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
                                           bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
                                           leaves_intersected);
   }
@@ -401,7 +401,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   leaf_start_index.resize(number_of_leaf_intersections);
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec, bins_per_axis,
+    function_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
                                           bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
                                           leaves_intersected, leaves_per_bin, leaf_number, leaf_aabb_number);
   }
