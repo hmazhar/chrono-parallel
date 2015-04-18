@@ -18,7 +18,7 @@ void function_Count_AABB_Bin_Intersection(const uint index,
                                           const real3& inv_bin_size,
                                           const host_vector<real3>& aabb_min,
                                           const host_vector<real3>& aabb_max,
-                                          uint* bins_intersected) {
+                                          host_vector<uint>& bins_intersected) {
   int3 gmin = HashMin(aabb_min[index], inv_bin_size);
   int3 gmax = HashMax(aabb_max[index], inv_bin_size);
   bins_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
@@ -50,8 +50,8 @@ void function_Store_AABB_Bin_Intersection(const uint index,
 void function_Count_Leaves(const uint index,
                            const real density,
                            const real3& bin_size_vec,
-                           const uint* bin_start_index,
-                           uint* leaves_per_bin) {
+                           const host_vector<uint>& bin_start_index,
+                           host_vector<uint>& leaves_per_bin) {
   uint start = bin_start_index[index];
   uint end = bin_start_index[index + 1];
   uint num_aabb_in_cell = end - start;
@@ -208,14 +208,14 @@ void function_Count_AABB_AABB_Intersection(const uint& index,
 inline void function_Store_AABB_AABB_Intersection(const uint index,
                                                   const host_vector<real3>& aabb_min,
                                                   const host_vector<real3>& aabb_max,
-                                                  const uint* leaf_number,
-                                                  const uint* leaf_shape_number,
-                                                  const uint* leaf_start_index,
-                                                  const uint* num_contact,
-                                                  const short2* fam_data,
-                                                  const bool* body_active,
-                                                  const uint* body_id,
-                                                  long long* potential_contacts) {
+                                                  const host_vector<uint>& leaf_number,
+                                                  const host_vector<uint>& leaf_shape_number,
+                                                  const host_vector<uint>& leaf_start_index,
+                                                  const host_vector<uint>& num_contact,
+                                                  const host_vector<short2>& fam_data,
+                                                  const host_vector<bool>& body_active,
+                                                  const host_vector<uint>& body_id,
+                                                  host_vector<long long>& potential_contacts) {
   uint start = leaf_start_index[index];
   uint end = leaf_start_index[index + 1];
 
@@ -342,7 +342,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 // Determine AABB to top level bin count
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    function_Count_AABB_Bin_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected.data());
+    function_Count_AABB_Bin_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
   }
   Thrust_Exclusive_Scan(bins_intersected);
 
@@ -376,8 +376,8 @@ void ChCBroadphase::DetectPossibleCollisions() {
 // Count leaves in each bin===================================================================================
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size_vec, bin_start_index.data(),
-                          leaves_per_bin.data());
+    function_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size_vec, bin_start_index,
+                          leaves_per_bin);
   }
 
   Thrust_Exclusive_Scan(leaves_per_bin);
@@ -386,9 +386,9 @@ void ChCBroadphase::DetectPossibleCollisions() {
   leaves_intersected[num_active_bins] = 0;
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec,
-                                          bins_per_axis, bin_start_index, bin_number, bin_aabb_number, aabb_min,
-                                          aabb_max, leaves_intersected);
+    function_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec, bins_per_axis,
+                                          bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
+                                          leaves_intersected);
   }
 
   Thrust_Exclusive_Scan(leaves_intersected);
@@ -401,9 +401,9 @@ void ChCBroadphase::DetectPossibleCollisions() {
   leaf_start_index.resize(number_of_leaf_intersections);
 #pragma omp parallel for
   for (int i = 0; i < num_active_bins; i++) {
-    function_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec,
-                                          bins_per_axis, bin_start_index, bin_number, bin_aabb_number, aabb_min,
-                                          aabb_max, leaves_intersected, leaves_per_bin, leaf_number, leaf_aabb_number);
+    function_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size_vec, bins_per_axis,
+                                          bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
+                                          leaves_intersected, leaves_per_bin, leaf_number, leaf_aabb_number);
   }
   Thrust_Sort_By_Key(leaf_number, leaf_aabb_number);
   // Number of Leaf Intersections=============================================================================
@@ -441,9 +441,8 @@ void ChCBroadphase::DetectPossibleCollisions() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
-    function_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number.data(), leaf_aabb_number.data(),
-                                          leaf_start_index.data(), num_contact.data(), fam_data.data(),
-                                          obj_active.data(), obj_data_ID.data(), contact_pairs.data());
+    function_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
+                                          num_contact, fam_data, obj_active, obj_data_ID, contact_pairs);
   }
 
   thrust::stable_sort(thrust_parallel, contact_pairs.begin(), contact_pairs.end());
