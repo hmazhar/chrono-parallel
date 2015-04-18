@@ -81,7 +81,7 @@ struct collision_settings {
 // Currently only one phase is supported
 struct fluid_settings {
   fluid_settings() {
-    kernel_radius = .01;
+    kernel_radius = 1;
     volume = 4.0 / 3.0 * 3.14159265359 * pow(kernel_radius, 3);
     compliance = 0;
     epsilon = 10e-3;

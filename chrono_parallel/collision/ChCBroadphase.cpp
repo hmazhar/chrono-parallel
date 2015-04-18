@@ -526,7 +526,7 @@ void ChCBroadphase::FluidContacts() {
             }
             if (neighbor_number < 0) {
               data_manager->host_data.pair_rigid_fluid[offset_rigid + count_rigid] =
-                  ((long long)index + num_aabb_fluid << 32 | (long long)((neighbor_number + 1) * -1));
+                  ((long long)index + num_aabb_rigid << 32 | (long long)((neighbor_number + 1) * -1));
               count_rigid++;
               continue;
             }
@@ -544,58 +544,39 @@ void ChCBroadphase::FluidContacts() {
     }
   }
 
-  thrust::stable_sort(data_manager->host_data.pair_rigid_fluid.begin(), data_manager->host_data.pair_rigid_fluid.end());
+  Thrust_Sort(data_manager->host_data.pair_rigid_fluid);
   number_of_rigid_interactions = Thrust_Unique(data_manager->host_data.pair_rigid_fluid);
-
   LOG(TRACE) << "number_of_rigid_interactions " << number_of_rigid_interactions;
-  //
-  //  host_vector<real3>& aabb_min_fluid = data_manager->host_data.aabb_min_fluid;
-  //  host_vector<real3>& aabb_max_fluid = data_manager->host_data.aabb_max_fluid;
-
-  // Sort the fluid by the flag and resize the aabb list
-  // the fluid_aabb_number vector holds the actual number of the fluid particle (needed in narrowphase)
-
-  // auto zip_start = thrust::make_zip_iterator(
-  //    thrust::make_tuple(fluid_aabb_number.begin(), aabb_min_fluid.begin(), aabb_max_fluid.begin()));
-
-  // thrust::sort_by_key(fluid_flag.begin(), fluid_flag.end(), zip_start);
-  // resize everything to the flagged fluid particles
-  // fluid_aabb_number.resize(num_fluid_flagged);
-  // aabb_min_fluid.resize(num_fluid_flagged);
-  // aabb_max_fluid.resize(num_fluid_flagged);
-
-  // uint num_rigid_bodies = data_manager->num_rigid_bodies;
-  // thrust::constant_iterator<uint> offset(num_rigid_bodies);
-  // Need to make sure that fluid number does not clash with object number, offset by the number of rigid_bodies
-  // transform(fluid_aabb_number.begin(), fluid_aabb_number.end(), offset, fluid_aabb_number.begin(),
-  // thrust::plus<int>());
 }
 
 void ChCBroadphase::CheckRigidFluidPairs() {
   host_vector<bool> rigid_fluid_pairs(number_of_rigid_interactions);
   Thrust_Fill(rigid_fluid_pairs, 1);
-#pragma omp parallel for
+//#pragma omp parallel for
   for (int i = 0; i < number_of_rigid_interactions; i++) {
-    long long pair = data_manager->host_data.pair_rigid_fluid[i];
-    int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
+    long long pair_v = data_manager->host_data.pair_rigid_fluid[i];
+    int2 pair = I2(int(pair_v >> 32), int(pair_v & 0xffffffff));
 
-    // get the aabbs
 
-    real3 aabb_min_fluid = aabb_min_fluid[pair2.x - num_aabb_fluid];
-    real3 aabb_max_fluid = aabb_max_fluid[pair2.x - num_aabb_fluid];
+    real3 aabb_min_fluid = aabb_min_fluid[pair.x - num_aabb_rigid];
+    real3 aabb_max_fluid = aabb_max_fluid[pair.x - num_aabb_rigid];
 
-    real3 aabb_min_rigid = aabb_min_rigid[pair2.y];
-    real3 aabb_max_rigid = aabb_max_rigid[pair2.y];
+    real3 aabb_min_rigid = aabb_min_rigid[pair.y];
+    real3 aabb_max_rigid = aabb_max_rigid[pair.y];
 
     if (overlap(aabb_min_fluid, aabb_max_fluid, aabb_min_rigid, aabb_max_rigid)) {
       rigid_fluid_pairs[i] = 0;
     }
+
+    std::cout<<pair.x<<" "<<pair.y<<" "<<rigid_fluid_pairs[i]<<std::endl;
+    // get the aabbs
+
   }
   Thrust_Sort_By_Key(rigid_fluid_pairs, data_manager->host_data.pair_rigid_fluid);
-
   uint count_active = Thrust_Count(rigid_fluid_pairs, 0);
+  data_manager->host_data.pair_rigid_fluid.resize(count_active);
+  LOG(TRACE) << "count_active " << count_active;
 
-  rigid_fluid_pairs.resize(count_active);
 }
 
 // =========================================================================================================

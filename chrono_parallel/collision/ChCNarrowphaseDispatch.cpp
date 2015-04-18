@@ -59,7 +59,7 @@ void ChCNarrowphaseDispatch::Process() {
 
   // Scan to find total number of potential contacts
   int num_potentialContacts = contact_index.back();
-  thrust::exclusive_scan(thrust_parallel, contact_index.begin(), contact_index.end(), contact_index.begin());
+  Thrust_Exclusive_Scan(contact_index);
   num_potentialContacts += contact_index.back();
 
   // These flags will keep track of which collision pairs are actually active
@@ -76,7 +76,7 @@ void ChCNarrowphaseDispatch::Process() {
   bids_data.resize(num_potentialContacts);
 
   Dispatch();
-
+  DispatchFluid();
   // Set the number of active contacts.
   number_of_contacts = thrust::count_if(contact_active.begin(), contact_active.end(), thrust::identity<bool>());
 
@@ -267,7 +267,7 @@ void ChCNarrowphaseDispatch::DispatchGJK() {
 
     ContactPoint contact_point;
     real3 separating_axis;
-    if (GJKCollide(shapeA, shapeB, collision_envelope, contact_point , separating_axis)) {
+    if (GJKCollide(shapeA, shapeB, collision_envelope, contact_point, separating_axis)) {
       norm[icoll] = -contact_point.normal;
       ptA[icoll] = contact_point.pointA;
       ptB[icoll] = contact_point.pointB;
@@ -347,7 +347,7 @@ void ChCNarrowphaseDispatch::DispatchHybridGJK() {
     if (RCollision(shapeA, shapeB, 2 * collision_envelope, &norm[icoll], &ptA[icoll], &ptB[icoll], &contactDepth[icoll],
                    &effective_radius[icoll], nC)) {
       Dispatch_Finalize(icoll, ID_A, ID_B, nC);
-    } else if (GJKCollide(shapeA, shapeB, collision_envelope, contact_point,separating_axis )) {
+    } else if (GJKCollide(shapeA, shapeB, collision_envelope, contact_point, separating_axis)) {
       norm[icoll] = -contact_point.normal;
       ptA[icoll] = contact_point.pointA;
       ptB[icoll] = contact_point.pointB;
@@ -377,6 +377,101 @@ void ChCNarrowphaseDispatch::Dispatch() {
       DispatchHybridGJK();
       break;
   }
+}
+void ChCNarrowphaseDispatch::DispatchFluid() {
+  host_vector<long long>& pair_rigid_fluid = data_manager->host_data.pair_rigid_fluid;
+  real fluid_radius = data_manager->settings.fluid.kernel_radius;
+  host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
+  uint number_of_rigid_interactions = pair_rigid_fluid.size();
+
+  uint num_aabb_rigid = data_manager->num_rigid_shapes;
+  uint num_aabb_fluid = data_manager->num_fluid_bodies;
+
+  host_vector<int2>& body_ids = data_manager->host_data.bids_rigid_fluid;
+
+  body_ids.resize(number_of_rigid_interactions);
+
+  custom_vector<bool> rigid_fluid_contact_active(number_of_rigid_interactions);
+
+  Thrust_Fill(rigid_fluid_contact_active, 1);
+
+  host_vector<real3>& norm_rigid_fluid = data_manager->host_data.norm_rigid_fluid;
+  host_vector<real3>& cpta_rigid_fluid = data_manager->host_data.cpta_rigid_fluid;
+  host_vector<real>& dpth_rigid_fluid = data_manager->host_data.dpth_rigid_fluid;
+  host_vector<int2>& bids_rigid_fluid = data_manager->host_data.bids_rigid_fluid;
+
+  norm_rigid_fluid.resize(number_of_rigid_interactions);
+  cpta_rigid_fluid.resize(number_of_rigid_interactions);
+  dpth_rigid_fluid.resize(number_of_rigid_interactions);
+  bids_rigid_fluid.resize(number_of_rigid_interactions);
+
+#pragma omp parallel for
+  for (int i = 0; i < number_of_rigid_interactions; i++) {
+    long long pair = pair_rigid_fluid[i];
+    int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
+    ConvexShape shapeA, shapeB;
+    // get the aabbs
+    uint fluid_index = pair2.x - num_aabb_fluid;
+    real3 fluid_pos = pos_fluid[fluid_index];
+
+    {
+      const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
+      const custom_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+      const custom_vector<long long>& contact_pair = data_manager->host_data.pair_rigid_rigid;
+      const custom_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
+      real3* convex_data = data_manager->host_data.convex_data.data();
+
+      uint ID_A = obj_data_ID[pair2.y];
+      shapeA.type = obj_data_T[pair2.y];
+      shapeA.A = obj_data_A_global[pair2.y];
+      shapeA.B = obj_data_B_global[pair2.y];
+      shapeA.C = obj_data_C_global[pair2.y];
+      shapeA.R = obj_data_R_global[pair2.y];
+
+      shapeA.convex = convex_data;
+      shapeA.margin = 0;  // collision_margins[pair2.y];
+
+      shapeB.type = SPHERE;
+      shapeB.A = fluid_pos;
+      shapeB.B = R3(fluid_radius, 0, 0);
+      shapeB.C = R3(0);
+      shapeB.R = R4(1, 0, 0, 0);
+      shapeB.margin = 0;
+
+      real3 norm, pta, ptb;
+      real depth;
+
+      if (MPRCollision(shapeA, shapeB, collision_envelope, norm, pta, ptb, depth)) {
+        // Mark the active contacts and set their body IDs
+        rigid_fluid_contact_active[i] = true;
+        body_ids[i] = I2(ID_A, fluid_index);
+
+        norm_rigid_fluid[i] = norm;
+        cpta_rigid_fluid[i] = pta;
+        dpth_rigid_fluid[i] = depth;
+      }
+    }
+  }
+
+  uint number_of_rigid_fluid_contacts =
+      thrust::count_if(rigid_fluid_contact_active.begin(), rigid_fluid_contact_active.end(), thrust::identity<bool>());
+
+  // Remove elements corresponding to inactive contacts. We do this in one step,
+  // using zip iterators and removing all entries for which contact_active is 'false'.
+  thrust::remove_if(
+      thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.begin(), cpta_rigid_fluid.begin(),
+                                                   dpth_rigid_fluid.begin(), pair_rigid_fluid.begin(),
+                                                   body_ids.begin())),
+      thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.end(), cpta_rigid_fluid.end(),
+                                                   dpth_rigid_fluid.end(), pair_rigid_fluid.end(), body_ids.end())),
+      contact_active.begin(), thrust::logical_not<bool>());
+
+  // Resize all lists so that we don't access invalid contacts
+  norm_rigid_fluid.resize(number_of_rigid_fluid_contacts);
+  dpth_rigid_fluid.resize(number_of_rigid_fluid_contacts);
+  cpta_rigid_fluid.resize(number_of_rigid_fluid_contacts);
+  pair_rigid_fluid.resize(number_of_rigid_fluid_contacts);
+  body_ids.resize(number_of_rigid_fluid_contacts);
 }
 
 }  // end namespace collision

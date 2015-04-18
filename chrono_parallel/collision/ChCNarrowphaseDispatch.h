@@ -34,6 +34,7 @@ class CH_PARALLEL_API ChCNarrowphaseDispatch {
 
   // For each contact pair decide what to do.
   void Dispatch();
+  void DispatchFluid();
   void DispatchMPR();
   void DispatchGJK();
   void DispatchR();
