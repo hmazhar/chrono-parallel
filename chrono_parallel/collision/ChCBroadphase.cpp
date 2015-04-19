@@ -6,259 +6,13 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <chrono_parallel/collision/ChCBroadphase.h>
 #include "chrono_parallel/collision/ChCBroadphaseUtils.h"
-
+#include "chrono_parallel/collision/ChCBroadphaseFunctions.h"
 using thrust::transform;
 using thrust::transform_reduce;
 
 namespace chrono {
 namespace collision {
 
-// Count the number of intersections between AABBs and the bins=============================================
-void function_Count_AABB_Bin_Intersection(const uint index,
-                                          const real3& inv_bin_size,
-                                          const host_vector<real3>& aabb_min,
-                                          const host_vector<real3>& aabb_max,
-                                          host_vector<uint>& bins_intersected) {
-  int3 gmin = HashMin(aabb_min[index], inv_bin_size);
-  int3 gmax = HashMax(aabb_max[index], inv_bin_size);
-  bins_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
-}
-// Store the intersections between AABBs and bins===========================================================
-void function_Store_AABB_Bin_Intersection(const uint index,
-                                          const real3& inv_bin_size,
-                                          const int3& bins_per_axis,
-                                          const host_vector<real3>& aabb_min,
-                                          const host_vector<real3>& aabb_max,
-                                          const host_vector<uint>& bins_intersected,
-                                          host_vector<uint>& bin_number,
-                                          host_vector<uint>& shape_number) {
-  int count = 0, i, j, k;
-  int3 gmin = HashMin(aabb_min[index], inv_bin_size);
-  int3 gmax = HashMax(aabb_max[index], inv_bin_size);
-  uint mInd = bins_intersected[index];
-  for (i = gmin.x; i <= gmax.x; i++) {
-    for (j = gmin.y; j <= gmax.y; j++) {
-      for (k = gmin.z; k <= gmax.z; k++) {
-        bin_number[mInd + count] = Hash_Index(I3(i, j, k), bins_per_axis);
-        shape_number[mInd + count] = index;
-        count++;
-      }
-    }
-  }
-}
-// For each bin determine the grid size and store it========================================================
-void function_Count_Leaves(const uint index,
-                           const real density,
-                           const real3& bin_size,
-                           const host_vector<uint>& bin_start_index,
-                           host_vector<uint>& leaves_per_bin) {
-  uint start = bin_start_index[index];
-  uint end = bin_start_index[index + 1];
-  uint num_aabb_in_cell = end - start;
-
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
-
-  leaves_per_bin[index] = cell_res.x * cell_res.y * cell_res.z;
-}
-// Count the number of AABB leaf intersections for each bin=================================================
-void function_Count_AABB_Leaf_Intersection(const uint index,
-                                           const real density,
-                                           const real3& bin_size,
-                                           const int3& bins_per_axis,
-                                           const host_vector<uint>& bin_start_index,
-                                           const host_vector<uint>& bin_number,
-                                           const host_vector<uint>& shape_number,
-                                           const host_vector<real3>& aabb_min,
-                                           const host_vector<real3>& aabb_max,
-                                           host_vector<uint>& leaves_intersected) {
-  uint start = bin_start_index[index];
-  uint end = bin_start_index[index + 1];
-  uint count = 0;
-  uint num_aabb_in_cell = end - start;
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
-  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size;
-  int3 bin_index = Hash_Decode(bin_number[index], bins_per_axis);
-  real3 bin_position = R3(bin_index.x * bin_size.x, bin_index.y * bin_size.y, bin_index.z * bin_size.z);
-
-  for (uint i = start; i < end; i++) {
-    uint shape = shape_number[i];
-    // subtract the bin position from the AABB position
-    real3 Amin = aabb_min[shape] - bin_position;
-    real3 Amax = aabb_max[shape] - bin_position;
-
-    // Make sure that even with subtraction we are at the origin
-    Amin = clamp(Amin, R3(0), Amax);
-
-    // Find the extents
-    int3 gmin = HashMin(Amin, inv_leaf_size);
-    int3 gmax = HashMax(Amax, inv_leaf_size);
-    // Make sure that the maximum bin value does not exceed the bounds of this grid
-    int3 max_clamp = cell_res - I3(1);
-    gmin = clamp(gmin, I3(0), max_clamp);
-    gmax = clamp(gmax, I3(0), max_clamp);
-
-    count += (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
-  }
-
-  leaves_intersected[index] = count;
-}
-// Store the AABB leaf intersections for each bin===========================================================
-void function_Write_AABB_Leaf_Intersection(const uint& index,
-                                           const real density,
-                                           const real3& bin_size,
-                                           const int3& bin_resolution,
-                                           const host_vector<uint>& bin_start_index,
-                                           const host_vector<uint>& bin_number,
-                                           const host_vector<uint>& bin_shape_number,
-                                           const host_vector<real3>& aabb_min,
-                                           const host_vector<real3>& aabb_max,
-                                           const host_vector<uint>& leaves_intersected,
-                                           const host_vector<uint>& leaves_per_bin,
-                                           host_vector<uint>& leaf_number,
-                                           host_vector<uint>& leaf_shape_number) {
-  uint start = bin_start_index[index];
-  uint end = bin_start_index[index + 1];
-  uint mInd = leaves_intersected[index];
-  uint count = 0;
-  uint num_aabb_in_cell = end - start;
-  int3 cell_res = function_Compute_Grid_Resolution(num_aabb_in_cell, bin_size, density);
-  real3 inv_leaf_size = R3(cell_res.x, cell_res.y, cell_res.z) / bin_size;
-
-  int3 bin_index = Hash_Decode(bin_number[index], bin_resolution);
-
-  real3 bin_position = R3(bin_index.x * bin_size.x, bin_index.y * bin_size.y, bin_index.z * bin_size.z);
-
-  for (uint i = start; i < end; i++) {
-    uint shape = bin_shape_number[i];
-    // subtract the bin position from the AABB position
-    real3 Amin = aabb_min[shape] - bin_position;
-    real3 Amax = aabb_max[shape] - bin_position;
-
-    // Make sure that even with subtraction we are at the origin
-    Amin = clamp(Amin, R3(0), Amax);
-
-    // Find the extents
-    int3 gmin = HashMin(Amin, inv_leaf_size);
-    int3 gmax = HashMax(Amax, inv_leaf_size);
-
-    // Make sure that the maximum bin value does not exceed the bounds of this grid
-    int3 max_clamp = cell_res - I3(1);
-    gmin = clamp(gmin, I3(0), max_clamp);
-    gmax = clamp(gmax, I3(0), max_clamp);
-
-    int a, b, c;
-    for (a = gmin.x; a <= gmax.x; a++) {
-      for (b = gmin.y; b <= gmax.y; b++) {
-        for (c = gmin.z; c <= gmax.z; c++) {
-          leaf_number[mInd + count] = leaves_per_bin[index] + Hash_Index(I3(a, b, c), cell_res);
-          leaf_shape_number[mInd + count] = shape;
-          count++;
-        }
-      }
-    }
-  }
-}
-// Count the number of AABB AABB intersections for each leaf================================================
-void function_Count_AABB_AABB_Intersection(const uint& index,
-                                           const host_vector<real3>& aabb_min,
-                                           const host_vector<real3>& aabb_max,
-                                           const host_vector<uint>& leaf_number,
-                                           const host_vector<uint>& leaf_shape_number,
-                                           const host_vector<uint>& leaf_start_index,
-                                           const host_vector<short2>& fam_data,
-                                           const host_vector<bool>& body_active,
-                                           const host_vector<uint>& body_id,
-                                           host_vector<uint>& num_contact) {
-  uint start = leaf_start_index[index];
-  uint end = leaf_start_index[index + 1];
-  uint count = 0;
-
-  if (end - start == 1) {
-    num_contact[index] = 0;
-    return;
-  }
-  for (uint i = start; i < end; i++) {
-    uint shapeA = leaf_shape_number[i];
-    real3 Amin = aabb_min[shapeA];
-    real3 Amax = aabb_max[shapeA];
-    short2 famA = fam_data[shapeA];
-    uint bodyA = body_id[shapeA];
-
-    for (uint k = i + 1; k < end; k++) {
-      uint shapeB = leaf_shape_number[k];
-      uint bodyB = body_id[shapeB];
-      if (shapeA == shapeB)
-        continue;
-      if (bodyA == bodyB)
-        continue;
-      if (!body_active[bodyA] && !body_active[bodyB])
-        continue;
-      if (!collide(famA, fam_data[shapeB]))
-        continue;
-      if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
-        continue;
-
-      count++;
-    }
-  }
-
-  num_contact[index] = count;
-}
-// Store the AABB AABB intersections for each leaf in each bin===============================================
-inline void function_Store_AABB_AABB_Intersection(const uint index,
-                                                  const host_vector<real3>& aabb_min,
-                                                  const host_vector<real3>& aabb_max,
-                                                  const host_vector<uint>& leaf_number,
-                                                  const host_vector<uint>& leaf_shape_number,
-                                                  const host_vector<uint>& leaf_start_index,
-                                                  const host_vector<uint>& num_contact,
-                                                  const host_vector<short2>& fam_data,
-                                                  const host_vector<bool>& body_active,
-                                                  const host_vector<uint>& body_id,
-                                                  host_vector<long long>& potential_contacts) {
-  uint start = leaf_start_index[index];
-  uint end = leaf_start_index[index + 1];
-
-  if (end - start == 1)
-    return;
-
-  uint Bin = leaf_number[index];
-  uint offset = num_contact[index];
-  uint count = 0;
-
-  for (uint i = start; i < end; i++) {
-    uint shapeA = leaf_shape_number[i];
-    real3 Amin = aabb_min[shapeA];
-    real3 Amax = aabb_max[shapeA];
-    short2 famA = fam_data[shapeA];
-    uint bodyA = body_id[shapeA];
-
-    for (int k = i + 1; k < end; k++) {
-      uint shapeB = leaf_shape_number[k];
-      uint bodyB = body_id[shapeB];
-
-      if (shapeA == shapeB)
-        continue;
-      if (bodyA == bodyB)
-        continue;
-      if (!body_active[bodyA] && !body_active[bodyB])
-        continue;
-      if (!collide(famA, fam_data[shapeB]))
-        continue;
-      if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
-        continue;
-
-      if (shapeB < shapeA) {
-        uint t = shapeA;
-        shapeA = shapeB;
-        shapeB = t;
-      }
-      // the two indicies of the shapes that make up the contact
-      potential_contacts[offset + count] = ((long long)shapeA << 32 | (long long)shapeB);
-      count++;
-    }
-  }
-}
 // Determine the bounding box for the objects===============================================================
 
 void ChCBroadphase::DetermineBoundingBox() {
@@ -309,11 +63,27 @@ void ChCBroadphase::ComputeTopLevelResolution() {
   // Store the inverse for use later
   inv_bin_size = 1.0 / bin_size;
 }
+
+void ChCBroadphase::FillStateData() {
+  fam_data = data_manager->host_data.fam_rigid;
+  obj_active = data_manager->host_data.active_rigid;
+  obj_data_id = data_manager->host_data.id_rigid;
+
+  fam_data.resize(num_rigid_shapes + num_fluid_bodies);
+  obj_active.resize(num_rigid_shapes + num_fluid_bodies);
+  obj_data_id.resize(num_rigid_shapes + num_fluid_bodies);
+
+  thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(1, 0x7FFF));
+  thrust::fill(obj_active.begin() + num_rigid_shapes, obj_active.end(), 1);
+  // obj data id's go from 0->num_rigid_bodies->num_fluid so start at num_rigid_bodies
+  thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_bodies);
+}
+
 // =========================================================================================================
 ChCBroadphase::ChCBroadphase() {
   num_shapes = 0;
   number_of_contacts_possible = 0;
-  num_active_bins = 0;
+  num_bins_active = 0;
   number_of_bin_intersections = 0;
   number_of_leaf_intersections = 0;
   num_active_leaves = 0;
@@ -322,18 +92,95 @@ ChCBroadphase::ChCBroadphase() {
 // use spatial subdivision to detect the list of POSSIBLE collisions
 // let user define their own narrow-phase collision detection
 void ChCBroadphase::DetectPossibleCollisions() {
-  const host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
-  const host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
-  const uint num_rigid_shapes = data_manager->num_rigid_shapes;
-  const uint num_rigid_bodies = data_manager->num_rigid_bodies;
-  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
+  num_rigid_shapes = data_manager->num_rigid_shapes;
+  num_rigid_bodies = data_manager->num_rigid_bodies;
+  num_fluid_bodies = data_manager->num_fluid_bodies;
   num_shapes = num_rigid_shapes + num_fluid_bodies;
-
   LOG(TRACE) << "Number of AABBs: " << num_shapes;
-
   DetermineBoundingBox();
   OffsetAABB();
   ComputeTopLevelResolution();
+  FillStateData();
+  OneLevelBroadphase();
+  SplitContacts();
+
+  return;
+}
+
+void ChCBroadphase::OneLevelBroadphase() {
+  const host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
+  const host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
+  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  int3& bins_per_axis = data_manager->settings.collision.bins_per_axis;
+
+  bins_intersected.resize(num_shapes + 1);
+  bins_intersected[num_shapes] = 0;
+
+#pragma omp parallel for
+  for (int i = 0; i < num_shapes; i++) {
+    f_OL_Count_AABB_BIN_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
+  }
+
+  Thrust_Exclusive_Scan(bins_intersected);
+  number_of_bin_intersections = bins_intersected.back();
+
+  LOG(TRACE) << "Number of bin intersections: " << number_of_bin_intersections;
+
+  bin_number.resize(number_of_bin_intersections);
+  bin_aabb_number.resize(number_of_bin_intersections);
+  bin_start_index.resize(number_of_bin_intersections);
+
+#pragma omp parallel for
+  for (int i = 0; i < num_shapes; i++) {
+    f_OL_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size, aabb_min, aabb_max, bins_intersected, bin_number,
+                                     bin_aabb_number);
+  }
+
+  LOG(TRACE) << "Completed (device_Store_AABB_BIN_Intersection)";
+
+  Thrust_Sort_By_Key(bin_number, bin_aabb_number);
+  num_bins_active = Thrust_Reduce_By_Key(bin_number, bin_number, bin_start_index);
+
+  if (num_bins_active <= 0) {
+    number_of_contacts_possible = 0;
+    return;
+  }
+
+  bin_start_index.resize(num_bins_active + 1);
+  bin_start_index[num_bins_active] = 0;
+
+  LOG(TRACE) << bins_per_axis.x << " " << bins_per_axis.y << " " << bins_per_axis.z;
+  LOG(TRACE) << "num_bins_active: " << num_bins_active;
+
+  Thrust_Exclusive_Scan(bin_start_index);
+  num_contact.resize(num_bins_active + 1);
+  num_contact[num_bins_active] = 0;
+
+#pragma omp parallel for
+  for (int i = 0; i < num_bins_active; i++) {
+    f_OL_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index, fam_data,
+                                      obj_active, obj_data_id, num_contact);
+  }
+
+  thrust::exclusive_scan(num_contact.begin(), num_contact.end(), num_contact.begin());
+  number_of_contacts_possible = num_contact.back();
+  contact_pairs.resize(number_of_contacts_possible);
+  LOG(TRACE) << "Number of possible collisions: " << number_of_contacts_possible;
+
+#pragma omp parallel for
+  for (int index = 0; index < num_bins_active; index++) {
+    f_OL_Store_AABB_AABB_Intersection(index, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index,
+                                      num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
+  }
+
+  thrust::stable_sort(contact_pairs.begin(), contact_pairs.end());
+  number_of_contacts_possible = Thrust_Unique(contact_pairs);
+  contact_pairs.resize(number_of_contacts_possible);
+}
+//======
+void ChCBroadphase::TwoLevelBroadphase() {
+  const host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
+  const host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
 
   int3 bins_per_axis = data_manager->settings.collision.bins_per_axis;
   real3 bin_size = data_manager->measures.collision.bin_size;
@@ -345,7 +192,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
 // Determine AABB to top level bin count
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    function_Count_AABB_Bin_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
+    f_TL_Count_AABB_Bin_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
   }
   Thrust_Exclusive_Scan(bins_intersected);
 
@@ -359,38 +206,38 @@ void ChCBroadphase::DetectPossibleCollisions() {
 // Store the bin intersections================================================================================
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    function_Store_AABB_Bin_Intersection(i, inv_bin_size, bins_per_axis, aabb_min, aabb_max, bins_intersected,
-                                         bin_number, bin_aabb_number);
+    f_TL_Store_AABB_Bin_Intersection(i, inv_bin_size, bins_per_axis, aabb_min, aabb_max, bins_intersected, bin_number,
+                                     bin_aabb_number);
   }
 
   // Get sorted top level intersections=======================================================================
   Thrust_Sort_By_Key(bin_number, bin_aabb_number);
   // Number of Top level Intersections========================================================================
-  num_active_bins = Thrust_Reduce_By_Key(bin_number, bin_number, bin_start_index);
-  LOG(TRACE) << "num_active_bins: " << num_active_bins;
+  num_bins_active = Thrust_Reduce_By_Key(bin_number, bin_number, bin_start_index);
+  LOG(TRACE) << "num_bins_active: " << num_bins_active;
   // Extract Bin ranges=======================================================================================
-  bin_start_index.resize(num_active_bins + 1);
-  bin_start_index[num_active_bins] = 0;
+  bin_start_index.resize(num_bins_active + 1);
+  bin_start_index[num_bins_active] = 0;
 
   Thrust_Exclusive_Scan(bin_start_index);
   // Allocate space to hold leaf cell counts for each bin=====================================================
-  leaves_per_bin.resize(num_active_bins + 1);
-  leaves_per_bin[num_active_bins] = 0;
+  leaves_per_bin.resize(num_bins_active + 1);
+  leaves_per_bin[num_bins_active] = 0;
 // Count leaves in each bin===================================================================================
 #pragma omp parallel for
-  for (int i = 0; i < num_active_bins; i++) {
-    function_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size, bin_start_index, leaves_per_bin);
+  for (int i = 0; i < num_bins_active; i++) {
+    f_TL_Count_Leaves(i, data_manager->settings.collision.leaf_density, bin_size, bin_start_index, leaves_per_bin);
   }
 
   Thrust_Exclusive_Scan(leaves_per_bin);
   // Count leaf intersections=================================================================================
-  leaves_intersected.resize(num_active_bins + 1);
-  leaves_intersected[num_active_bins] = 0;
+  leaves_intersected.resize(num_bins_active + 1);
+  leaves_intersected[num_bins_active] = 0;
 #pragma omp parallel for
-  for (int i = 0; i < num_active_bins; i++) {
-    function_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
-                                          bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
-                                          leaves_intersected);
+  for (int i = 0; i < num_bins_active; i++) {
+    f_TL_Count_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
+                                      bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
+                                      leaves_intersected);
   }
 
   Thrust_Exclusive_Scan(leaves_intersected);
@@ -402,10 +249,10 @@ void ChCBroadphase::DetectPossibleCollisions() {
   leaf_aabb_number.resize(number_of_leaf_intersections);
   leaf_start_index.resize(number_of_leaf_intersections);
 #pragma omp parallel for
-  for (int i = 0; i < num_active_bins; i++) {
-    function_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
-                                          bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
-                                          leaves_intersected, leaves_per_bin, leaf_number, leaf_aabb_number);
+  for (int i = 0; i < num_bins_active; i++) {
+    f_TL_Write_AABB_Leaf_Intersection(i, data_manager->settings.collision.leaf_density, bin_size, bins_per_axis,
+                                      bin_start_index, bin_number, bin_aabb_number, aabb_min, aabb_max,
+                                      leaves_intersected, leaves_per_bin, leaf_number, leaf_aabb_number);
   }
   Thrust_Sort_By_Key(leaf_number, leaf_aabb_number);
   // Number of Leaf Intersections=============================================================================
@@ -418,26 +265,13 @@ void ChCBroadphase::DetectPossibleCollisions() {
 
   Thrust_Exclusive_Scan(leaf_start_index);
 
-  host_vector<short2> fam_data = data_manager->host_data.fam_rigid;
-  host_vector<bool> obj_active = data_manager->host_data.active_rigid;
-  host_vector<uint> obj_data_id = data_manager->host_data.id_rigid;
-
-  fam_data.resize(num_rigid_shapes + num_fluid_bodies);
-  obj_active.resize(num_rigid_shapes + num_fluid_bodies);
-  obj_data_id.resize(num_rigid_shapes + num_fluid_bodies);
-
-  thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(0, 0));
-  thrust::fill(obj_active.begin() + num_rigid_shapes, obj_active.end(), 1);
-  // obj data id's go from 0->num_rigid_bodies->num_fluid so start at num_rigid_bodies
-  thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_bodies);
-
   num_contact.resize(num_active_leaves + 1);
   num_contact[num_active_leaves] = 0;
 
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
-    function_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
-                                          fam_data, obj_active, obj_data_id, num_contact);
+    f_TL_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index, fam_data,
+                                      obj_active, obj_data_id, num_contact);
   }
   Thrust_Exclusive_Scan(num_contact);
   host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
@@ -450,21 +284,17 @@ void ChCBroadphase::DetectPossibleCollisions() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
-    function_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
-                                          num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
+    f_TL_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
+                                      num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
   }
 
   thrust::stable_sort(thrust_parallel, contact_pairs.begin(), contact_pairs.end());
   number_of_contacts_possible = Thrust_Unique(contact_pairs);
 
   contact_pairs.resize(number_of_contacts_possible);
-  SplitContacts();
-
-  return;
 }
-
 void ChCBroadphase::SplitContacts() {
-  // Split Contacts into two lists
+  // Split Contacts into three lists
 
   const uint num_rigid_shapes = data_manager->num_rigid_shapes;
   const uint num_fluid_bodies = data_manager->num_fluid_bodies;
@@ -476,10 +306,12 @@ void ChCBroadphase::SplitContacts() {
 
     if (pair.x < num_rigid_shapes && pair.y < num_rigid_shapes) {
       contact_type[i] = 0;
-    } else if (pair.x < num_rigid_shapes && pair.y > num_rigid_shapes) {
+    } else if (pair.x < num_rigid_shapes && pair.y >= num_rigid_shapes) {
       contact_type[i] = 1;
-    } else if (pair.x > num_rigid_shapes && pair.y > num_rigid_shapes) {
+    } else if (pair.x >= num_rigid_shapes && pair.y >= num_rigid_shapes) {
       contact_type[i] = 2;
+    } else {
+      contact_type[i] = 3;
     }
   }
 
@@ -488,6 +320,11 @@ void ChCBroadphase::SplitContacts() {
   data_manager->num_rigid_contacts = Thrust_Count(contact_type, 0);
   data_manager->num_rigid_fluid_contacts = Thrust_Count(contact_type, 1);
   data_manager->num_fluid_contacts = Thrust_Count(contact_type, 2);
+
+  LOG(TRACE) << "num_rigid_contacts: " << data_manager->num_rigid_contacts;
+  LOG(TRACE) << "num_rigid_fluid_contacts: " << data_manager->num_rigid_fluid_contacts;
+  LOG(TRACE) << "num_fluid_contacts: " << data_manager->num_fluid_contacts;
+  LOG(TRACE) << "total contacts in broadphase: " << number_of_contacts_possible;
 }
 }
 }

@@ -31,9 +31,12 @@ class CH_PARALLEL_API ChCBroadphase {
   // functions
   ChCBroadphase();
   void DetectPossibleCollisions();
+  void OneLevelBroadphase();
+  void TwoLevelBroadphase();
   void DetermineBoundingBox();
   void OffsetAABB();
   void ComputeTopLevelResolution();
+  void FillStateData();
   void SplitContacts();
 
   ChParallelDataManager* data_manager;
@@ -42,7 +45,7 @@ class CH_PARALLEL_API ChCBroadphase {
   real lelel_two_density;
 
  private:
-  uint num_active_bins;
+  uint num_bins_active;
   uint number_of_bin_intersections;
   uint number_of_contacts_possible;
   uint number_of_leaf_intersections;
@@ -60,6 +63,16 @@ class CH_PARALLEL_API ChCBroadphase {
   host_vector<uint> leaf_number;
   host_vector<uint> leaf_aabb_number;
   host_vector<uint> leaf_start_index;
+
+  host_vector<short2> fam_data;
+  host_vector<bool> obj_active;
+  host_vector<uint> obj_data_id;
+
+uint num_rigid_shapes;
+uint num_rigid_bodies;
+uint num_fluid_bodies;
+
+
 };
 }
 }

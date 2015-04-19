@@ -38,7 +38,7 @@ void ChCNarrowphaseDispatch::ClearContacts() {
 void ChCNarrowphaseDispatch::Process() {
   //======== Indexing variables and other information
   num_potential_rigid_contacts = data_manager->num_rigid_contacts;
-  num_potential_rigid_fluid_contacts = data_manager->num_rigid_contacts;
+  num_potential_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   num_potential_fluid_contacts = data_manager->num_fluid_contacts;
   narrowphase_algorithm = data_manager->settings.collision.narrowphase_algorithm;
 
@@ -49,10 +49,13 @@ void ChCNarrowphaseDispatch::Process() {
 
   // Transform Rigid body shapes to global coordinate system
   PreprocessLocalToParent();
-
+  LOG(TRACE) << "PreprocessLocalToParent: ";
   DispatchRigid();
+  LOG(TRACE) << "DispatchRigid: ";
   DispatchRigidFluid();
+  LOG(TRACE) << "DispatchRigidFluid: ";
   DispatchFluid();
+  LOG(TRACE) << "DispatchFluid: ";
 }
 
 void ChCNarrowphaseDispatch::PreprocessCount() {
@@ -381,7 +384,9 @@ void ChCNarrowphaseDispatch::DispatchRigid() {
   bids_data.resize(num_rigid_contacts);
 }
 void ChCNarrowphaseDispatch::DispatchRigidFluid() {
-  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  LOG(TRACE) << "start DispatchRigidFluid: ";
+
+  const host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   real fluid_radius = data_manager->settings.fluid.kernel_radius;
   host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
 
@@ -392,7 +397,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
   host_vector<real3>& cpta_rigid_fluid = data_manager->host_data.cpta_rigid_fluid;
   host_vector<real>& dpth_rigid_fluid = data_manager->host_data.dpth_rigid_fluid;
   host_vector<int2>& bids_rigid_fluid = data_manager->host_data.bids_rigid_fluid;
-
+  LOG(TRACE) << "resize num_potential_rigid_fluid_contacts: " << num_potential_rigid_fluid_contacts;
   norm_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
   cpta_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
   dpth_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
@@ -400,11 +405,11 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
 
   const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
   const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
-  const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
   const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
   real3* convex_data = data_manager->host_data.convex_data.data();
 
   contact_rigid_fluid_active.resize(num_potential_rigid_fluid_contacts);
+  LOG(TRACE) << "fill contact_rigid_fluid_active: ";
   thrust::fill(contact_rigid_fluid_active.begin(), contact_rigid_fluid_active.end(), false);
 
 #pragma omp parallel for
@@ -432,6 +437,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
     shapeB.B = R3(fluid_radius, 0, 0);
     shapeB.C = R3(0);
     shapeB.R = R4(1, 0, 0, 0);
+    shapeB.convex = convex_data;
     shapeB.margin = 0;
 
     real3 norm, pta, ptb;
@@ -447,10 +453,11 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
       dpth_rigid_fluid[i] = depth;
     }
   }
-  uint& num_rigid_fluid_contacts = data_manager->num_rigid_contacts;
+
+  uint& num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
 
   num_rigid_fluid_contacts = Thrust_Count(contact_rigid_fluid_active, 1);
-
+  LOG(TRACE) << "Thrust_Count contact_rigid_fluid_active: ";
   // Remove elements corresponding to inactive contacts. We do this in one step,
   // using zip iterators and removing all entries for which contact_active is 'false'.
   thrust::remove_if(thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.begin(), cpta_rigid_fluid.begin(),
@@ -484,17 +491,21 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
   const real fluid_radius = data_manager->settings.fluid.kernel_radius;
 
   bids_fluid_fluid.resize(num_potential_fluid_contacts);
-
+  LOG(TRACE) << "resize bids_fluid_fluid: ";
   contact_fluid_active.resize(num_potential_fluid_contacts);
   thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
+  LOG(TRACE) << "fill contact_fluid_active: ";
 
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int i = 0; i < num_potential_fluid_contacts; i++) {
     long long pair = contact_pairs[i + num_potential_rigid_contacts + num_potential_rigid_fluid_contacts];
     int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
 
     uint fluid_A = pair2.x;
     uint fluid_B = pair2.y;
+
+    //std::cout << fluid_A << " " << fluid_B << std::endl;
+
     real3 fluid_posA = pos_fluid[fluid_A - num_aabb_rigid];
     real3 fluid_posB = pos_fluid[fluid_B - num_aabb_rigid];
 
@@ -505,7 +516,7 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
   }
 
   uint& num_fluid_contacts = data_manager->num_fluid_contacts;
-
+  LOG(TRACE) << "Thrust_Count num_fluid_contacts: ";
   num_fluid_contacts = Thrust_Count(contact_fluid_active, 1);
 
   thrust::remove_if(bids_fluid_fluid.begin(), bids_fluid_fluid.end(), contact_fluid_active.begin(),
