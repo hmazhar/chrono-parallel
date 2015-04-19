@@ -22,6 +22,8 @@
 #include <cmath>
 #include "unit_testing.h"
 #include "chrono_parallel/constraints/ChConstraintRigidRigid.h"
+#include "chrono_parallel/constraints/ChConstraintUtils.h"
+
 #include "collision/ChCCollisionModel.h"
 #include "core/ChMathematics.h"
 #include "chrono_parallel/math/mat33.h"
