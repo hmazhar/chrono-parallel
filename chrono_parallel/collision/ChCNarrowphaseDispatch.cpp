@@ -35,74 +35,24 @@ void ChCNarrowphaseDispatch::ClearContacts() {
   }
 }
 
-void ChCNarrowphaseDispatch::ResizeContacts() {
-  // Set maximum possible number of contacts for each potential collision
-  // (depending on the narrowphase algorithm and on the types of shapes in
-  // potential collision)
-  contact_index.resize(num_potential_rigid_contacts + 1);
-  contact_index[num_potential_rigid_contacts] = 0;
-  PreprocessCount();
-
-  // Scan to find total number of potential contacts
-  Thrust_Exclusive_Scan(contact_index);
-  int num_potentialContacts = contact_index.back();
-
-  // Create storage to hold maximum number of contacts in worse case
-  data_manager->host_data.norm_rigid_rigid.resize(num_potentialContacts);
-  data_manager->host_data.cpta_rigid_rigid.resize(num_potentialContacts);
-  data_manager->host_data.cptb_rigid_rigid.resize(num_potentialContacts);
-  data_manager->host_data.dpth_rigid_rigid.resize(num_potentialContacts);
-  data_manager->host_data.erad_rigid_rigid.resize(num_potentialContacts);
-  data_manager->host_data.bids_rigid_rigid.resize(num_potentialContacts);
-}
 void ChCNarrowphaseDispatch::Process() {
-  //======== Collision output data for rigid contacts
-
-  //======== Body state information
-  host_vector<bool>& obj_active = data_manager->host_data.active_rigid;
-  host_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
-  host_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
-  //======== Broadphase information
-  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   //======== Indexing variables and other information
-  collision_envelope = data_manager->settings.collision.collision_envelope;
-  uint& num_rigid_contacts = data_manager->num_rigid_contacts;
-  uint& num_rigid_fluid_contacts = data_manager->num_rigid_contacts;
-  uint& num_fluid_contacts = data_manager->num_fluid_contacts;
+  num_potential_rigid_contacts = data_manager->num_rigid_contacts;
+  num_potential_rigid_fluid_contacts = data_manager->num_rigid_contacts;
+  num_potential_fluid_contacts = data_manager->num_fluid_contacts;
   narrowphase_algorithm = data_manager->settings.collision.narrowphase_algorithm;
-  system_type = data_manager->settings.system_type;
-  // The number of possible contacts based on the broadphase pair list
-  num_potential_rigid_contacts = num_rigid_contacts;
-  num_potential_rigid_fluid_contacts = num_rigid_fluid_contacts;
-  num_potential_fluid_contacts = num_fluid_contacts;
 
   ClearContacts();
   if (num_potential_rigid_contacts + num_potential_rigid_fluid_contacts + num_potential_fluid_contacts == 0) {
     return;
   }
 
-  // Transform to global coordinate system
+  // Transform Rigid body shapes to global coordinate system
   PreprocessLocalToParent();
-
-  ResizeContacts();
-
-  // These flags will keep track of which collision pairs are actually active
-  // (as decided by the narrowphase algorithm).
-  contact_rigid_active.resize(num_potential_rigid_contacts);
-  contact_rigid_fluid_active.resize(num_potential_rigid_fluid_contacts);
-  contact_fluid_active.resize(num_potential_fluid_contacts);
-
-  thrust::fill(contact_rigid_active.begin(), contact_rigid_active.end(), false);
-  thrust::fill(contact_rigid_fluid_active.begin(), contact_rigid_fluid_active.end(), false);
-  thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
 
   DispatchRigid();
   DispatchRigidFluid();
   DispatchFluid();
-  // Set the number of active contacts.
-
-  num_rigid_fluid_contacts = Thrust_Count(contact_rigid_fluid_active, 1);
-  num_fluid_contacts = Thrust_Count(contact_fluid_active, 1);
 }
 
 void ChCNarrowphaseDispatch::PreprocessCount() {
@@ -363,6 +313,37 @@ void ChCNarrowphaseDispatch::DispatchHybridGJK() {
 }
 
 void ChCNarrowphaseDispatch::DispatchRigid() {
+  host_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
+  host_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
+  host_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
+  host_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
+  host_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
+  host_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
+  uint& num_rigid_contacts = data_manager->num_rigid_contacts;
+  // Set maximum possible number of contacts for each potential collision
+  // (depending on the narrowphase algorithm and on the types of shapes in
+  // potential collision)
+  contact_index.resize(num_potential_rigid_contacts + 1);
+  contact_index[num_potential_rigid_contacts] = 0;
+  PreprocessCount();
+
+  // Scan to find total number of potential contacts
+  Thrust_Exclusive_Scan(contact_index);
+  int num_potentialContacts = contact_index.back();
+
+  // Create storage to hold maximum number of contacts in worse case
+  norm_data.resize(num_potentialContacts);
+  cpta_data.resize(num_potentialContacts);
+  cptb_data.resize(num_potentialContacts);
+  dpth_data.resize(num_potentialContacts);
+  erad_data.resize(num_potentialContacts);
+  bids_data.resize(num_potentialContacts);
+
+  // These flags will keep track of which collision pairs are actually active
+  // (as decided by the narrowphase algorithm).
+  contact_rigid_active.resize(num_potentialContacts);
+  thrust::fill(contact_rigid_active.begin(), contact_rigid_active.end(), false);
+
   switch (narrowphase_algorithm) {
     case NARROWPHASE_MPR:
       DispatchMPR();
@@ -380,13 +361,6 @@ void ChCNarrowphaseDispatch::DispatchRigid() {
       DispatchHybridGJK();
       break;
   }
-  host_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
-  host_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
-  host_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
-  host_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
-  host_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
-  host_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
-  uint& num_rigid_contacts = data_manager->num_rigid_contacts;
 
   num_rigid_contacts = Thrust_Count(contact_rigid_active, 1);
   // Remove elements corresponding to inactive contacts. We do this in one step,
@@ -429,6 +403,9 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
   const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
   const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
   real3* convex_data = data_manager->host_data.convex_data.data();
+
+  contact_rigid_fluid_active.resize(num_potential_rigid_fluid_contacts);
+  thrust::fill(contact_rigid_fluid_active.begin(), contact_rigid_fluid_active.end(), false);
 
 #pragma omp parallel for
   for (int i = 0; i < num_potential_rigid_fluid_contacts; i++) {
@@ -500,14 +477,16 @@ bool Check_Sphere(real3 pos_a, real3 pos_b, real radius) {
 }
 
 void ChCNarrowphaseDispatch::DispatchFluid() {
-  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
-  uint num_aabb_rigid = data_manager->num_rigid_shapes;
-  uint num_aabb_fluid = data_manager->num_fluid_bodies;
-  host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
-  real fluid_radius = data_manager->settings.fluid.kernel_radius;
-
+  const host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
   host_vector<int2>& bids_fluid_fluid = data_manager->host_data.bids_fluid_fluid;
+  const uint num_aabb_rigid = data_manager->num_rigid_shapes;
+  const real fluid_radius = data_manager->settings.fluid.kernel_radius;
+
   bids_fluid_fluid.resize(num_potential_fluid_contacts);
+
+  contact_fluid_active.resize(num_potential_fluid_contacts);
+  thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
 
 #pragma omp parallel for
   for (int i = 0; i < num_potential_fluid_contacts; i++) {

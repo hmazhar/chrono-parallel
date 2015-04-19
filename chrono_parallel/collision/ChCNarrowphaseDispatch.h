@@ -26,8 +26,6 @@ class CH_PARALLEL_API ChCNarrowphaseDispatch {
   void Process();
 
   void PreprocessCount();
-
-  void ResizeContacts();
   // Transform the shape data to the global reference frame
   // Perform this as a preprocessing step to improve performance
   // Performance is improved because the amount of data loaded is still the same
