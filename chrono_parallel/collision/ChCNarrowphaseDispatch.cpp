@@ -446,7 +446,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
     if (MPRCollision(shapeA, shapeB, collision_envelope, norm, pta, ptb, depth)) {
       // Mark the active contacts and set their body IDs
       contact_rigid_fluid_active[i] = true;
-      bids_rigid_fluid[i] = I2(ID_A, fluid_index);
+      bids_rigid_fluid[i] = I2(ID_A, fluid_index - num_aabb_rigid);
 
       norm_rigid_fluid[i] = norm;
       cpta_rigid_fluid[i] = pta;
@@ -496,22 +496,19 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
   thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
   LOG(TRACE) << "fill contact_fluid_active: ";
 
-  #pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < num_potential_fluid_contacts; i++) {
     long long pair = contact_pairs[i + num_potential_rigid_contacts + num_potential_rigid_fluid_contacts];
     int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
 
     uint fluid_A = pair2.x;
     uint fluid_B = pair2.y;
-
-    //std::cout << fluid_A << " " << fluid_B << std::endl;
-
     real3 fluid_posA = pos_fluid[fluid_A - num_aabb_rigid];
     real3 fluid_posB = pos_fluid[fluid_B - num_aabb_rigid];
 
     if (Check_Sphere(fluid_posA, fluid_posB, fluid_radius)) {
       contact_fluid_active[i] = true;
-      bids_fluid_fluid[i] = I2(fluid_A, fluid_B);
+      bids_fluid_fluid[i] = I2(fluid_A - num_aabb_rigid, fluid_B - num_aabb_rigid);
     }
   }
 
