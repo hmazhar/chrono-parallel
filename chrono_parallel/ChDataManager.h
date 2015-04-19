@@ -108,19 +108,19 @@ struct host_container {
   host_vector<real3> aabb_max;  // List of bounding boxes maximum point
 
   // Contact data
+  host_vector<long long> contact_pairs;
+
   host_vector<real3> norm_rigid_rigid;
   host_vector<real3> cpta_rigid_rigid;
   host_vector<real3> cptb_rigid_rigid;
   host_vector<real> dpth_rigid_rigid;
   host_vector<real> erad_rigid_rigid;
   host_vector<int2> bids_rigid_rigid;
-  host_vector<long long> pair_rigid_rigid;
 
   host_vector<real3> norm_rigid_fluid;
   host_vector<real3> cpta_rigid_fluid;
   host_vector<real> dpth_rigid_fluid;
   host_vector<int2> bids_rigid_fluid;
-  host_vector<long long> pair_rigid_fluid;
 
   host_vector<int2> bids_fluid_fluid;
 

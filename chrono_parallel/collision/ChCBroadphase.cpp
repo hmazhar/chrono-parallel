@@ -325,6 +325,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
   const host_vector<real3>& aabb_min = data_manager->host_data.aabb_min;
   const host_vector<real3>& aabb_max = data_manager->host_data.aabb_max;
   const uint num_rigid_shapes = data_manager->num_rigid_shapes;
+  const uint num_rigid_bodies = data_manager->num_rigid_bodies;
   const uint num_fluid_bodies = data_manager->num_fluid_bodies;
   num_shapes = num_rigid_shapes + num_fluid_bodies;
 
@@ -427,7 +428,8 @@ void ChCBroadphase::DetectPossibleCollisions() {
 
   thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(0, 0));
   thrust::fill(obj_active.begin() + num_rigid_shapes, obj_active.end(), 1);
-  thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_shapes);
+  // obj data id's go from 0->num_rigid_bodies->num_fluid so start at num_rigid_bodies
+  thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_bodies);
 
   num_contact.resize(num_active_leaves + 1);
   num_contact[num_active_leaves] = 0;
@@ -438,9 +440,7 @@ void ChCBroadphase::DetectPossibleCollisions() {
                                           fam_data, obj_active, obj_data_id, num_contact);
   }
   Thrust_Exclusive_Scan(num_contact);
-
-  host_vector<long long> contact_pairs;  // = data_manager->host_data.pair_rigid_rigid;
-
+  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   number_of_contacts_possible = num_contact.back();
   LOG(TRACE) << "number_of_contacts_possible: " << number_of_contacts_possible;
   contact_pairs.resize(number_of_contacts_possible);
@@ -455,11 +455,39 @@ void ChCBroadphase::DetectPossibleCollisions() {
   }
 
   thrust::stable_sort(thrust_parallel, contact_pairs.begin(), contact_pairs.end());
-  number_of_contacts_possible = thrust::unique(contact_pairs.begin(), contact_pairs.end()) - contact_pairs.begin();
+  number_of_contacts_possible = Thrust_Unique(contact_pairs);
 
   contact_pairs.resize(number_of_contacts_possible);
+  SplitContacts();
 
   return;
+}
+
+void ChCBroadphase::SplitContacts() {
+  // Split Contacts into two lists
+
+  const uint num_rigid_shapes = data_manager->num_rigid_shapes;
+  const uint num_fluid_bodies = data_manager->num_fluid_bodies;
+  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  host_vector<short> contact_type(number_of_contacts_possible);
+#pragma omp parallel for
+  for (int i = 0; i < number_of_contacts_possible; i++) {
+    int2 pair = I2(int(contact_pairs[i] >> 32), int(contact_pairs[i] & 0xffffffff));
+
+    if (pair.x < num_rigid_shapes && pair.y < num_rigid_shapes) {
+      contact_type[i] = 0;
+    } else if (pair.x < num_rigid_shapes && pair.y > num_rigid_shapes) {
+      contact_type[i] = 1;
+    } else if (pair.x > num_rigid_shapes && pair.y > num_rigid_shapes) {
+      contact_type[i] = 2;
+    }
+  }
+
+  Thrust_Sort_By_Key(contact_type, contact_pairs);
+
+  data_manager->num_rigid_contacts = Thrust_Count(contact_type, 0);
+  data_manager->num_rigid_fluid_contacts = Thrust_Count(contact_type, 1);
+  data_manager->num_fluid_contacts = Thrust_Count(contact_type, 2);
 }
 }
 }

@@ -47,9 +47,12 @@ class CH_PARALLEL_API ChCNarrowphaseDispatch {
  private:
   custom_vector<real3> obj_data_A_global, obj_data_B_global, obj_data_C_global;  //
   custom_vector<real4> obj_data_R_global;
-  custom_vector<bool> contact_active;
+  custom_vector<short> contact_active;
   custom_vector<uint> contact_index;
-  unsigned int num_potentialCollisions;
+  uint num_potential_rigid_contacts;
+  uint num_potential_fluid_contacts;
+  uint num_potential_rigid_fluid_contacts;
+
   real collision_envelope;
   NARROWPHASETYPE narrowphase_algorithm;
   SYSTEMTYPE system_type;

@@ -34,6 +34,7 @@ class CH_PARALLEL_API ChCBroadphase {
   void DetermineBoundingBox();
   void OffsetAABB();
   void ComputeTopLevelResolution();
+  void SplitContacts();
 
   ChParallelDataManager* data_manager;
   uint num_shapes;
