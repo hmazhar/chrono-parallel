@@ -15,19 +15,19 @@ namespace collision {
 
 void ChCNarrowphaseDispatch::Process() {
   //======== Collision output data for rigid contacts
-  custom_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
-  custom_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
-  custom_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
-  custom_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
-  custom_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
-  custom_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
+  host_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
+  host_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
+  host_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
+  host_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
+  host_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
+  host_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
 
   //======== Body state information
-  custom_vector<bool>& obj_active = data_manager->host_data.active_rigid;
-  custom_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
-  custom_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
+  host_vector<bool>& obj_active = data_manager->host_data.active_rigid;
+  host_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
+  host_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
   //======== Broadphase information
-  custom_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   //======== Indexing variables and other information
   collision_envelope = data_manager->settings.collision.collision_envelope;
   uint& num_rigid_contacts = data_manager->num_rigid_contacts;
@@ -149,15 +149,15 @@ void ChCNarrowphaseDispatch::PreprocessCount() {
 void ChCNarrowphaseDispatch::PreprocessLocalToParent() {
   uint num_shapes = data_manager->num_rigid_shapes;
 
-  const custom_vector<int>& obj_data_T = data_manager->host_data.typ_rigid;
-  const custom_vector<real3>& obj_data_A = data_manager->host_data.ObA_rigid;
-  const custom_vector<real3>& obj_data_B = data_manager->host_data.ObB_rigid;
-  const custom_vector<real3>& obj_data_C = data_manager->host_data.ObC_rigid;
-  const custom_vector<real4>& obj_data_R = data_manager->host_data.ObR_rigid;
-  const custom_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+  const host_vector<int>& obj_data_T = data_manager->host_data.typ_rigid;
+  const host_vector<real3>& obj_data_A = data_manager->host_data.ObA_rigid;
+  const host_vector<real3>& obj_data_B = data_manager->host_data.ObB_rigid;
+  const host_vector<real3>& obj_data_C = data_manager->host_data.ObC_rigid;
+  const host_vector<real4>& obj_data_R = data_manager->host_data.ObR_rigid;
+  const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
 
-  const custom_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
-  const custom_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
+  const host_vector<real3>& body_pos = data_manager->host_data.pos_rigid;
+  const host_vector<real4>& body_rot = data_manager->host_data.rot_rigid;
 
   obj_data_A_global.resize(num_shapes);
   obj_data_B_global.resize(num_shapes);
@@ -193,9 +193,9 @@ void ChCNarrowphaseDispatch::Dispatch_Init(uint index,
                                            ConvexShape& shapeA,
                                            ConvexShape& shapeB) {
   const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
-  const custom_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
-  const custom_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
-  const custom_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
+  const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+  const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
+  const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
   real3* convex_data = data_manager->host_data.convex_data.data();
 
   long long p = contact_pair[index];
@@ -226,7 +226,7 @@ void ChCNarrowphaseDispatch::Dispatch_Init(uint index,
 }
 
 void ChCNarrowphaseDispatch::Dispatch_Finalize(uint icoll, uint ID_A, uint ID_B, int nC) {
-  custom_vector<int2>& body_ids = data_manager->host_data.bids_rigid_rigid;
+  host_vector<int2>& body_ids = data_manager->host_data.bids_rigid_rigid;
 
   // Mark the active contacts and set their body IDs
   for (int i = 0; i < nC; i++) {
@@ -236,11 +236,11 @@ void ChCNarrowphaseDispatch::Dispatch_Finalize(uint icoll, uint ID_A, uint ID_B,
 }
 
 void ChCNarrowphaseDispatch::DispatchMPR() {
-  custom_vector<real3>& norm = data_manager->host_data.norm_rigid_rigid;
-  custom_vector<real3>& ptA = data_manager->host_data.cpta_rigid_rigid;
-  custom_vector<real3>& ptB = data_manager->host_data.cptb_rigid_rigid;
-  custom_vector<real>& contactDepth = data_manager->host_data.dpth_rigid_rigid;
-  custom_vector<real>& effective_radius = data_manager->host_data.erad_rigid_rigid;
+  host_vector<real3>& norm = data_manager->host_data.norm_rigid_rigid;
+  host_vector<real3>& ptA = data_manager->host_data.cpta_rigid_rigid;
+  host_vector<real3>& ptB = data_manager->host_data.cptb_rigid_rigid;
+  host_vector<real>& contactDepth = data_manager->host_data.dpth_rigid_rigid;
+  host_vector<real>& effective_radius = data_manager->host_data.erad_rigid_rigid;
 
 #pragma omp parallel for
   for (int index = 0; index < num_potential_rigid_contacts; index++) {
@@ -258,11 +258,11 @@ void ChCNarrowphaseDispatch::DispatchMPR() {
 }
 
 void ChCNarrowphaseDispatch::DispatchGJK() {
-  custom_vector<real3>& norm = data_manager->host_data.norm_rigid_rigid;
-  custom_vector<real3>& ptA = data_manager->host_data.cpta_rigid_rigid;
-  custom_vector<real3>& ptB = data_manager->host_data.cptb_rigid_rigid;
-  custom_vector<real>& contactDepth = data_manager->host_data.dpth_rigid_rigid;
-  custom_vector<real>& effective_radius = data_manager->host_data.erad_rigid_rigid;
+  host_vector<real3>& norm = data_manager->host_data.norm_rigid_rigid;
+  host_vector<real3>& ptA = data_manager->host_data.cpta_rigid_rigid;
+  host_vector<real3>& ptB = data_manager->host_data.cptb_rigid_rigid;
+  host_vector<real>& contactDepth = data_manager->host_data.dpth_rigid_rigid;
+  host_vector<real>& effective_radius = data_manager->host_data.erad_rigid_rigid;
 
 #pragma omp parallel for
   for (int index = 0; index < num_potential_rigid_contacts; index++) {
@@ -397,7 +397,7 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
 
   body_ids.resize(number_of_rigid_interactions);
 
-  custom_vector<bool> rigid_fluid_contact_active(number_of_rigid_interactions);
+  host_vector<bool> rigid_fluid_contact_active(number_of_rigid_interactions);
 
   Thrust_Fill(rigid_fluid_contact_active, 1);
 
@@ -422,9 +422,9 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
 
     {
       const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
-      const custom_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
-      const custom_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
-      const custom_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
+      const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+      const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
+      const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
       real3* convex_data = data_manager->host_data.convex_data.data();
 
       uint ID_A = obj_data_ID[pair2.y];
@@ -466,8 +466,7 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
   // using zip iterators and removing all entries for which contact_active is 'false'.
   thrust::remove_if(
       thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.begin(), cpta_rigid_fluid.begin(),
-                                                   dpth_rigid_fluid.begin(), contact_pairs.begin(),
-                                                   body_ids.begin())),
+                                                   dpth_rigid_fluid.begin(), contact_pairs.begin(), body_ids.begin())),
       thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.end(), cpta_rigid_fluid.end(),
                                                    dpth_rigid_fluid.end(), contact_pairs.end(), body_ids.end())),
       contact_active.begin(), thrust::logical_not<bool>());
