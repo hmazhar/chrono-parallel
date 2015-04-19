@@ -13,14 +13,50 @@
 namespace chrono {
 namespace collision {
 
+void ChCNarrowphaseDispatch::ClearContacts() {
+  // Return now if no potential collisions.
+  if (num_potential_rigid_contacts == 0) {
+    data_manager->host_data.norm_rigid_rigid.resize(0);
+    data_manager->host_data.cpta_rigid_rigid.resize(0);
+    data_manager->host_data.cptb_rigid_rigid.resize(0);
+    data_manager->host_data.dpth_rigid_rigid.resize(0);
+    data_manager->host_data.erad_rigid_rigid.resize(0);
+    data_manager->host_data.bids_rigid_rigid.resize(0);
+  }
+
+  if (num_potential_rigid_fluid_contacts == 0) {
+    data_manager->host_data.norm_rigid_fluid.resize(0);
+    data_manager->host_data.cpta_rigid_fluid.resize(0);
+    data_manager->host_data.dpth_rigid_fluid.resize(0);
+    data_manager->host_data.bids_rigid_fluid.resize(0);
+  }
+  if (num_potential_fluid_contacts == 0) {
+    data_manager->host_data.bids_fluid_fluid.resize(0);
+  }
+}
+
+void ChCNarrowphaseDispatch::ResizeContacts() {
+  // Set maximum possible number of contacts for each potential collision
+  // (depending on the narrowphase algorithm and on the types of shapes in
+  // potential collision)
+  contact_index.resize(num_potential_rigid_contacts + 1);
+  contact_index[num_potential_rigid_contacts] = 0;
+  PreprocessCount();
+
+  // Scan to find total number of potential contacts
+  Thrust_Exclusive_Scan(contact_index);
+  int num_potentialContacts = contact_index.back();
+
+  // Create storage to hold maximum number of contacts in worse case
+  data_manager->host_data.norm_rigid_rigid.resize(num_potentialContacts);
+  data_manager->host_data.cpta_rigid_rigid.resize(num_potentialContacts);
+  data_manager->host_data.cptb_rigid_rigid.resize(num_potentialContacts);
+  data_manager->host_data.dpth_rigid_rigid.resize(num_potentialContacts);
+  data_manager->host_data.erad_rigid_rigid.resize(num_potentialContacts);
+  data_manager->host_data.bids_rigid_rigid.resize(num_potentialContacts);
+}
 void ChCNarrowphaseDispatch::Process() {
   //======== Collision output data for rigid contacts
-  host_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
-  host_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
-  host_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
-  host_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
-  host_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
-  host_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
 
   //======== Body state information
   host_vector<bool>& obj_active = data_manager->host_data.active_rigid;
@@ -40,72 +76,33 @@ void ChCNarrowphaseDispatch::Process() {
   num_potential_rigid_fluid_contacts = num_rigid_fluid_contacts;
   num_potential_fluid_contacts = num_fluid_contacts;
 
-  // Return now if no potential collisions.
+  ClearContacts();
   if (num_potential_rigid_contacts + num_potential_rigid_fluid_contacts + num_potential_fluid_contacts == 0) {
-    norm_data.resize(0);
-    cpta_data.resize(0);
-    cptb_data.resize(0);
-    dpth_data.resize(0);
-    erad_data.resize(0);
-    bids_data.resize(0);
     return;
   }
 
   // Transform to global coordinate system
   PreprocessLocalToParent();
 
-  // Set maximum possible number of contacts for each potential collision
-  // (depending on the narrowphase algorithm and on the types of shapes in
-  // potential collision)
-  contact_index.resize(num_rigid_contacts);
-  PreprocessCount();
-
-  // Scan to find total number of potential contacts
-  int num_potentialContacts = contact_index.back();
-  Thrust_Exclusive_Scan(contact_index);
-  num_potentialContacts += contact_index.back();
+  ResizeContacts();
 
   // These flags will keep track of which collision pairs are actually active
   // (as decided by the narrowphase algorithm).
-  contact_active.resize(num_potentialContacts);
-  thrust::fill(contact_active.begin(), contact_active.end(), false);
+  contact_rigid_active.resize(num_potential_rigid_contacts);
+  contact_rigid_fluid_active.resize(num_potential_rigid_fluid_contacts);
+  contact_fluid_active.resize(num_potential_fluid_contacts);
 
-  // Create storage to hold maximum number of contacts in worse case
-  norm_data.resize(num_potentialContacts);
-  cpta_data.resize(num_potentialContacts);
-  cptb_data.resize(num_potentialContacts);
-  dpth_data.resize(num_potentialContacts);
-  erad_data.resize(num_potentialContacts);
-  bids_data.resize(num_potentialContacts);
+  thrust::fill(contact_rigid_active.begin(), contact_rigid_active.end(), false);
+  thrust::fill(contact_rigid_fluid_active.begin(), contact_rigid_fluid_active.end(), false);
+  thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
 
-  Dispatch();
-  // DispatchBoundary();
+  DispatchRigid();
+  DispatchRigidFluid();
   DispatchFluid();
   // Set the number of active contacts.
-  num_rigid_contacts = Thrust_Count(contact_active, 0);
-  num_rigid_fluid_contacts = Thrust_Count(contact_active, 1);
-  num_fluid_contacts = Thrust_Count(contact_active, 2);
 
-  // Remove elements corresponding to inactive contacts. We do this in one step,
-  // using zip iterators and removing all entries for which contact_active is 'false'.
-  thrust::remove_if(
-      thrust::make_zip_iterator(thrust::make_tuple(norm_data.begin(), cpta_data.begin(), cptb_data.begin(),
-                                                   dpth_data.begin(), erad_data.begin(), bids_data.begin(),
-                                                   contact_pairs.begin())),
-      thrust::make_zip_iterator(thrust::make_tuple(norm_data.end(), cpta_data.end(), cptb_data.end(), dpth_data.end(),
-                                                   erad_data.end(), bids_data.end(), contact_pairs.end())),
-      contact_active.begin(), thrust::logical_not<bool>());
-
-  // Resize all lists so that we don't access invalid contacts
-  norm_data.resize(num_rigid_contacts);
-  cpta_data.resize(num_rigid_contacts);
-  cptb_data.resize(num_rigid_contacts);
-  dpth_data.resize(num_rigid_contacts);
-  erad_data.resize(num_rigid_contacts);
-  bids_data.resize(num_rigid_contacts);
-  contact_pairs.resize(num_rigid_contacts);
-
-  // std::cout << num_potentialContacts << " " << number_of_contacts << std::endl;
+  num_rigid_fluid_contacts = Thrust_Count(contact_rigid_fluid_active, 1);
+  num_fluid_contacts = Thrust_Count(contact_fluid_active, 1);
 }
 
 void ChCNarrowphaseDispatch::PreprocessCount() {
@@ -230,7 +227,7 @@ void ChCNarrowphaseDispatch::Dispatch_Finalize(uint icoll, uint ID_A, uint ID_B,
 
   // Mark the active contacts and set their body IDs
   for (int i = 0; i < nC; i++) {
-    contact_active[icoll + i] = true;
+    contact_rigid_active[icoll + i] = true;
     body_ids[icoll + i] = I2(ID_A, ID_B);
   }
 }
@@ -365,7 +362,7 @@ void ChCNarrowphaseDispatch::DispatchHybridGJK() {
   }
 }
 
-void ChCNarrowphaseDispatch::Dispatch() {
+void ChCNarrowphaseDispatch::DispatchRigid() {
   switch (narrowphase_algorithm) {
     case NARROWPHASE_MPR:
       DispatchMPR();
@@ -383,100 +380,158 @@ void ChCNarrowphaseDispatch::Dispatch() {
       DispatchHybridGJK();
       break;
   }
+  host_vector<real3>& norm_data = data_manager->host_data.norm_rigid_rigid;
+  host_vector<real3>& cpta_data = data_manager->host_data.cpta_rigid_rigid;
+  host_vector<real3>& cptb_data = data_manager->host_data.cptb_rigid_rigid;
+  host_vector<real>& dpth_data = data_manager->host_data.dpth_rigid_rigid;
+  host_vector<real>& erad_data = data_manager->host_data.erad_rigid_rigid;
+  host_vector<int2>& bids_data = data_manager->host_data.bids_rigid_rigid;
+  uint& num_rigid_contacts = data_manager->num_rigid_contacts;
+
+  num_rigid_contacts = Thrust_Count(contact_rigid_active, 1);
+  // Remove elements corresponding to inactive contacts. We do this in one step,
+  // using zip iterators and removing all entries for which contact_active is 'false'.
+  thrust::remove_if(
+      thrust::make_zip_iterator(thrust::make_tuple(norm_data.begin(), cpta_data.begin(), cptb_data.begin(),
+                                                   dpth_data.begin(), erad_data.begin(), bids_data.begin())),
+      thrust::make_zip_iterator(thrust::make_tuple(norm_data.end(), cpta_data.end(), cptb_data.end(), dpth_data.end(),
+                                                   erad_data.end(), bids_data.end())),
+      contact_rigid_active.begin(), thrust::logical_not<bool>());
+
+  // Resize all lists so that we don't access invalid contacts
+  norm_data.resize(num_rigid_contacts);
+  cpta_data.resize(num_rigid_contacts);
+  cptb_data.resize(num_rigid_contacts);
+  dpth_data.resize(num_rigid_contacts);
+  erad_data.resize(num_rigid_contacts);
+  bids_data.resize(num_rigid_contacts);
 }
-void ChCNarrowphaseDispatch::DispatchFluid() {
+void ChCNarrowphaseDispatch::DispatchRigidFluid() {
   host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   real fluid_radius = data_manager->settings.fluid.kernel_radius;
   host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
-  uint number_of_rigid_interactions = contact_pairs.size();
 
   uint num_aabb_rigid = data_manager->num_rigid_shapes;
   uint num_aabb_fluid = data_manager->num_fluid_bodies;
-
-  host_vector<int2>& body_ids = data_manager->host_data.bids_rigid_fluid;
-
-  body_ids.resize(number_of_rigid_interactions);
-
-  host_vector<bool> rigid_fluid_contact_active(number_of_rigid_interactions);
-
-  Thrust_Fill(rigid_fluid_contact_active, 1);
 
   host_vector<real3>& norm_rigid_fluid = data_manager->host_data.norm_rigid_fluid;
   host_vector<real3>& cpta_rigid_fluid = data_manager->host_data.cpta_rigid_fluid;
   host_vector<real>& dpth_rigid_fluid = data_manager->host_data.dpth_rigid_fluid;
   host_vector<int2>& bids_rigid_fluid = data_manager->host_data.bids_rigid_fluid;
 
-  norm_rigid_fluid.resize(number_of_rigid_interactions);
-  cpta_rigid_fluid.resize(number_of_rigid_interactions);
-  dpth_rigid_fluid.resize(number_of_rigid_interactions);
-  bids_rigid_fluid.resize(number_of_rigid_interactions);
+  norm_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
+  cpta_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
+  dpth_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
+  bids_rigid_fluid.resize(num_potential_rigid_fluid_contacts);
+
+  const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
+  const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
+  const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
+  const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
+  real3* convex_data = data_manager->host_data.convex_data.data();
 
 #pragma omp parallel for
-  for (int i = 0; i < number_of_rigid_interactions; i++) {
-    long long pair = contact_pairs[i];
+  for (int i = 0; i < num_potential_rigid_fluid_contacts; i++) {
+    long long pair = contact_pairs[i + num_potential_rigid_contacts];
     int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
     ConvexShape shapeA, shapeB;
     // get the aabbs
-    uint fluid_index = pair2.x - num_aabb_fluid;
-    real3 fluid_pos = pos_fluid[fluid_index];
 
-    {
-      const shape_type* obj_data_T = data_manager->host_data.typ_rigid.data();
-      const host_vector<uint>& obj_data_ID = data_manager->host_data.id_rigid;
-      const host_vector<long long>& contact_pair = data_manager->host_data.contact_pairs;
-      const host_vector<real>& collision_margins = data_manager->host_data.margin_rigid;
-      real3* convex_data = data_manager->host_data.convex_data.data();
+    uint ID_A = obj_data_ID[pair2.x];
+    shapeA.type = obj_data_T[pair2.x];
+    shapeA.A = obj_data_A_global[pair2.x];
+    shapeA.B = obj_data_B_global[pair2.x];
+    shapeA.C = obj_data_C_global[pair2.x];
+    shapeA.R = obj_data_R_global[pair2.x];
 
-      uint ID_A = obj_data_ID[pair2.y];
-      shapeA.type = obj_data_T[pair2.y];
-      shapeA.A = obj_data_A_global[pair2.y];
-      shapeA.B = obj_data_B_global[pair2.y];
-      shapeA.C = obj_data_C_global[pair2.y];
-      shapeA.R = obj_data_R_global[pair2.y];
+    shapeA.convex = convex_data;
+    shapeA.margin = collision_margins[pair2.x];
 
-      shapeA.convex = convex_data;
-      shapeA.margin = 0;  // collision_margins[pair2.y];
+    uint fluid_index = pair2.y;
+    real3 fluid_pos = pos_fluid[fluid_index - num_aabb_rigid];
 
-      shapeB.type = SPHERE;
-      shapeB.A = fluid_pos;
-      shapeB.B = R3(fluid_radius, 0, 0);
-      shapeB.C = R3(0);
-      shapeB.R = R4(1, 0, 0, 0);
-      shapeB.margin = 0;
+    shapeB.type = SPHERE;
+    shapeB.A = fluid_pos;
+    shapeB.B = R3(fluid_radius, 0, 0);
+    shapeB.C = R3(0);
+    shapeB.R = R4(1, 0, 0, 0);
+    shapeB.margin = 0;
 
-      real3 norm, pta, ptb;
-      real depth;
+    real3 norm, pta, ptb;
+    real depth;
 
-      if (MPRCollision(shapeA, shapeB, collision_envelope, norm, pta, ptb, depth)) {
-        // Mark the active contacts and set their body IDs
-        rigid_fluid_contact_active[i] = true;
-        body_ids[i] = I2(ID_A, fluid_index);
+    if (MPRCollision(shapeA, shapeB, collision_envelope, norm, pta, ptb, depth)) {
+      // Mark the active contacts and set their body IDs
+      contact_rigid_fluid_active[i] = true;
+      bids_rigid_fluid[i] = I2(ID_A, fluid_index);
 
-        norm_rigid_fluid[i] = norm;
-        cpta_rigid_fluid[i] = pta;
-        dpth_rigid_fluid[i] = depth;
-      }
+      norm_rigid_fluid[i] = norm;
+      cpta_rigid_fluid[i] = pta;
+      dpth_rigid_fluid[i] = depth;
     }
   }
+  uint& num_rigid_fluid_contacts = data_manager->num_rigid_contacts;
 
-  uint number_of_rigid_fluid_contacts =
-      thrust::count_if(rigid_fluid_contact_active.begin(), rigid_fluid_contact_active.end(), thrust::identity<bool>());
+  num_rigid_fluid_contacts = Thrust_Count(contact_rigid_fluid_active, 1);
 
   // Remove elements corresponding to inactive contacts. We do this in one step,
   // using zip iterators and removing all entries for which contact_active is 'false'.
-  thrust::remove_if(
-      thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.begin(), cpta_rigid_fluid.begin(),
-                                                   dpth_rigid_fluid.begin(), contact_pairs.begin(), body_ids.begin())),
-      thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.end(), cpta_rigid_fluid.end(),
-                                                   dpth_rigid_fluid.end(), contact_pairs.end(), body_ids.end())),
-      contact_active.begin(), thrust::logical_not<bool>());
+  thrust::remove_if(thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.begin(), cpta_rigid_fluid.begin(),
+                                                                 dpth_rigid_fluid.begin(), bids_rigid_fluid.begin())),
+                    thrust::make_zip_iterator(thrust::make_tuple(norm_rigid_fluid.end(), cpta_rigid_fluid.end(),
+                                                                 dpth_rigid_fluid.end(), bids_rigid_fluid.end())),
+                    contact_rigid_fluid_active.begin(), thrust::logical_not<bool>());
 
   // Resize all lists so that we don't access invalid contacts
-  norm_rigid_fluid.resize(number_of_rigid_fluid_contacts);
-  dpth_rigid_fluid.resize(number_of_rigid_fluid_contacts);
-  cpta_rigid_fluid.resize(number_of_rigid_fluid_contacts);
-  contact_pairs.resize(number_of_rigid_fluid_contacts);
-  body_ids.resize(number_of_rigid_fluid_contacts);
+  norm_rigid_fluid.resize(num_rigid_fluid_contacts);
+  dpth_rigid_fluid.resize(num_rigid_fluid_contacts);
+  cpta_rigid_fluid.resize(num_rigid_fluid_contacts);
+  bids_rigid_fluid.resize(num_rigid_fluid_contacts);
+}
+
+bool Check_Sphere(real3 pos_a, real3 pos_b, real radius) {
+  real3 delta = pos_b - pos_a;
+  real dist2 = dot(delta, delta);
+  real radSum = radius + radius;
+  if (dist2 >= radSum * radSum || dist2 < 1e-12) {
+    return false;
+  }
+  return true;
+}
+
+void ChCNarrowphaseDispatch::DispatchFluid() {
+  host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
+  uint num_aabb_rigid = data_manager->num_rigid_shapes;
+  uint num_aabb_fluid = data_manager->num_fluid_bodies;
+  host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
+  real fluid_radius = data_manager->settings.fluid.kernel_radius;
+
+  host_vector<int2>& bids_fluid_fluid = data_manager->host_data.bids_fluid_fluid;
+  bids_fluid_fluid.resize(num_potential_fluid_contacts);
+
+#pragma omp parallel for
+  for (int i = 0; i < num_potential_fluid_contacts; i++) {
+    long long pair = contact_pairs[i + num_potential_rigid_contacts + num_potential_rigid_fluid_contacts];
+    int2 pair2 = I2(int(pair >> 32), int(pair & 0xffffffff));
+
+    uint fluid_A = pair2.x;
+    uint fluid_B = pair2.y;
+    real3 fluid_posA = pos_fluid[fluid_A - num_aabb_rigid];
+    real3 fluid_posB = pos_fluid[fluid_B - num_aabb_rigid];
+
+    if (Check_Sphere(fluid_posA, fluid_posB, fluid_radius)) {
+      contact_fluid_active[i] = true;
+      bids_fluid_fluid[i] = I2(fluid_A, fluid_B);
+    }
+  }
+
+  uint& num_fluid_contacts = data_manager->num_fluid_contacts;
+
+  num_fluid_contacts = Thrust_Count(contact_fluid_active, 1);
+
+  thrust::remove_if(bids_fluid_fluid.begin(), bids_fluid_fluid.end(), contact_fluid_active.begin(),
+                    thrust::logical_not<bool>());
+  bids_fluid_fluid.resize(num_fluid_contacts);
 }
 
 }  // end namespace collision
