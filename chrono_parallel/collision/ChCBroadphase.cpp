@@ -70,11 +70,13 @@ void ChCBroadphase::FillStateData() {
   obj_data_id = data_manager->host_data.id_rigid;
 
   fam_data.resize(num_rigid_shapes + num_fluid_bodies);
-  obj_active.resize(num_rigid_shapes + num_fluid_bodies);
+  //individual shapes arent active/inactive the entire body is
+  obj_active.resize(num_rigid_bodies + num_fluid_bodies);
   obj_data_id.resize(num_rigid_shapes + num_fluid_bodies);
-
+  //set fluid family to the default
   thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(1, 0x7FFF));
-  thrust::fill(obj_active.begin() + num_rigid_shapes, obj_active.end(), 1);
+  //individual shapes arent active/inactive the entire body is
+  thrust::fill(obj_active.begin() + num_rigid_bodies, obj_active.end(), 1);
   // obj data id's go from 0->num_rigid_bodies->num_fluid so start at num_rigid_bodies
   thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_bodies);
 }
