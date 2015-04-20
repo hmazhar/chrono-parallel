@@ -96,6 +96,7 @@ struct fluid_settings {
     max_velocity = 3;
     viscosity = 0;
     max_interactions = 15;
+    collision_envelope = 0;
   }
   real kernel_radius;
   real volume;
@@ -107,6 +108,7 @@ struct fluid_settings {
   real density;
   real mass;
   real viscosity;
+  real collision_envelope;
   bool fluid_is_rigid;
   real max_velocity;  // limit on the maximum speed the fluid can move at
   int max_interactions; //maximum neighbors supported, increase as needed

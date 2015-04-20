@@ -112,11 +112,11 @@ void ChConstraintFluidFluid::Build_E() {
     if (num_fluid_contacts <= 0) {
       return;
     }
-    real epsilon = data_manager->settings.fluid.epsilon;
+    real compliance = data_manager->settings.fluid.compliance;
     real inv_hhpa = 1.0 / (step_size * (step_size + data_manager->settings.solver.alpha));
 #pragma omp parallel for
     for (int index = 0; index < num_fluid_contacts; index++) {
-      E[index_offset + index] = -inv_hhpa * epsilon;
+      E[index_offset + index] = inv_hhpa * compliance;
     }
   }
 }

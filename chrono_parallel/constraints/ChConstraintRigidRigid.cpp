@@ -317,14 +317,14 @@ void ChConstraintRigidRigid::Build_E() {
     real compliance_spinning = (cA.z == 0 || cB.z == 0) ? 0 : (cA.z + cB.z) * .5;
     real compliance_rolling = (cA.w == 0 || cB.w == 0) ? 0 : (cA.w + cB.w) * .5;
 
-    E[index * 1 + 0] = compliance_normal;
+    E[index * 1 + 0] = inv_hhpa * compliance_normal;
     if (solver_mode == SLIDING) {
-      E[num_contacts + index * 2 + 0] = compliance_sliding;
-      E[num_contacts + index * 2 + 1] = compliance_sliding;
+      E[num_contacts + index * 2 + 0] = inv_hhpa * compliance_sliding;
+      E[num_contacts + index * 2 + 1] = inv_hhpa * compliance_sliding;
     } else if (solver_mode == SPINNING) {
-      E[3 * num_contacts + index * 3 + 0] = compliance_spinning;
-      E[3 * num_contacts + index * 3 + 1] = compliance_rolling;
-      E[3 * num_contacts + index * 3 + 2] = compliance_rolling;
+      E[3 * num_contacts + index * 3 + 0] = inv_hhpa * compliance_spinning;
+      E[3 * num_contacts + index * 3 + 1] = inv_hhpa * compliance_rolling;
+      E[3 * num_contacts + index * 3 + 2] = inv_hhpa * compliance_rolling;
     }
   }
 }

@@ -19,9 +19,9 @@ class CH_PARALLEL_API ChConstraintRigidRigid {
   void Setup(ChParallelDataManager* data_container_) {
     data_manager = data_container_;
     uint num_contacts = data_manager->num_rigid_contacts;
-    inv_h = 1 / data_manager->settings.step_size;
-    inv_hpa = 1 / (data_manager->settings.step_size + data_manager->settings.solver.alpha);
-    inv_hhpa = inv_h * inv_hpa;
+    inv_h = 1.0 / data_manager->settings.step_size;
+    inv_hpa = 1.0 / (data_manager->settings.step_size + data_manager->settings.solver.alpha);
+    inv_hhpa = 1.0 / (data_manager->settings.step_size*(data_manager->settings.step_size + data_manager->settings.solver.alpha));
 
     if (num_contacts > 0) {
       contact_active_pairs.resize(int(num_contacts));
