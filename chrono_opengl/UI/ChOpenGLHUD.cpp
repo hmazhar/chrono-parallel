@@ -192,14 +192,41 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
     num_bilaterals = parallel_system->data_manager->num_bilaterals;
   }
 
-  real time_total = timer_step;
-  real fraction = time_total/timer_collision_broad;
+  real left_b = LEFT + RIGHT;
+  real right_b = -LEFT;
+  real thick = 0.05;
+  real broad_v = glm::mix(left_b, right_b, timer_collision_broad / timer_step);
+  real narrow_v = glm::mix(left_b, right_b, (timer_collision_broad + timer_collision_narrow) / timer_step);
+  real lcp_v = glm::mix(left_b, right_b, (timer_collision_broad + timer_collision_narrow + timer_lcp) / timer_step);
 
+  bars.AddBar(left_b, broad_v, BOTTOM + thick, BOTTOM, normalize(glm::vec3(0, 168, 198)));
+  bars.AddBar(broad_v, narrow_v, BOTTOM + thick, BOTTOM, normalize(glm::vec3(174, 226, 57)));
+  bars.AddBar(narrow_v, lcp_v, BOTTOM + thick, BOTTOM, normalize(glm::vec3(192, 41, 66)));
+  bars.AddBar(lcp_v, right_b, BOTTOM + thick, BOTTOM, normalize(glm::vec3(249, 242, 231)));
 
-  bars.AddBar(-.1,.1,BOTTOM+.1,BOTTOM,glm::vec3(1,0,0));
+  if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
+    real build_m = parallel_system->data_manager->system_timer.GetTime("ChLcpSolverParallel_M");
+    real build_d = parallel_system->data_manager->system_timer.GetTime("ChLcpSolverParallel_D");
+    real build_e = parallel_system->data_manager->system_timer.GetTime("ChLcpSolverParallel_E");
+    real build_r = parallel_system->data_manager->system_timer.GetTime("ChLcpSolverParallel_R");
+    real stab = parallel_system->data_manager->system_timer.GetTime("ChLcpSolverParallel_Stab");
+    real shur = parallel_system->data_manager->system_timer.GetTime("ShurProduct");
+    real build_m_v = glm::mix(left_b, right_b, build_m / timer_lcp);
+    real build_d_v = glm::mix(left_b, right_b, (build_m + build_d) / timer_lcp);
+    real build_e_v = glm::mix(left_b, right_b, (build_m + build_d + build_e) / timer_step);
+    real build_r_v = glm::mix(left_b, right_b, (build_m + build_d + build_e + build_r) / timer_step);
+    real stab_v = glm::mix(left_b, right_b, (build_m + build_d + build_e + build_r + stab) / timer_step);
+    real shur_v = glm::mix(left_b, right_b, (build_m + build_d + build_e + build_r + stab+shur) / timer_step);
 
-
-
+    bars.AddBar(left_b, build_m_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(26, 188, 156)));
+    bars.AddBar(build_m_v, build_d_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(46, 204, 113)));
+    bars.AddBar(build_d_v, build_e_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(52, 152, 219)));
+    bars.AddBar(build_e_v, build_r_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(155, 89, 182)));
+    bars.AddBar(build_r_v, stab_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(241, 196, 15)));
+    bars.AddBar(stab_v, shur_v, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(230, 126, 34)));
+    bars.AddBar(shur_v, right_b, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(231, 76, 60)));
+    //bars.AddBar(stab_v, right_b, BOTTOM + thick * 3, BOTTOM + thick * 2, normalize(glm::vec3(149, 165, 166)));
+  }
 
   // int average_contacts_per_body = num_rigid_bodies > 0 ? num_contacts / num_rigid_bodies : 0;
 
@@ -231,11 +258,6 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
   text.Render(buffer, LEFT, TOP - SPACING * 27, sx, sy);
   sprintf(buffer, "--------------------------------");
   text.Render(buffer, LEFT, TOP - SPACING * 28, sx, sy);
-
-
-
-
-
 }
 
 void ChOpenGLHUD::GenerateSolver(ChSystem* physics_system) {
