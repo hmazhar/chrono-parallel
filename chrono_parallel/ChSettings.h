@@ -92,7 +92,7 @@ struct fluid_settings {
     mu = 0;
     density = 1000;
     mass = 1;
-    fluid_is_rigid = false;
+    fluid_is_rigid = true;
     max_velocity = 3;
     viscosity = 0;
     max_interactions = 15;

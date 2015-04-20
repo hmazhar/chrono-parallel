@@ -90,6 +90,8 @@ SET(ChronoEngine_Parallel_CONSTRAINTS
     constraints/ChConstraintRigidRigid.h
     constraints/ChConstraintRigidFluid.cpp
     constraints/ChConstraintRigidFluid.h
+    constraints/ChConstraintFluidFluid.cpp
+    constraints/ChConstraintFluidFluid.h
     constraints/ChConstraintBilateral.cpp
     constraints/ChConstraintBilateral.h
     )
