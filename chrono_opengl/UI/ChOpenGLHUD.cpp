@@ -22,6 +22,8 @@
 // Includes that are generated at compile time
 #include "resources/text_frag.h"
 #include "resources/text_vert.h"
+#include "resources/bar_frag.h"
+#include "resources/bar_vert.h"
 
 namespace chrono {
 using namespace collision;
@@ -47,8 +49,13 @@ bool ChOpenGLHUD::Initialize(ChOpenGLCamera* camera, ChTimerParallel* viewer_tim
   if (!font_shader.InitializeStrings("text", text_vert, text_frag)) {
     return 0;
   }
+  if (!bar_shader.InitializeStrings("bar", bar_vert, bar_frag)) {
+    return 0;
+  }
 
   text.Initialize(text_mat, &font_shader);
+  bars.Initialize(&bar_shader);
+
   render_camera = camera;
   timer = viewer_timer;
   return true;
@@ -94,6 +101,7 @@ void ChOpenGLHUD::Update(const glm::ivec2& window_size,
   //  "<<width<<std::endl;
 
   text.Update();
+  bars.Update();
 
   time_geometry = t_geometry;
   time_text = t_text;
@@ -103,6 +111,7 @@ void ChOpenGLHUD::Update(const glm::ivec2& window_size,
 
 void ChOpenGLHUD::TakeDown() {
   font_shader.TakeDown();
+  bar_shader.TakeDown();
   text.TakeDown();
 }
 
@@ -213,6 +222,11 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
   text.Render(buffer, LEFT, TOP - SPACING * 27, sx, sy);
   sprintf(buffer, "--------------------------------");
   text.Render(buffer, LEFT, TOP - SPACING * 28, sx, sy);
+
+
+
+
+
 }
 
 void ChOpenGLHUD::GenerateSolver(ChSystem* physics_system) {

@@ -74,7 +74,7 @@ void ChOpenGLObject::TakeDown() {
 }
 
 bool ChOpenGLObject::PostGLInitialize(const GLvoid* ptr, GLsizeiptr size) {
-  // once all of out data is ready, generate the vertex buffers and bind them
+  // once all of our data is ready, generate the vertex buffers and bind them
   glGenVertexArrays(1, &vertex_array_handle);
   glBindVertexArray(vertex_array_handle);
 

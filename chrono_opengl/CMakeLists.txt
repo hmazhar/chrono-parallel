@@ -18,6 +18,8 @@ SET(GLSL_SHADERS
   phong_vert
   text_frag
   text_vert
+  bar_frag
+  bar_vert
   )
 
 FOREACH(GLSL_SHADER ${GLSL_SHADERS})
@@ -65,6 +67,7 @@ SET(ChronoEngine_OpenGL_SOURCES
 	shapes/ChOpenGLWires.cpp
 	shapes/ChOpenGLText.cpp
 	shapes/ChOpenGLOBJ.cpp
+	shapes/ChOpenGLBars.cpp
 	shapes/obj/ChOpenGLOBJLoader.cpp
 	shapes/obj/tiny_obj_loader.cc
 	UI/ChOpenGLContacts.cpp
@@ -85,6 +88,7 @@ SET(ChronoEngine_OpenGL_HEADERS
 	shapes/ChOpenGLWires.h
 	shapes/ChOpenGLText.h
 	shapes/ChOpenGLOBJ.h
+	shapes/ChOpenGLBars.h
 	shapes/obj/ChOpenGLOBJLoader.h
 	shapes/obj/tiny_obj_loader.h
 	UI/ChOpenGLContacts.h
@@ -102,9 +106,11 @@ SET(ChronoEngine_OpenGL_HEADERS
 	${CMAKE_BINARY_DIR}/resources/cloud_frag.h
 	${CMAKE_BINARY_DIR}/resources/cloud_vert.h
 	${CMAKE_BINARY_DIR}/resources/dot_frag.h
-    ${CMAKE_BINARY_DIR}/resources/dot_vert.h
-    ${CMAKE_BINARY_DIR}/resources/sphere_frag.h
-    ${CMAKE_BINARY_DIR}/resources/sphere_vert.h
+  ${CMAKE_BINARY_DIR}/resources/dot_vert.h
+  ${CMAKE_BINARY_DIR}/resources/sphere_frag.h
+  ${CMAKE_BINARY_DIR}/resources/sphere_vert.h
+  ${CMAKE_BINARY_DIR}/resources/bar_frag.h
+  ${CMAKE_BINARY_DIR}/resources/bar_vert.h
 	)
 
 IF (MSVC)

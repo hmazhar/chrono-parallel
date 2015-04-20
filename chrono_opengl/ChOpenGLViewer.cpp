@@ -85,6 +85,7 @@ void ChOpenGLViewer::TakeDown() {
   cloud_shader.TakeDown();
   dot_shader.TakeDown();
   sphere_shader.TakeDown();
+
   sphere.TakeDown();
   box.TakeDown();
   cylinder.TakeDown();
@@ -210,6 +211,8 @@ void ChOpenGLViewer::Render() {
           (*iter).second.Draw(projection, view);
         }
       }
+      fluid.AttachShader(&sphere_shader);
+
     } else {
       cloud_data.resize(physics_system->Get_bodylist()->size());
 #pragma omp parallel for
@@ -218,6 +221,8 @@ void ChOpenGLViewer::Render() {
         ChVector<> pos = abody->GetPos();
         cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
+
+      fluid.AttachShader(&dot_shader);
     }
 
     if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {

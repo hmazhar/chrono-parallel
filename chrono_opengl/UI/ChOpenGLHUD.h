@@ -21,6 +21,7 @@
 #include "chrono_opengl/core/ChOpenGLMaterial.h"
 #include "chrono_opengl/shapes/ChOpenGLText.h"
 #include "chrono_opengl/ChOpenGLCamera.h"
+#include "chrono_opengl/shapes/ChOpenGLBars.h"
 
 #include "chrono_parallel/physics/ChSystemParallel.h"
 #include "chrono_parallel/ChTimerParallel.h"
@@ -49,7 +50,10 @@ class CH_OPENGL_API ChOpenGLHUD : public ChOpenGLBase {
 
  private:
   ChOpenGLText text;
+  ChOpenGLBars bars;
   ChOpenGLShader font_shader;
+  ChOpenGLShader bar_shader;
+
   float sx, sy;
   float aspect, z_x, z_y;
   char buffer[50];
