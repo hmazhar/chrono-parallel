@@ -18,6 +18,7 @@ ChLcpSolverParallel::~ChLcpSolverParallel() {
 
 void ChLcpSolverParallel::ComputeMassMatrix() {
   LOG(INFO) << "ChLcpSolverParallel::ComputeMassMatrix()";
+  data_manager->system_timer.start("ChLcpSolverParallel_M");
   uint num_bodies = data_manager->num_rigid_bodies;
   uint num_shafts = data_manager->num_shafts;
   uint num_fluid_bodies = data_manager->num_fluid_bodies;
@@ -102,10 +103,12 @@ void ChLcpSolverParallel::ComputeMassMatrix() {
   }
 
   M_invk = v + M_inv * hf;
+  data_manager->system_timer.stop("ChLcpSolverParallel_M");
 }
 
 void ChLcpSolverParallel::PerformStabilization() {
   LOG(INFO) << "ChLcpSolverParallel::PerformStabilization";
+  data_manager->system_timer.start("ChLcpSolverParallel_Stab");
   const DynamicVector<real>& R_full = data_manager->host_data.R_full;
   DynamicVector<real>& gamma = data_manager->host_data.gamma;
   uint num_unilaterals = data_manager->num_unilaterals;
@@ -118,7 +121,6 @@ void ChLcpSolverParallel::PerformStabilization() {
   ConstSubVectorType R_b = blaze::subvector(R_full, num_unilaterals, num_bilaterals);
   SubVectorType gamma_b = blaze::subvector(gamma, num_unilaterals, num_bilaterals);
 
-  data_manager->system_timer.start("ChLcpSolverParallel_Stab");
   solver->SolveStab(data_manager->settings.solver.max_iteration_bilateral, num_bilaterals, R_b, gamma_b);
   data_manager->system_timer.stop("ChLcpSolverParallel_Stab");
 }
