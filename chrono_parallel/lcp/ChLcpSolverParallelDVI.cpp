@@ -55,6 +55,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   rigid_rigid.Setup(data_manager);
   bilateral.Setup(data_manager);
   rigid_fluid.Setup(data_manager);
+  fluid_fluid.Setup(data_manager);
   // Clear and reset solver history data and counters
   solver->current_iteration = 0;
   data_manager->measures.solver.total_iteration = 0;
@@ -64,6 +65,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   solver->rigid_rigid = &rigid_rigid;
   solver->bilateral = &bilateral;
   solver->rigid_fluid = &rigid_fluid;
+  solver->fluid_fluid = &fluid_fluid;
   solver->Setup(data_manager);
 
   ComputeD();
@@ -195,9 +197,11 @@ void ChLcpSolverParallelDVI::ComputeD() {
   rigid_rigid.GenerateSparsity();
   bilateral.GenerateSparsity();
   rigid_fluid.GenerateSparsity();
+  fluid_fluid.GenerateSparsity();
   rigid_rigid.Build_D();
   bilateral.Build_D();
   rigid_fluid.Build_D();
+  fluid_fluid.Build_D();
   LOG(INFO) << "ChLcpSolverParallelDVI::ComputeD - D";
 
   D = trans(D_T);
@@ -246,6 +250,7 @@ void ChLcpSolverParallelDVI::ComputeR() {
   rigid_rigid.Build_b();
   bilateral.Build_b();
   rigid_fluid.Build_b();
+  fluid_fluid.Build_b();
   R = -b - D_T * M_invk;
 
   data_manager->system_timer.stop("ChLcpSolverParallel_R");
@@ -267,12 +272,20 @@ void ChLcpSolverParallelDVI::SetR() {
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
   uint num_rigid_fluid = data_manager->num_rigid_fluid_contacts * 3;
+  uint num_fluid_fluid = data_manager->num_fluid_contacts;
   R.resize(data_manager->num_constraints);
   reset(R);
 
   subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
   subvector(R, num_unilaterals + num_bilaterals, num_rigid_fluid) =
       subvector(R_full, num_unilaterals + num_bilaterals, num_rigid_fluid);
+
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+  } else {
+    subvector(R, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid) =
+        subvector(R_full, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid);
+  }
+
   switch (data_manager->settings.solver.local_solver_mode) {
     case BILATERAL: {
     } break;

@@ -41,7 +41,7 @@ void ChCNarrowphaseDispatch::Process() {
   num_potential_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   num_potential_fluid_contacts = data_manager->num_fluid_contacts;
   narrowphase_algorithm = data_manager->settings.collision.narrowphase_algorithm;
-
+  collision_envelope = data_manager->settings.collision.collision_envelope;
   ClearContacts();
   if (num_potential_rigid_contacts + num_potential_rigid_fluid_contacts + num_potential_fluid_contacts == 0) {
     return;
@@ -440,17 +440,61 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
     shapeB.convex = convex_data;
     shapeB.margin = 0;
 
-    real3 norm, pta, ptb;
+    int nC = 0;
+    real3 cpta, cptb, norm;
+    real erad = 0;
     real depth;
+    ContactPoint cont_p;
+    real3 separating_axis;
+    bool collide = false;
+    //    switch (narrowphase_algorithm) {
+    //      case NARROWPHASE_MPR:
+    //        collide = MPRCollision(shapeA, shapeB, collision_envelope, norm_rigid_fluid[i], cpta_rigid_fluid[i], cptb,
+    //                               dpth_rigid_fluid[i]);
+    //        break;
+    //      case NARROWPHASE_GJK:
+    //        collide = GJKCollide(shapeA, shapeB, collision_envelope, cont_p, separating_axis);
+    //        norm_rigid_fluid[i] = -cont_p.normal;
+    //        cpta_rigid_fluid[i] = cont_p.pointA;
+    //        dpth_rigid_fluid[i] = cont_p.depth;
+    //        break;
+    //      case NARROWPHASE_R:
+    //        collide = RCollision(shapeA, shapeB, 2 * collision_envelope, &norm_rigid_fluid[i], &cpta_rigid_fluid[i],
+    //        &cptb,
+    //                             &dpth_rigid_fluid[i], &erad, nC);
+    //        break;
+    //      case NARROWPHASE_HYBRID_MPR:
+    //        collide = RCollision(shapeA, shapeB, 2 * collision_envelope, &norm_rigid_fluid[i], &cpta_rigid_fluid[i],
+    //        &cptb,
+    //                             &dpth_rigid_fluid[i], &erad, nC);
+    //        if (!collide) {
+    //          collide = MPRCollision(shapeA, shapeB, collision_envelope, norm_rigid_fluid[i], cpta_rigid_fluid[i],
+    //          cptb,
+    //                                 dpth_rigid_fluid[i]);
+    //        }
+    //        break;
+    //      case NARROWPHASE_HYBRID_GJK:
+    //        collide = RCollision(shapeA, shapeB, 2 * collision_envelope, &norm_rigid_fluid[i], &cpta_rigid_fluid[i],
+    //        &cptb,
+    //                             &dpth_rigid_fluid[i], &erad, nC);
+    //        if (!collide) {
+    //          collide = GJKCollide(shapeA, shapeB, collision_envelope, cont_p, separating_axis);
+    //          norm_rigid_fluid[i] = -cont_p.normal;
+    //          cpta_rigid_fluid[i] = cont_p.pointA;
+    //          dpth_rigid_fluid[i] = cont_p.depth;
+    //        }
+    //        break;
+    //    }
 
-    if (MPRCollision(shapeA, shapeB, collision_envelope, norm, pta, ptb, depth)) {
-      // Mark the active contacts and set their body IDs
+    //collide = RCollision(shapeA, shapeB, 2 * collision_envelope, &norm, &cpta, &cptb, &depth, &erad, nC);
+
+     collide = GJKCollide(shapeA, shapeB, collision_envelope, cont_p, separating_axis);
+    if (collide) {
       contact_rigid_fluid_active[i] = true;
       bids_rigid_fluid[i] = I2(ID_A, fluid_index - num_aabb_rigid);
-
-      norm_rigid_fluid[i] = norm;
-      cpta_rigid_fluid[i] = pta;
-      dpth_rigid_fluid[i] = depth;
+      norm_rigid_fluid[i] = -cont_p.normal;//norm;
+      cpta_rigid_fluid[i] = cont_p.pointA;//cpta;
+      dpth_rigid_fluid[i] = cont_p.depth;
     }
   }
 

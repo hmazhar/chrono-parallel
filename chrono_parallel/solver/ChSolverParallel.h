@@ -75,10 +75,10 @@ class CH_PARALLEL_API ChSolverParallel {
   virtual void Solve() = 0;
 
   // Perform velocity stabilization on bilateral constraints
-  uint SolveStab(const uint max_iter,                                         // Maximum number of iterations
-                 const uint size,                                             // Number of unknowns
+  uint SolveStab(const uint max_iter,          // Maximum number of iterations
+                 const uint size,              // Number of unknowns
                  const ConstSubVectorType& b,  // Rhs vector
-                 SubVectorType& x);             // The vector of unknowns
+                 SubVectorType& x);            // The vector of unknowns
 
   real GetObjective(const DynamicVector<real>& x, const DynamicVector<real>& b) {
     DynamicVector<real> Nl(x.size());
@@ -115,7 +115,7 @@ class CH_PARALLEL_API ChSolverParallel {
   ChConstraintRigidRigid* rigid_rigid;
   ChConstraintBilateral* bilateral;
   ChConstraintRigidFluid* rigid_fluid;
-
+  ChConstraintFluidFluid* fluid_fluid;
   // Pointer to the system's data manager
   ChParallelDataManager* data_manager;
 };

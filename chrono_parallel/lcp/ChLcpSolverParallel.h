@@ -84,6 +84,7 @@ class CH_PARALLEL_API ChLcpSolverParallelDVI : public ChLcpSolverParallel {
  private:
   ChConstraintRigidRigid rigid_rigid;
   ChConstraintRigidFluid rigid_fluid;
+  ChConstraintFluidFluid fluid_fluid;
 };
 
 class CH_PARALLEL_API ChLcpSolverParallelDEM : public ChLcpSolverParallel {
