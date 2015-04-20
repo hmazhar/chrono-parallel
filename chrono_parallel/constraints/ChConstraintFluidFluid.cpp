@@ -80,19 +80,17 @@ void ChConstraintFluidFluid::Build_b() {
       int2 bid = bids[index];
       real3 n = (pos[bid.y] - pos[bid.x]);
       real depth = length(n) - h * 2;
-      if (depth < 0) {
-        real bi = 0;
-        if (data_manager->settings.solver.alpha > 0) {
-          bi = inv_hpa * depth;
+      real bi = 0;
+      if (data_manager->settings.solver.alpha > 0) {
+        bi = inv_hpa * depth;
+      } else {
+        if (data_manager->settings.solver.contact_recovery_speed < 0) {
+          bi = real(1.0) / step_size * depth;
         } else {
-          if (data_manager->settings.solver.contact_recovery_speed < 0) {
-            bi = real(1.0) / step_size * depth;
-          } else {
-            bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.solver.contact_recovery_speed);
-          }
+          bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.solver.contact_recovery_speed);
         }
-        b_sub[index] = bi;
       }
+      b_sub[index] = bi;
     }
   }
 }

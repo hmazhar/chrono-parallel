@@ -550,7 +550,7 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
     real3 fluid_posA = pos_fluid[fluid_A - num_aabb_rigid];
     real3 fluid_posB = pos_fluid[fluid_B - num_aabb_rigid];
 
-    if (Check_Sphere(fluid_posA, fluid_posB, fluid_radius)) {
+    if (Check_Sphere(fluid_posA, fluid_posB, fluid_radius + collision_envelope)) {
       contact_fluid_active[i] = true;
       bids_fluid_fluid[i] = I2(fluid_A - num_aabb_rigid, fluid_B - num_aabb_rigid);
     }
