@@ -27,13 +27,13 @@ class CH_OPENGL_API ChOpenGLBars : public ChOpenGLObject {
  public:
   ChOpenGLBars();
   virtual bool Initialize(ChOpenGLShader* _shader);
-  virtual void Draw(const glm::mat4& projection, const glm::mat4& view);
+  virtual void Draw(const glm::mat4& projection = glm::mat4(1), const glm::mat4& view = glm::mat4(1));
   void TakeDown();
   bool PostInitialize();
 
   void AddBar(double left, double right, double top, double bottom, glm::vec3 color);
   void Update();
-
+  void Clear();
  private:
   std::vector<ChOpenGLVertexAttributesPCN> data;
 

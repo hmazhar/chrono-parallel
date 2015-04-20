@@ -33,17 +33,10 @@ bool ChOpenGLBars::Initialize(ChOpenGLShader* _shader) {
     return false;
   }
   PostInitialize();
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);  // Position
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-
-  if (this->GLReturnedError("Cloud::Initialize - on exit"))
-    return false;
-
   this->AttachShader(_shader);
+
+  if (this->GLReturnedError("ChOpenGLBars::Initialize - on exit"))
+    return false;
 
   return true;
 }
@@ -53,29 +46,45 @@ void ChOpenGLBars::AddBar(double left, double right, double top, double bottom, 
   vec3 B(left, top, 0);
   vec3 C(right, top, 0);
   vec3 D(right, bottom, 0);
-  int index = this->data.size() - 1;
+  int index = this->data.size();
 
-  this->data.push_back(ChOpenGLVertexAttributesPCN(A, color, glm::vec3(1, 0, 0)));
-  this->data.push_back(ChOpenGLVertexAttributesPCN(B, color, glm::vec3(1, 0, 0)));
   this->data.push_back(ChOpenGLVertexAttributesPCN(C, color, glm::vec3(1, 0, 0)));
+  this->data.push_back(ChOpenGLVertexAttributesPCN(B, color, glm::vec3(1, 0, 0)));
+  this->data.push_back(ChOpenGLVertexAttributesPCN(A, color, glm::vec3(1, 0, 0)));
+
   this->data.push_back(ChOpenGLVertexAttributesPCN(D, color, glm::vec3(1, 0, 0)));
+  this->data.push_back(ChOpenGLVertexAttributesPCN(C, color, glm::vec3(1, 0, 0)));
+  this->data.push_back(ChOpenGLVertexAttributesPCN(A, color, glm::vec3(1, 0, 0)));
 
   this->vertex_indices.push_back(index + 0);
   this->vertex_indices.push_back(index + 1);
   this->vertex_indices.push_back(index + 2);
   this->vertex_indices.push_back(index + 3);
+  this->vertex_indices.push_back(index + 4);
+  this->vertex_indices.push_back(index + 5);
+}
 
+void ChOpenGLBars::Clear() {
+  this->data.clear();
+  this->vertex_indices.clear();
 }
 
 void ChOpenGLBars::Update() {
-  this->data.clear();
-  this->vertex_indices.clear();
+  std::size_t pcn_size = sizeof(ChOpenGLVertexAttributesPCN);
+
+  glBindVertexArray(vertex_array_handle);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_data_handle);
+  glBufferData(GL_ARRAY_BUFFER, this->data.size() * pcn_size, &this->data[0], GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_element_handle);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.size() * sizeof(GLuint), &vertex_indices[0], GL_STATIC_DRAW);
 }
 
 bool ChOpenGLBars::PostInitialize() {
   std::size_t pcn_size = sizeof(ChOpenGLVertexAttributesPCN);
 
-  if (this->GLReturnedError("ChOpenGLMesh::PostInitialize - on entry"))
+  if (this->GLReturnedError("ChOpenGLBars::PostInitialize - on entry"))
     return false;
   // Generation complete bind everything!
   if (!this->PostGLInitialize((GLuint*)(&this->data[0]), this->data.size() * pcn_size)) {
@@ -92,7 +101,7 @@ bool ChOpenGLBars::PostInitialize() {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
-  if (this->GLReturnedError("ChOpenGLMesh::PostInitialize - on exit"))
+  if (this->GLReturnedError("ChOpenGLBars::PostInitialize - on exit"))
     return false;
 
   return true;
@@ -104,30 +113,35 @@ void ChOpenGLBars::TakeDown() {
 }
 
 void ChOpenGLBars::Draw(const mat4& projection, const mat4& view) {
-  if (this->GLReturnedError("ChOpenGLCloud::Draw - on entry"))
+  if (this->GLReturnedError("ChOpenGLBars::Draw - on entry"))
     return;
+
+  if (data.size() == 0) {
+    return;
+  }
+
   glEnable(GL_DEPTH_TEST);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
   // Enable the shader
   shader->Use();
-  this->GLReturnedError("ChOpenGLCloud::Draw - after use");
+  this->GLReturnedError("ChOpenGLBars::Draw - after use");
   // Send our common uniforms to the shader
   shader->CommonSetup(value_ptr(projection), value_ptr(view));
 
-  this->GLReturnedError("ChOpenGLCloud::Draw - after common setup");
+  this->GLReturnedError("ChOpenGLBars::Draw - after common setup");
   // Bind and draw! (in this case we draw as triangles)
   glBindVertexArray(this->vertex_array_handle);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_data_handle);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_element_handle);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.size() * sizeof(GLuint), &vertex_indices[0], GL_DYNAMIC_DRAW);
-  glDrawElements(GL_QUADS, this->vertex_indices.size(), GL_UNSIGNED_INT, (void*)0);
-  this->GLReturnedError("ChOpenGLCloud::Draw - after draw");
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vertex_element_handle);
+
+  glDrawElements(GL_TRIANGLES, this->vertex_indices.size(), GL_UNSIGNED_INT, (void*)0);
+  this->GLReturnedError("ChOpenGLBars::Draw - after draw");
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glUseProgram(0);
 
-  if (this->GLReturnedError("ChOpenGLCloud::Draw - on exit"))
+  if (this->GLReturnedError("ChOpenGLBars::Draw - on exit"))
     return;
 }
 }

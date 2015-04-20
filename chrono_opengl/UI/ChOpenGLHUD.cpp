@@ -101,7 +101,7 @@ void ChOpenGLHUD::Update(const glm::ivec2& window_size,
   //  "<<width<<std::endl;
 
   text.Update();
-  bars.Update();
+  bars.Clear();
 
   time_geometry = t_geometry;
   time_text = t_text;
@@ -191,6 +191,15 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
     num_contacts = physics_system->GetContactContainer()->GetNcontacts();
     num_bilaterals = parallel_system->data_manager->num_bilaterals;
   }
+
+  real time_total = timer_step;
+  real fraction = time_total/timer_collision_broad;
+
+
+  bars.AddBar(-.1,.1,BOTTOM+.1,BOTTOM,glm::vec3(1,0,0));
+
+
+
 
   // int average_contacts_per_body = num_rigid_bodies > 0 ? num_contacts / num_rigid_bodies : 0;
 
@@ -400,7 +409,9 @@ void ChOpenGLHUD::GenerateExtraStats(ChSystem* physics_system) {
   }
 }
 void ChOpenGLHUD::Draw() {
+  bars.Update();
   text.Draw();
+  bars.Draw();
 }
 }
 }
