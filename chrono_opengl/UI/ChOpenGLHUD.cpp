@@ -151,13 +151,31 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
   int num_fluid_bodies = 0;
   int num_contacts = 0;
   int num_bilaterals = 0;
+  real timer_step = 0;
+  real timer_collision_broad = 0;
+  real timer_collision_narrow = 0;
+  real timer_lcp = 0;
+  real timer_update = 0;
   if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
     num_shapes = parallel_system->data_manager->num_rigid_shapes + parallel_system->data_manager->num_fluid_bodies;
     num_rigid_bodies = parallel_system->data_manager->num_rigid_bodies + parallel_system->GetNphysicsItems();
     num_fluid_bodies = parallel_system->data_manager->num_fluid_bodies;
     num_contacts = parallel_system->GetNcontacts();
     num_bilaterals = parallel_system->data_manager->num_bilaterals;
+
+    timer_step = parallel_system->GetTimerStep();
+    timer_collision_broad = parallel_system->GetTimerCollisionBroad();
+    timer_collision_narrow = parallel_system->GetTimerCollisionNarrow();
+    timer_lcp = parallel_system->GetTimerLcp();
+    timer_update = parallel_system->GetTimerUpdate();
+
   } else {
+    timer_step = physics_system->GetTimerStep();
+    timer_collision_broad = physics_system->GetTimerCollisionBroad();
+    timer_collision_narrow = physics_system->GetTimerCollisionNarrow();
+    timer_lcp = physics_system->GetTimerLcp();
+    timer_update = physics_system->GetTimerUpdate();
+
     ChCollisionSystemBullet* collision_system = (ChCollisionSystemBullet*)physics_system->GetCollisionSystem();
     num_shapes = collision_system->GetBulletCollisionWorld()->getNumCollisionObjects();
     num_rigid_bodies = physics_system->GetNbodiesTotal() + physics_system->GetNphysicsItems();
@@ -183,15 +201,15 @@ void ChOpenGLHUD::GenerateSystem(ChSystem* physics_system) {
 
   sprintf(buffer, "TIMING INFO");
   text.Render(buffer, LEFT, TOP - SPACING * 22, sx, sy);
-  sprintf(buffer, "STEP     %04f", physics_system->GetTimerStep());
+  sprintf(buffer, "STEP     %04f", timer_step);
   text.Render(buffer, LEFT, TOP - SPACING * 23, sx, sy);
-  sprintf(buffer, "BROAD    %04f", physics_system->GetTimerCollisionBroad());
+  sprintf(buffer, "BROAD    %04f", timer_collision_broad);
   text.Render(buffer, LEFT, TOP - SPACING * 24, sx, sy);
-  sprintf(buffer, "NARROW   %04f", physics_system->GetTimerCollisionNarrow());
+  sprintf(buffer, "NARROW   %04f", timer_collision_narrow);
   text.Render(buffer, LEFT, TOP - SPACING * 25, sx, sy);
-  sprintf(buffer, "SOLVE    %04f", physics_system->GetTimerLcp());
+  sprintf(buffer, "SOLVE    %04f", timer_lcp);
   text.Render(buffer, LEFT, TOP - SPACING * 26, sx, sy);
-  sprintf(buffer, "UPDATE   %04f", physics_system->GetTimerUpdate());
+  sprintf(buffer, "UPDATE   %04f", timer_update);
   text.Render(buffer, LEFT, TOP - SPACING * 27, sx, sy);
   sprintf(buffer, "--------------------------------");
   text.Render(buffer, LEFT, TOP - SPACING * 28, sx, sy);
