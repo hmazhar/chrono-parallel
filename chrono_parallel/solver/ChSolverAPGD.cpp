@@ -142,7 +142,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     // Compute the residual
     temp = gamma_new - g_diff * (N_gamma_new - r);
     real temp_dota = (real)(temp, temp);
-    Project(temp.data());
+    // Project(temp.data());
     temp = (1.0 / g_diff) * (gamma_new - temp);
     real temp_dotb = (real)(temp, temp);
     real res = sqrt(temp_dotb);
