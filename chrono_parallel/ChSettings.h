@@ -97,6 +97,7 @@ struct fluid_settings {
     viscosity = 0;
     max_interactions = 15;
     collision_envelope = 0;
+    contact_recovery_speed = 1;
   }
   real kernel_radius;
   real volume;
@@ -111,7 +112,8 @@ struct fluid_settings {
   real collision_envelope;
   bool fluid_is_rigid;
   real max_velocity;  // limit on the maximum speed the fluid can move at
-  int max_interactions; //maximum neighbors supported, increase as needed
+  int max_interactions;  // maximum neighbors supported, increase as needed
+  real contact_recovery_speed;
 };
 
 // solver_settings, like the name implies is the structure that contains all

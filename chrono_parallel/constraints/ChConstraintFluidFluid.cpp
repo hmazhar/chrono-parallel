@@ -87,7 +87,7 @@ void ChConstraintFluidFluid::Build_b() {
         if (data_manager->settings.solver.contact_recovery_speed < 0) {
           bi = real(1.0) / step_size * depth;
         } else {
-          bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.solver.contact_recovery_speed);
+          bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.fluid.contact_recovery_speed);
         }
       }
       b_sub[index] = bi;

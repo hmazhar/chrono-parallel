@@ -144,7 +144,7 @@ void ChConstraintRigidFluid::Build_b() {
     real bi = 0;
     real depth = data_manager->host_data.dpth_rigid_fluid[index];
 
-    bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.solver.contact_recovery_speed);
+    bi = std::max(real(1.0) / step_size * depth, -data_manager->settings.fluid.contact_recovery_speed);
     //
     data_manager->host_data.b[num_unilaterals + num_bilaterals + index * 3 + 0] = bi;
     data_manager->host_data.b[num_unilaterals + num_bilaterals + index * 3 + 1] = 0;
