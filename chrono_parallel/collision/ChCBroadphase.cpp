@@ -103,7 +103,9 @@ void ChCBroadphase::DetectPossibleCollisions() {
   OffsetAABB();
   ComputeTopLevelResolution();
   FillStateData();
-  OneLevelBroadphase();
+  //OneLevelBroadphase();
+  TwoLevelBroadphase();
+
   SplitContacts();
 
   return;
