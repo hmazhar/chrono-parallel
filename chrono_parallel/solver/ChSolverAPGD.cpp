@@ -119,9 +119,12 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     dot_g_temp = (g, temp);
     norm_ms = (temp, temp);
     while (obj1 > obj2 + dot_g_temp + 0.5 * L * norm_ms) {
-      LOG(TRACE) << "APGD SHRINK";
+
       L = 2.0 * L;
       t = 1.0 / L;
+
+      LOG(TRACE) << "APGD SHRINK "<< current_iteration<<" "<<L;
+
       gamma_new = y - t * g;
       Project(gamma_new.data());
       ShurProduct(gamma_new, N_gamma_new);
@@ -169,7 +172,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     if (dot_g_temp > 0) {
       y = gamma_new;
       theta_new = 1.0;
-      LOG(TRACE) << "APGD RESET";
+      LOG(TRACE) << "APGD RESET "<<current_iteration;
     }
 
     L = 0.9 * L;
