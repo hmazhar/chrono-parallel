@@ -232,7 +232,7 @@ void ChOpenGLViewer::Render() {
         real3 pos = parallel_system->data_manager->host_data.pos_fluid[i];
         fluid_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
-
+      fluid.SetPointSize(parallel_system->GetSettings()->fluid.kernel_radius*2);
       fluid.Update(fluid_data);
       glm::mat4 model(1);
       fluid.Draw(projection, view * model);
