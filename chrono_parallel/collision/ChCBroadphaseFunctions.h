@@ -205,10 +205,10 @@ void f_TL_Count_AABB_AABB_Intersection(const uint& index,
         continue;
       if (bodyA == bodyB)
         continue;
-      // if (!body_active[bodyA] && !body_active[bodyB])
-      //  continue;
-      // if (!collide(famA, fam_data[shapeB]))
-      // continue;
+      if (!body_active[bodyA] && !body_active[bodyB])
+        continue;
+      if (!collide(famA, fam_data[shapeB]))
+        continue;
       if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
         continue;
 
@@ -255,10 +255,10 @@ inline void f_TL_Store_AABB_AABB_Intersection(const uint index,
         continue;
       if (bodyA == bodyB)
         continue;
-      // if (!body_active[bodyA] && !body_active[bodyB])
-      //  continue;
-      // if (!collide(famA, fam_data[shapeB]))
-      //  continue;
+      if (!body_active[bodyA] && !body_active[bodyB])
+        continue;
+      if (!collide(famA, fam_data[shapeB]))
+        continue;
       if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
         continue;
 
