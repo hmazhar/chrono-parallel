@@ -510,7 +510,7 @@ void Generator::createObjects(const PointVector& points, const ChVector<>& vel) 
 
       parallel_system->fluid_container->AddFluid(position, velocity);
     }
-
+    m_totalNumBodies += points.size();
     return;
   }
 
