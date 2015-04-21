@@ -45,7 +45,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
                              DynamicVector<real>& gamma) {
   real& residual = data_manager->measures.solver.residual;
   real& objective_value = data_manager->measures.solver.objective_value;
-
+  LOG(TRACE) << "APGD START";
   DynamicVector<real> one(size, 1.0);
   data_manager->system_timer.start("ChSolverParallel_Solve");
   gamma_hat.resize(size);
@@ -101,7 +101,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   // make sure that gamma_hat has something inside of it. Otherwise gamma will be
   // overwritten with a vector of zero size
   gamma_hat = gamma;
-
+  LOG(TRACE) << "APGD INIT COMPLETE";
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     ShurProduct(y, g);
     g = g - r;
@@ -119,6 +119,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     dot_g_temp = (g, temp);
     norm_ms = (temp, temp);
     while (obj1 > obj2 + dot_g_temp + 0.5 * L * norm_ms) {
+      LOG(TRACE) << "APGD SHRINK";
       L = 2.0 * L;
       t = 1.0 / L;
       gamma_new = y - t * g;
@@ -168,6 +169,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     if (dot_g_temp > 0) {
       y = gamma_new;
       theta_new = 1.0;
+      LOG(TRACE) << "APGD RESET";
     }
 
     L = 0.9 * L;
@@ -179,7 +181,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
       UpdateR();
     }
   }
-
+  LOG(TRACE) << "APGD SOLVE COMPLETE";
   gamma = gamma_hat;
 
   data_manager->system_timer.stop("ChSolverParallel_Solve");
