@@ -39,10 +39,6 @@ void ChSolverParallel::ComputeSRhs(custom_vector<real>& gamma,
 void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<real>& output) {
   data_manager->system_timer.start("ShurProduct");
 
-  const SubMatrixType& D_n_T = _DNT_;
-  const SubMatrixType& D_b_T = _DBT_;
-  const SubMatrixType& M_invD_n = _MINVDN_;
-  const SubMatrixType& M_invD_b = _MINVDB_;
   const DynamicVector<real>& E = data_manager->host_data.E;
 
   uint num_rigid_contacts = data_manager->num_rigid_contacts;
@@ -50,13 +46,6 @@ void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<r
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
   output.reset();
-  SubVectorType o_b = subvector(output, num_unilaterals, num_bilaterals);
-  ConstSubVectorType x_b = subvector(x, num_unilaterals, num_bilaterals);
-  ConstSubVectorType E_b = subvector(E, num_unilaterals, num_bilaterals);
-
-  SubVectorType o_n = subvector(output, 0, num_rigid_contacts);
-  ConstSubVectorType x_n = subvector(x, 0, num_rigid_contacts);
-  ConstSubVectorType E_n = subvector(E, 0, num_rigid_contacts);
 
   const CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
   const CompressedMatrix<real>& D = data_manager->host_data.D;
@@ -65,6 +54,20 @@ void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<r
   if (data_manager->settings.solver.local_solver_mode == data_manager->settings.solver.solver_mode) {
     output = D_T * M_invD * x + E * x;
   } else {
+
+    const SubMatrixType& D_n_T = _DNT_;
+    const SubMatrixType& D_b_T = _DBT_;
+    const SubMatrixType& M_invD_n = _MINVDN_;
+    const SubMatrixType& M_invD_b = _MINVDB_;
+
+    SubVectorType o_b = subvector(output, num_unilaterals, num_bilaterals);
+    ConstSubVectorType x_b = subvector(x, num_unilaterals, num_bilaterals);
+    ConstSubVectorType E_b = subvector(E, num_unilaterals, num_bilaterals);
+
+    SubVectorType o_n = subvector(output, 0, num_rigid_contacts);
+    ConstSubVectorType x_n = subvector(x, 0, num_rigid_contacts);
+    ConstSubVectorType E_n = subvector(E, 0, num_rigid_contacts);
+
     switch (data_manager->settings.solver.local_solver_mode) {
       case BILATERAL: {
         o_b = D_b_T * (M_invD_b * x_b) + E_b * x_b;

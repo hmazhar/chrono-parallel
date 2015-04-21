@@ -109,7 +109,7 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   double CalculateConstraintViolation(std::vector<double>& cvec);
 
   ChParallelDataManager* data_manager;
-
+  ChFluidContainer* fluid_container;
   void AddFluid(ChFluidContainer* fluid);
 
  protected:
@@ -126,7 +126,7 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   void AddShaft(ChSharedPtr<ChShaft> shaft);
 
   std::vector<ChShaft*> shaftlist;
-  ChFluidContainer* fluid_container;
+
 };
 
 class CH_PARALLEL_API ChSystemParallelDVI : public ChSystemParallel {
