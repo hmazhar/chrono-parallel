@@ -558,7 +558,7 @@ void FinalizeObject(ChSharedPtr<ChBody> body, ChSystem* system) {
 
   // Verify consistency of input arguments.
   assert(((sysType == SEQUENTIAL_DVI || sysType == PARALLEL_DVI) && contact_method == ChBody::DVI) ||
-    ((sysType == SEQUENTIAL_DEM || sysType == PARALLEL_DEM) && contact_method == ChBody::DEM));
+         ((sysType == SEQUENTIAL_DEM || sysType == PARALLEL_DEM) && contact_method == ChBody::DEM));
 
   body->GetCollisionModel()->BuildModel();
   system->AddBody(body);
@@ -632,6 +632,22 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
     body->GetAssets().push_back(trimesh_shape);
   }
 }
-
+//Add convex collision models from a set of points
+void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
+                             ChTriangleMeshConnected& convex_mesh,
+                             std::vector<std::vector<ChVector<double> > >& convex_hulls,
+                             const ChVector<>& pos,
+                             const ChQuaternion<>& rot) {
+  for (int c = 0; c < convex_hulls.size(); c++) {
+    ((collision::ChCollisionModelParallel*)body->GetCollisionModel())->AddConvexHull(convex_hulls[c], pos, rot);
+  }
+  // Add the original triangle mesh as asset
+  ChSharedPtr<ChTriangleMeshShape> trimesh_shape(new ChTriangleMeshShape);
+  trimesh_shape->SetMesh(convex_mesh);
+  trimesh_shape->SetName(convex_mesh.GetFileName());
+  trimesh_shape->Pos = VNULL;
+  trimesh_shape->Rot = QUNIT;
+  body->GetAssets().push_back(trimesh_shape);
+}
 }  // namespace utils
 }  // namespace chrono

@@ -19,6 +19,7 @@
 #include "chrono_utils/ChUtilsInputOutput.h"
 
 namespace chrono {
+using namespace collision;
 namespace utils {
 
 // -----------------------------------------------------------------------------
@@ -549,6 +550,43 @@ void WriteMeshPovray(const std::string& obj_filename,
   ofile << "      finish  {phong 0.2  diffuse 0.6}" << std::endl;
   ofile << "    }" << std::endl;
   ofile << "}" << std::endl;
+}
+
+void WriteConvexShapes(const std::string& obj_filename, ChConvexDecompositionHACDv2& convex_shape) {
+  ChConvexDecomposition* used_decomposition = &convex_shape;
+
+  int hull_count = used_decomposition->GetHullCount();
+  std::ofstream ofile(obj_filename.c_str());
+  ofile << hull_count << " ";
+  for (int c = 0; c < hull_count; c++) {
+    std::vector<ChVector<double> > convexhull;
+    used_decomposition->GetConvexHullResult(c, convexhull);
+    ofile << convexhull.size() << " ";
+    for (int i = 0; i < convexhull.size(); i++) {
+      ofile << convexhull[i].x << " " << convexhull[i].y << " " << convexhull[i].z << " ";
+    }
+  }
+  ofile.close();
+}
+
+void ReadConvexShapes(const std::string& obj_filename, std::vector<std::vector<ChVector<double> > >& convex_hulls) {
+  std::ifstream ifile(obj_filename.c_str());
+
+  int hull_count;
+  ifile >> hull_count;
+  convex_hulls.resize(hull_count);
+
+  for (int c = 0; c < hull_count; c++) {
+    int hull_size;
+    ifile >> hull_size;
+    std::vector<ChVector<double> > convexhull(hull_size);
+
+    for (int i = 0; i < hull_size; i++) {
+      ifile >> convexhull[i].x >> convexhull[i].y >> convexhull[i].z;
+    }
+    convex_hulls[c] = convexhull;
+  }
+  ifile.close();
 }
 
 }  // namespace utils

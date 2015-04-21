@@ -241,6 +241,13 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
                              const ChQuaternion<>& rot = ChQuaternion<>(1, 0, 0, 0),
                              bool use_original_asset = true);
 
+CH_UTILS_API
+void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
+                             geometry::ChTriangleMeshConnected& convex_mesh,
+                             std::vector<std::vector<ChVector<double> > >& convex_hulls,
+                             const ChVector<>& pos = ChVector<>(0, 0, 0),
+                             const ChQuaternion<>& rot = ChQuaternion<>(1, 0, 0, 0));
+
 }  // end namespace utils
 }  // end namespace chrono
 

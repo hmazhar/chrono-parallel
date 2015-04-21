@@ -40,6 +40,7 @@
 #include <fstream>
 
 #include "physics/ChSystem.h"
+#include "collision/ChCConvexDecomposition.h"
 
 #include "chrono_parallel/ChParallelDefines.h"
 
@@ -174,6 +175,11 @@ void WriteMeshPovray(const std::string& obj_filename,
                      const ChColor& color = ChColor(0.4f, 0.4f, 0.4f),
                      const ChVector<>& pos = ChVector<>(0, 0, 0),
                      const ChQuaternion<>& rot = ChQuaternion<>(1, 0, 0, 0));
+
+// Write a convex decomposition to a file
+void WriteConvexShapes(const std::string& obj_filename, collision::ChConvexDecompositionHACDv2& convex_shape);
+// Read a convex decomposition from a file
+void ReadConvexShapes(const std::string& obj_filename, std::vector<std::vector<ChVector<double> > >& convex_hulls);
 
 }  // namespace utils
 }  // namespace chrono
