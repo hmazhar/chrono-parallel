@@ -496,6 +496,24 @@ ChVector<> Generator::calcMinSeparation(const ChVector<>& sep) {
 
 // Create objects at the specified locations using the current mixture settings.
 void Generator::createObjects(const PointVector& points, const ChVector<>& vel) {
+  // If the mixture type is set to fluid we add fluid particles
+
+  if (m_mixture[0]->m_type == FLUID) {
+    if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(m_system)) {
+      std::vector<real3> position(points.size());
+      std::vector<real3> velocity(points.size());
+
+      for (int i = 0; i < points.size(); i++) {
+        position[i] = R3(points[i].x, points[i].y, points[i].z);
+        velocity[i] = R3(vel.x, vel.y, vel.z);
+      }
+
+      parallel_system->fluid_container->AddFluid(position, velocity);
+    }
+
+    return;
+  }
+
   for (int i = 0; i < points.size(); i++) {
     // Select the type of object to be created.
     int index = selectIngredient();
