@@ -13,8 +13,8 @@ ChSolverAPGD::ChSolverAPGD()
       theta(1),
       theta_new(0),
       beta_new(0),
-      t(0),
-      L(0),
+      t(1),
+      L(1),
       g_diff(0) {
 }
 
@@ -73,28 +73,30 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
 
   temp = gamma - one;
   real norm_temp = sqrt((real)(temp, temp));
-
-  // If gamma is one temp should be zero, in that case set L to one
-  // We cannot divide by 0
-  if (norm_temp == 0) {
-    L = 1.0;
+  if (data_manager->settings.solver.cache_step_length == false) {
+    // If gamma is one temp should be zero, in that case set L to one
+    // We cannot divide by 0
+    if (norm_temp == 0) {
+      L = 1.0;
+    } else {
+      // If the N matrix is zero for some reason, temp will be zero
+      ShurProduct(temp, temp);
+      // If temp is zero then L will be zero
+      L = sqrt((real)(temp, temp)) / norm_temp;
+    }
+    // When L is zero the step length can't be computed, in this case just return
+    // If the N is indeed zero then solving doesn't make sense
+    if (L == 0) {
+      // For certain simulations returning here will not perform any iterations
+      // even when there are contacts that aren't resolved. Changed it from return 0
+      // to L=t=1;
+      // return 0;
+      L = t = 1;
+    } else {
+      // Compute the step size
+      t = 1.0 / L;
+    }
   } else {
-    // If the N matrix is zero for some reason, temp will be zero
-    ShurProduct(temp, temp);
-    // If temp is zero then L will be zero
-    L = sqrt((real)(temp, temp)) / norm_temp;
-  }
-  // When L is zero the step length can't be computed, in this case just return
-  // If the N is indeed zero then solving doesn't make sense
-  if (L == 0) {
-    // For certain simulations returning here will not perform any iterations
-    // even when there are contacts that aren't resolved. Changed it from return 0
-    // to L=t=1;
-    // return 0;
-    L = t = 1;
-  } else {
-    // Compute the step size
-    t = 1.0 / L;
   }
   y = gamma;
   // If no iterations are performed or the residual is NAN (which is shouldnt be)

@@ -111,7 +111,7 @@ struct fluid_settings {
   real viscosity;
   real collision_envelope;
   bool fluid_is_rigid;
-  real max_velocity;  // limit on the maximum speed the fluid can move at
+  real max_velocity;     // limit on the maximum speed the fluid can move at
   int max_interactions;  // maximum neighbors supported, increase as needed
   real contact_recovery_speed;
 };
@@ -153,6 +153,7 @@ struct solver_settings {
     use_material_properties = true;
     characteristic_vel = 1;
     min_slip_vel = 1e-4;
+    cache_step_length = false;
   }
 
   // The solver type variable defines name of the solver that will be used to
@@ -197,6 +198,7 @@ struct solver_settings {
   bool verbose;
   bool test_objective;
   real cohesion_epsilon;
+  bool cache_step_length;
   bool use_full_inertia_tensor;
 
   // Contact force model for DEM
