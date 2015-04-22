@@ -145,7 +145,7 @@ inline real3 GetSupportPoint_RoundedCone(const real3& B, const real3& C, const r
 inline real3 GetSupportPoint_Convex(const real3& B, const real3* convex_data, const real3& n) {
   real max_dot_p = -LARGE_REAL;
   real dot_p;
-  real3 point = convex_data[int(B.y)];
+  real3 point;
   for (int i = B.y; i < B.y + B.x; i++) {
     dot_p = convex_data[i].dot(n);
     if (dot_p > max_dot_p) {
@@ -153,7 +153,7 @@ inline real3 GetSupportPoint_Convex(const real3& B, const real3* convex_data, co
       point = convex_data[i];
     }
   }
-  return point + n * B.z;
+  return point; //+ n * B.z;
 }
 
 inline real3 GetCenter_Sphere() {
