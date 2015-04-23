@@ -125,16 +125,15 @@ SET(ChronoEngine_OpenGL_HEADERS
 	${CMAKE_BINARY_DIR}/resources/cloud_frag.h
 	${CMAKE_BINARY_DIR}/resources/cloud_vert.h
 	${CMAKE_BINARY_DIR}/resources/dot_frag.h
-    ${CMAKE_BINARY_DIR}/resources/dot_vert.h
-    ${CMAKE_BINARY_DIR}/resources/sphere_frag.h
-    ${CMAKE_BINARY_DIR}/resources/sphere_vert.h
-    ${CMAKE_BINARY_DIR}/resources/bar_frag.h
-    ${CMAKE_BINARY_DIR}/resources/bar_vert.h
-    ${CMAKE_BINARY_DIR}/resources/box.h
-    ${CMAKE_BINARY_DIR}/resources/cone.h
-    ${CMAKE_BINARY_DIR}/resources/sphere.h
-    ${CMAKE_BINARY_DIR}/resources/cylinder.h
->>>>>>> ab19c0b4b61c21e042e611611c8a86a3b09afb72
+  ${CMAKE_BINARY_DIR}/resources/dot_vert.h
+  ${CMAKE_BINARY_DIR}/resources/sphere_frag.h
+  ${CMAKE_BINARY_DIR}/resources/sphere_vert.h
+  ${CMAKE_BINARY_DIR}/resources/bar_frag.h
+  ${CMAKE_BINARY_DIR}/resources/bar_vert.h
+  ${CMAKE_BINARY_DIR}/resources/box.h
+  ${CMAKE_BINARY_DIR}/resources/cone.h
+  ${CMAKE_BINARY_DIR}/resources/sphere.h
+  ${CMAKE_BINARY_DIR}/resources/cylinder.h
 	)
 
 IF (MSVC)
