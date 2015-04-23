@@ -501,15 +501,18 @@ void ChLcpSolverParallelDEM::ComputeD() {
   uint num_bilaterals = data_manager->num_bilaterals;
   uint nnz_bilaterals = data_manager->nnz_bilaterals;
 
-  CompressedMatrix<real>& D_b_T = data_manager->host_data.D_T;
-  clear(D_b_T);
+  CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  clear(D_T);
 
-  D_b_T.reserve(nnz_bilaterals);
+  D_T.reserve(nnz_bilaterals);
 
-  D_b_T.resize(num_constraints, num_dof, false);
+  D_T.resize(num_constraints, num_dof, false);
 
   bilateral.GenerateSparsity();
   bilateral.Build_D();
+
+  data_manager->host_data.D = trans(D_T);
+  data_manager->host_data.M_invD = data_manager->host_data.M_inv * data_manager->host_data.D;
 }
 
 void ChLcpSolverParallelDEM::ComputeE() {

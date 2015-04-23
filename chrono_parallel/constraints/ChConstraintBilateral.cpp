@@ -43,8 +43,6 @@ void ChConstraintBilateral::Build_D() {
   // Loop over the active constraints and fill in the rows of the Jacobian,
   // taking into account the type of each constraint.
   SubMatrixType D_b_T = _DBT_;
-  SubMatrixType D_b = _DB_;
-  SubMatrixType M_invD_b = _MINVDB_;
 
   const CompressedMatrix<real>& M_inv = data_manager->host_data.M_inv;
 
@@ -147,11 +145,6 @@ void ChConstraintBilateral::Build_D() {
       } break;
     }
   }
-
-  LOG(INFO) << "ChConstraintBilateral::Build_D - D_b";
-  D_b = trans(D_b_T);
-  LOG(INFO) << "ChConstraintBilateral::Build_D - M_invD_b";
-  M_invD_b = M_inv * D_b;
 }
 
 void ChConstraintBilateral::GenerateSparsity() {
