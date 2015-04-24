@@ -438,7 +438,7 @@ void AddTorusGeometry(ChBody* body,
     Quaternion q = chrono::Q_from_AngAxis(-angle, VECT_Y) % chrono::Q_from_AngAxis(CH_C_PI / 2.0, VECT_X);
     double outer_circ = 2 * CH_C_PI * (radius + thickness);
 
-    AddCapsuleGeometry(body, thickness, outer_circ / segments * .5, ChVector<>(x, 0, z) + pos, q, visualization);
+    AddCylinderGeometry(body, thickness, outer_circ / segments * .5, ChVector<>(x, 0, z) + pos, q, visualization);
   }
 }
 
@@ -645,8 +645,8 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
   ChSharedPtr<ChTriangleMeshShape> trimesh_shape(new ChTriangleMeshShape);
   trimesh_shape->SetMesh(convex_mesh);
   trimesh_shape->SetName(convex_mesh.GetFileName());
-  trimesh_shape->Pos = pos;
-  trimesh_shape->Rot = rot;
+  trimesh_shape->Pos = VNULL;
+  trimesh_shape->Rot = QUNIT;
   body->GetAssets().push_back(trimesh_shape);
 }
 }  // namespace utils
