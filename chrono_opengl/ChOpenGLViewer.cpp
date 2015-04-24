@@ -25,6 +25,7 @@
 #include "assets/ChEllipsoidShape.h"
 #include "assets/ChConeShape.h"
 #include "assets/ChCylinderShape.h"
+#include "assets/ChCapsuleShape.h"
 #include "assets/ChRoundedBoxShape.h"
 #include "assets/ChRoundedConeShape.h"
 #include "assets/ChRoundedCylinderShape.h"
@@ -237,7 +238,7 @@ void ChOpenGLViewer::Render() {
         real3 pos = parallel_system->data_manager->host_data.pos_fluid[i];
         fluid_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
-      fluid.SetPointSize(parallel_system->GetSettings()->fluid.kernel_radius*2);
+      fluid.SetPointSize(parallel_system->GetSettings()->fluid.kernel_radius * 2);
       fluid.Update(fluid_data);
       glm::mat4 model(1);
       fluid.Draw(projection, view * model);
@@ -406,6 +407,34 @@ void ChOpenGLViewer::DrawObject(ChBody* abody) {
       model =
           glm::translate(glm::mat4(1), glm::vec3(pos_final.x + local.x, pos_final.y + local.y, pos_final.z + local.z));
       model = glm::scale(model, glm::vec3(radsphere));
+      model_sphere.push_back(model);
+
+    } else if (asset.IsType<ChCapsuleShape>()) {
+      ChCapsuleShape* capsule_shape = ((ChCapsuleShape*)(asset.get_ptr()));
+      double rad = capsule_shape->GetCapsuleGeometry().rad;
+      double height = capsule_shape->GetCapsuleGeometry().hlen;
+      // Quaternion rott(1,0,0,0);
+      Quaternion lrot = visual_asset->Rot.Get_A_quaternion();
+      // lrot = lrot % rott;
+      lrot = rot % lrot;
+
+      lrot.Q_to_AngAxis(angle, axis);
+      ChVector<> pos_final = pos + center;
+      model = glm::translate(glm::mat4(1), glm::vec3(pos_final.x, pos_final.y, pos_final.z));
+      model = glm::rotate(model, float(angle), glm::vec3(axis.x, axis.y, axis.z));
+      model = glm::scale(model, glm::vec3(rad, height, rad));
+      model_cylinder.push_back(model);
+      glm::vec3 local = glm::rotate(glm::vec3(0, height, 0), float(angle), glm::vec3(axis.x, axis.y, axis.z));
+      model =
+          glm::translate(glm::mat4(1), glm::vec3(pos_final.x + local.x, pos_final.y + local.y, pos_final.z + local.z));
+      model = glm::scale(model, glm::vec3(rad));
+      model_sphere.push_back(model);
+
+      local = glm::rotate(glm::vec3(0, -height, 0), float(angle), glm::vec3(axis.x, axis.y, axis.z));
+
+      model =
+          glm::translate(glm::mat4(1), glm::vec3(pos_final.x + local.x, pos_final.y + local.y, pos_final.z + local.z));
+      model = glm::scale(model, glm::vec3(rad));
       model_sphere.push_back(model);
 
     } else if (asset.IsType<ChTriangleMeshShape>()) {
