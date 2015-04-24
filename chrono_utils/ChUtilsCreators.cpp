@@ -627,8 +627,8 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
     ChSharedPtr<ChTriangleMeshShape> trimesh_shape(new ChTriangleMeshShape);
     trimesh_shape->SetMesh(convex_mesh);
     trimesh_shape->SetName(convex_mesh.GetFileName());
-    trimesh_shape->Pos = VNULL;
-    trimesh_shape->Rot = QUNIT;
+    trimesh_shape->Pos = pos;
+    trimesh_shape->Rot = rot;
     body->GetAssets().push_back(trimesh_shape);
   }
 }
