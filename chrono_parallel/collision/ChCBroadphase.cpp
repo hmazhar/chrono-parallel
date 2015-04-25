@@ -4,7 +4,9 @@
 #include "chrono_parallel/collision/ChCBroadphaseUtils.h"
 #include "chrono_parallel/collision/ChCBroadphaseFunctions.h"
 
+#include <thrust/host_vector.h>
 #include <thrust/transform.h>
+#include <thrust/sort.h>
 #include <thrust/sequence.h>
 #include <thrust/iterator/constant_iterator.h>
 
@@ -52,7 +54,7 @@ void ChCBroadphase::ComputeTopLevelResolution() {
   int3& bins_per_axis = data_manager->settings.collision.bins_per_axis;
 
   // This is the extents of the space aka diameter
-  real3 diagonal = (fabs(max_bounding_point - global_origin));
+  real3 diagonal = (absolute(max_bounding_point - global_origin));
   // Compute the number of slices in this grid level
   if (data_manager->settings.collision.fixed_bins == false) {
     bins_per_axis = function_Compute_Grid_Resolution(num_shapes, diagonal, density);
