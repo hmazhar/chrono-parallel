@@ -50,6 +50,9 @@ using blaze::submatrix;
 using blaze::subvector;
 using thrust::host_vector;
 
+namespace chrono {
+
+
 typedef blaze::SparseSubmatrix<CompressedMatrix<real> > SubMatrixType;
 typedef blaze::DenseSubvector<DynamicVector<real> > SubVectorType;
 
@@ -84,8 +87,6 @@ typedef blaze::DenseSubvector<const DynamicVector<real> > ConstSubVectorType;
 #define _DST_ submatrix(data_manager->host_data.D_T, 3 * _num_r_c_, 0, 3 * _num_r_c_, _num_dof_)
 
 #define _DOT_ submatrix(data_manager->host_data.D_T, _num_uni_ + _num_bil_, 0, 3 * _num_o_c_, _num_dof_)
-
-namespace chrono {
 
 // The maximum number of shear history contacts per smaller body (DEM)
 #define max_shear 20
