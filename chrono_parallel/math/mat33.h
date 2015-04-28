@@ -54,6 +54,16 @@ struct M33 {
 
     return result;
   }
+
+  inline M33 operator*(const real& a) const { return M33(U * a, V * a, W * a); }
+
+  inline M33 operator+(const M33& B) const {
+    M33 result;
+    result.U = U + B.U;
+    result.V = V + B.V;
+    result.W = W + B.W;
+    return result;
+  };
 };
 
 static inline M33 XMatrix(const real3& vect) {
