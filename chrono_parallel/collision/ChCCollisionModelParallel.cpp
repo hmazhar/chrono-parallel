@@ -23,7 +23,7 @@ namespace chrono {
 namespace collision {
 
 ChCollisionModelParallel::ChCollisionModelParallel()
-    : nObjects(0), family_group(1), family_mask(0x7FFF), inertia(ZERO_VECTOR), total_volume(0) {
+    : family_group(1), family_mask(0x7FFF), inertia(ZERO_VECTOR), total_volume(0) {
   model_safe_margin = 0;
 }
 
@@ -36,7 +36,6 @@ int ChCollisionModelParallel::ClearModel() {
   }
 
   mData.clear();
-  nObjects = 0;
   family_group = 1;
   family_mask = 0x7FFF;
   return 1;
@@ -78,7 +77,6 @@ bool ChCollisionModelParallel::AddSphere(double radius, const ChVector<>& pos) {
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(position.x, position.y, position.z);
   tData.B = R3(radius, 0, 0);
@@ -104,13 +102,12 @@ bool ChCollisionModelParallel::AddEllipsoid(double rx,
 
   double mass = GetBody()->GetMass();
 
-  real3 local_inertia = R3(
-      1 / 5.0 * mass * (ry * ry + rz * rz), 1 / 5.0 * mass * (rx * rx + rz * rz), 1 / 5.0 * mass * (rx * rx + ry * ry));
+  real3 local_inertia = R3(1 / 5.0 * mass * (ry * ry + rz * rz), 1 / 5.0 * mass * (rx * rx + rz * rz),
+                           1 / 5.0 * mass * (rx * rx + ry * ry));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(position.x, position.y, position.z);
   tData.B = R3(rx, ry, rz);
@@ -131,14 +128,12 @@ bool ChCollisionModelParallel::AddBox(double rx, double ry, double rz, const ChV
 
   double mass = GetBody()->GetMass();
 
-  real3 local_inertia = R3(1 / 12.0 * mass * (ry * ry + rz * rz),
-                           1 / 12.0 * mass * (rx * rx + rz * rz),
+  real3 local_inertia = R3(1 / 12.0 * mass * (ry * ry + rz * rz), 1 / 12.0 * mass * (rx * rx + rz * rz),
                            1 / 12.0 * mass * (rx * rx + ry * ry));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(position.x, position.y, position.z);
   tData.B = R3(rx, ry, rz);
@@ -163,14 +158,12 @@ bool ChCollisionModelParallel::AddRoundedBox(double rx,
   const ChQuaternion<>& rotation = frame.GetRot();
   double mass = GetBody()->GetMass();
 
-  real3 local_inertia = R3(1 / 12.0 * mass * (ry * ry + rz * rz),
-                           1 / 12.0 * mass * (rx * rx + rz * rz),
+  real3 local_inertia = R3(1 / 12.0 * mass * (ry * ry + rz * rz), 1 / 12.0 * mass * (rx * rx + rz * rz),
                            1 / 12.0 * mass * (rx * rx + ry * ry));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(position.x, position.y, position.z);
   tData.B = R3(rx, ry, rz);
@@ -195,7 +188,6 @@ bool ChCollisionModelParallel::AddTriangle(ChVector<> A,
 
   double mass = GetBody()->GetMass();
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(A.x + position.x, A.y + position.y, A.z + position.z);
   tData.B = R3(B.x + position.x, B.y + position.y, B.z + position.z);
@@ -219,13 +211,12 @@ bool ChCollisionModelParallel::AddCylinder(double rx,
 
   double mass = GetBody()->GetMass();
 
-  real3 local_inertia = R3(
-      1 / 12.0 * mass * (3 * rx * rx + hy * hy), 1 / 2.0 * mass * (rx * rz), 1 / 12.0 * mass * (3 * rz * rz + hy * hy));
+  real3 local_inertia = R3(1 / 12.0 * mass * (3 * rx * rx + hy * hy), 1 / 2.0 * mass * (rx * rz),
+                           1 / 12.0 * mass * (3 * rz * rz + hy * hy));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(rx, hy, rz);
@@ -251,13 +242,12 @@ bool ChCollisionModelParallel::AddRoundedCylinder(double rx,
 
   double mass = GetBody()->GetMass();
 
-  real3 local_inertia = R3(
-      1 / 12.0 * mass * (3 * rx * rx + hy * hy), 1 / 2.0 * mass * (rx * rz), 1 / 12.0 * mass * (3 * rz * rz + hy * hy));
+  real3 local_inertia = R3(1 / 12.0 * mass * (3 * rx * rx + hy * hy), 1 / 2.0 * mass * (rx * rz),
+                           1 / 12.0 * mass * (3 * rz * rz + hy * hy));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(rx, hy, rz);
@@ -284,14 +274,13 @@ bool ChCollisionModelParallel::AddCone(double rx,
   real radius = rx;
   real height = hy;
 
-  real3 local_inertia = R3((3.0f / 80.0f) * mass * (radius * radius + 4 * height * height),
-                           (3.0f / 10.0f) * mass * radius * radius,
-                           (3.0f / 80.0f) * mass * (radius * radius + 4 * height * height));
+  real3 local_inertia =
+      R3((3.0f / 80.0f) * mass * (radius * radius + 4 * height * height), (3.0f / 10.0f) * mass * radius * radius,
+         (3.0f / 80.0f) * mass * (radius * radius + 4 * height * height));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(rx, height, rz);
@@ -319,14 +308,13 @@ bool ChCollisionModelParallel::AddRoundedCone(double rx,
   real radius = rx;
   real height = hy;
 
-  real3 local_inertia = R3((3.0f / 80.0f) * mass * (radius * radius + 4 * height * height),
-                           (3.0f / 10.0f) * mass * radius * radius,
-                           (3.0f / 80.0f) * mass * (radius * radius + 4 * height * height));
+  real3 local_inertia =
+      R3((3.0f / 80.0f) * mass * (radius * radius + 4 * height * height), (3.0f / 10.0f) * mass * radius * radius,
+         (3.0f / 80.0f) * mass * (radius * radius + 4 * height * height));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(rx, height, rz);
@@ -349,14 +337,12 @@ bool ChCollisionModelParallel::AddCapsule(double radius, double hlen, const ChVe
 
   //// TODO  For now just approximate inertia with that of a cylinder
   real hlen1 = radius + hlen;
-  real3 local_inertia = R3(1 / 12.0 * mass * (3 * radius * radius + hlen1 * hlen1),
-                           1 / 2.0 * mass * (radius * radius),
+  real3 local_inertia = R3(1 / 12.0 * mass * (3 * radius * radius + hlen1 * hlen1), 1 / 2.0 * mass * (radius * radius),
                            1 / 12.0 * mass * (3 * radius * radius + hlen1 * hlen1));
   inertia.x += local_inertia.x + mass * (position.Length2() - position.x * position.x);
   inertia.y += local_inertia.y + mass * (position.Length2() - position.y * position.y);
   inertia.z += local_inertia.z + mass * (position.Length2() - position.z * position.z);
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(radius, hlen, radius);
@@ -378,7 +364,6 @@ bool ChCollisionModelParallel::AddConvexHull(std::vector<ChVector<double> >& poi
 
   ChQuaternion<> rotation = rot.Get_A_quaternion();
 
-  nObjects++;
   ConvexShape tData;
   tData.A = R3(pos.x, pos.y, pos.z);
   tData.B = R3(pointlist.size(), local_convex_data.size(), 0);
@@ -418,7 +403,6 @@ bool ChCollisionModelParallel::AddTriangleMesh(const geometry::ChTriangleMesh& t
   const ChVector<>& position = frame.GetPos();
   const ChQuaternion<>& rotation = frame.GetRot();
 
-  nObjects += trimesh.getNumTriangles();
   ConvexShape tData;
   for (int i = 0; i < trimesh.getNumTriangles(); i++) {
     geometry::ChTriangle temptri = trimesh.getTriangle(i);

@@ -202,7 +202,7 @@ class CH_PARALLEL_API ChCollisionModelParallel : public ChCollisionModel {
   ChBody* GetBody() const { return mbody; }
 
   /// Return the number of objects in this model.
-  int GetNObjects() const { return nObjects; }
+  int GetNObjects() const { return mData.size(); }
 
   float getVolume();
 
@@ -210,7 +210,6 @@ class CH_PARALLEL_API ChCollisionModelParallel : public ChCollisionModel {
   std::vector<real3> local_convex_data;
 
  protected:
-  unsigned int nObjects;
   short family_group;
   short family_mask;
   real3 inertia;
