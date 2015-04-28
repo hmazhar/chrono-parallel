@@ -35,29 +35,17 @@ void ChConstraintRigidFluid::Project(real* gamma) {
   uint num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
   uint num_unilaterals = data_manager->num_unilaterals;
   uint num_bilaterals = data_manager->num_bilaterals;
+  real mu = data_manager->settings.fluid.mu;
+  real coh = data_manager->settings.fluid.cohesion;
 #pragma omp parallel for
   for (int index = 0; index < num_rigid_fluid_contacts; index++) {
     int2 body_id = bids[index];
     int rigid = body_id.x;  // rigid is stored in the first index
     int fluid = body_id.y;  // fluid body is in second index
-    real cohesion =
-        std::max((data_manager->host_data.cohesion_data[rigid] + data_manager->settings.fluid.cohesion) * .5, 0.0);
-    real friction = (data_manager->host_data.fric_data[rigid].x == 0 || data_manager->settings.fluid.mu == 0)
-                        ? 0
-                        : (data_manager->host_data.fric_data[rigid].x + data_manager->settings.fluid.mu) * .5;
-    //      gamma[num_unilaterals + num_bilaterals + index] =
-    //      std::max(real(0.0), gamma[num_unilaterals + num_bilaterals +
-    //      index]);
+    real rigid_fric = data_manager->host_data.fric_data[rigid].x;
+    real cohesion = std::max((data_manager->host_data.cohesion_data[rigid] + coh) * .5, 0.0);
+    real friction = (rigid_fric == 0 || mu == 0) ? 0 : (rigid_fric + mu) * .5;
 
-    // real gam = gamma[num_unilaterals + num_bilaterals + index];
-    //    gam = gam + cohesion;
-    //    gam = gam < 0 ? 0 : gam - cohesion;
-    //    gamma[num_unilaterals + num_bilaterals + index] = gam;
-
-    //      int _index_ = num_unilaterals + num_bilaterals + index*3;
-    //
-    //
-    //
     real3 gam;
     gam.x = gamma[num_unilaterals + num_bilaterals + index * 3 + 0];
     gam.y = gamma[num_unilaterals + num_bilaterals + index * 3 + 1];
