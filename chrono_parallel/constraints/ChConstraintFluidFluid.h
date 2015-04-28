@@ -9,7 +9,20 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
  public:
   ChConstraintFluidFluid() { data_manager = 0; }
   ~ChConstraintFluidFluid() {}
-  void Setup(ChParallelDataManager* data_container_) { data_manager = data_container_; }
+  void Setup(ChParallelDataManager* data_container_) {
+    data_manager = data_container_;
+
+    num_fluid_contacts = data_manager->num_fluid_contacts;
+    num_fluid_bodies = data_manager->num_fluid_bodies;
+    num_rigid_bodies = data_manager->num_rigid_bodies;
+    num_rigid_fluid_contacts = data_manager->num_rigid_fluid_contacts;
+    num_unilaterals = data_manager->num_unilaterals;
+    num_bilaterals = data_manager->num_bilaterals;
+    num_shafts = data_manager->num_shafts;
+
+    index_offset = num_unilaterals + num_bilaterals + num_rigid_fluid_contacts * 3;
+    body_offset = num_rigid_bodies * 6 + num_shafts;
+  }
   void Build_D();
   void Build_b();
   void Build_E();
@@ -18,19 +31,38 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
   void DetermineNeighbors();
   void Project(real* gamma);
   void GenerateSparsity();
+  // generate the sparsity when treating the fluid as a rigid body
+  void GenerateSparsityRigid();
+
+  // generate the sparsity when treating the fluid as constraint fluid
+  void GenerateSparsityFluid();
+  // Fill in the jacobian based on fluid or rigid
+  void Build_D_Rigid();
+  void Build_D_Fluid();
 
  protected:
-  //  custom_vector<int> fluid_contact_idA;
-  //  custom_vector<int> fluid_contact_idB, fluid_start_index;
+  host_vector<int> fluid_contact_idA;
+  host_vector<int> fluid_contact_idB, fluid_start_index;
   //  custom_vector<long long> fluid_contact_pair;
   //  custom_vector<real> contact_density;
   //  custom_vector<int> reduced_index_A;
   //  custom_vector<real3> off_diagonal;
-  //  int last_body;
+  int last_body;
   //
-  //  custom_vector<M33> shear_tensor;
+  host_vector<M33> shear_tensor;
   // Pointer to the system's data manager
   ChParallelDataManager* data_manager;
+
+ private:
+  uint num_fluid_contacts;
+  uint num_fluid_bodies;
+  uint num_rigid_bodies;
+  uint num_rigid_fluid_contacts;
+  uint num_unilaterals;
+  uint num_bilaterals;
+  uint num_shafts;
+  uint index_offset;
+  uint body_offset;
 };
 }
 
