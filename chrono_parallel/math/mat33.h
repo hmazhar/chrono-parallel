@@ -283,6 +283,21 @@ static inline real4 GetQuat(M33 A) {
   return q;
 }
 
+// The trace is the sum of the diagonal entries
+static real Trace(const M33& A) {
+  return A.U.x + A.V.y + A.W.z;
+}
+
+// Multiply a 3x1 by a 1x3 to get a 3x3
+static M33 VectorxVector(const real3& A, const real3& B) {
+  // Calculations look transposed because each real 3 is a column vector
+  real3 U = R3(A.x * B.x, A.y * B.x, A.z * B.x);
+  real3 V = R3(A.x * B.y, A.y * B.y, A.z * B.y);
+  real3 W = R3(A.x * B.z, A.y * B.z, A.z * B.z);
+
+  return M33(U, V, W);
+}
+
 //[U.x,V.x,W.x]
 //[U.y,V.y,W.y]
 //[U.z,V.z,W.z]
