@@ -106,8 +106,14 @@ void ChCBroadphase::DetectPossibleCollisions() {
   OffsetAABB();
   ComputeTopLevelResolution();
   FillStateData();
-  //OneLevelBroadphase();
-  TwoLevelBroadphase();
+
+  if(!data_manager->settings.collision.use_two_level){
+    OneLevelBroadphase();
+  }else{
+    TwoLevelBroadphase();
+  }
+
+
 
   SplitContacts();
 

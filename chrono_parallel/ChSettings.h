@@ -48,6 +48,7 @@ struct collision_settings {
     grid_density = 5;
     leaf_density = 1;
     fixed_bins = true;
+    use_two_level = true;
   }
 
   real3 min_bounding_point, max_bounding_point;
@@ -77,6 +78,7 @@ struct collision_settings {
   real leaf_density;
   // use fixed number of bins instead of tuning them
   bool fixed_bins;
+  bool use_two_level;
 };
 
 // Fluid settings structure
