@@ -38,7 +38,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   uint num_fluid_fluid = data_manager->num_fluid_contacts * 3;
 
   if (data_manager->settings.fluid.fluid_is_rigid == false) {
-    num_fluid_fluid = data_manager->num_fluid_bodies;// + data_manager->num_fluid_bodies * 3;
+    num_fluid_fluid = data_manager->num_fluid_bodies;  // + data_manager->num_fluid_bodies * 3;
   }
 
   // This is the total number of constraints
@@ -161,8 +161,8 @@ void ChLcpSolverParallelDVI::ComputeD() {
 
   if (data_manager->settings.fluid.fluid_is_rigid == false) {
     int max_interactions = data_manager->settings.fluid.max_interactions;
-    nnz_fluid_fluid = num_fluid_bodies * 6 * max_interactions;// + num_fluid_bodies * 18 * max_interactions;
-    num_fluid_fluid = num_fluid_bodies;// + num_fluid_bodies * 3;
+    nnz_fluid_fluid = num_fluid_bodies * 6 * max_interactions;  // + num_fluid_bodies * 18 * max_interactions;
+    num_fluid_fluid = num_fluid_bodies;                         // + num_fluid_bodies * 3;
   }
 
   CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
@@ -273,40 +273,48 @@ void ChLcpSolverParallelDVI::SetR() {
   uint num_bilaterals = data_manager->num_bilaterals;
   uint num_rigid_fluid = data_manager->num_rigid_fluid_contacts * 3;
   uint num_fluid_fluid = data_manager->num_fluid_contacts;
+  uint num_fluid_bodies = data_manager->num_fluid_bodies;
   R.resize(data_manager->num_constraints);
   reset(R);
 
-  subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
-  subvector(R, num_unilaterals + num_bilaterals, num_rigid_fluid) =
-      subvector(R_full, num_unilaterals + num_bilaterals, num_rigid_fluid);
-
-  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+  if (data_manager->settings.solver.local_solver_mode == data_manager->settings.solver.solver_mode) {
+    R = R_full;
   } else {
-    subvector(R, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid) =
-        subvector(R_full, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid);
-  }
+    subvector(R, num_unilaterals, num_bilaterals) = subvector(R_full, num_unilaterals, num_bilaterals);
+    subvector(R, num_unilaterals + num_bilaterals, num_rigid_fluid) =
+        subvector(R_full, num_unilaterals + num_bilaterals, num_rigid_fluid);
 
-  switch (data_manager->settings.solver.local_solver_mode) {
-    case BILATERAL: {
-    } break;
+    if (data_manager->settings.fluid.fluid_is_rigid == false) {
+      subvector(R, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_bodies) =
+          subvector(R_full, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_bodies);
 
-    case NORMAL: {
-      subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
-    } break;
+    } else {
+      subvector(R, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid) =
+          subvector(R_full, num_unilaterals + num_bilaterals + num_rigid_fluid, num_fluid_fluid);
+    }
 
-    case SLIDING: {
-      subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
-      subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
-          subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);
-    } break;
+    switch (data_manager->settings.solver.local_solver_mode) {
+      case BILATERAL: {
+      } break;
 
-    case SPINNING: {
-      subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
-      subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
-          subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);
-      subvector(R, num_rigid_contacts * 3, num_rigid_contacts * 3) =
-          subvector(R_full, num_rigid_contacts * 3, num_rigid_contacts * 3);
-    } break;
+      case NORMAL: {
+        subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
+      } break;
+
+      case SLIDING: {
+        subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
+        subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
+            subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);
+      } break;
+
+      case SPINNING: {
+        subvector(R, 0, num_rigid_contacts) = subvector(R_full, 0, num_rigid_contacts);
+        subvector(R, num_rigid_contacts, num_rigid_contacts * 2) =
+            subvector(R_full, num_rigid_contacts, num_rigid_contacts * 2);
+        subvector(R, num_rigid_contacts * 3, num_rigid_contacts * 3) =
+            subvector(R_full, num_rigid_contacts * 3, num_rigid_contacts * 3);
+      } break;
+    }
   }
 }
 

@@ -40,14 +40,19 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
   void Build_D_Rigid();
   void Build_D_Fluid();
 
+  void Density_Fluid();
+  void Normalize_Density_Fluid();
  protected:
-  host_vector<int> fluid_contact_idA;
+  host_vector<int> fluid_contact_idA, fluid_contact_idA_start;
   host_vector<int> fluid_contact_idB, fluid_start_index;
   //  custom_vector<long long> fluid_contact_pair;
   //  custom_vector<real> contact_density;
   //  custom_vector<int> reduced_index_A;
   //  custom_vector<real3> off_diagonal;
   int last_body;
+
+  host_vector<real3> den_con;
+
   //
   host_vector<M33> shear_tensor;
   // Pointer to the system's data manager
