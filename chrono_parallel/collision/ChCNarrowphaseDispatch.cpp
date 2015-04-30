@@ -431,7 +431,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
 
     shapeB.type = SPHERE;
     shapeB.A = fluid_pos;
-    shapeB.B = R3(fluid_radius, 0, 0);
+    shapeB.B = R3(fluid_radius*.5, 0, 0);
     shapeB.C = R3(0);
     shapeB.R = R4(1, 0, 0, 0);
     shapeB.convex = convex_data;
@@ -507,7 +507,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
 bool Check_Sphere(real3 pos_a, real3 pos_b, real radius) {
   real3 delta = pos_b - pos_a;
   real dist2 = dot(delta, delta);
-  real radSum = radius + radius;
+  real radSum = radius ;//+ radius;
   if (dist2 >= radSum * radSum || dist2 < 1e-12) {
     return false;
   }
