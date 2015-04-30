@@ -73,12 +73,12 @@ void ChCBroadphase::FillStateData() {
   obj_data_id = data_manager->host_data.id_rigid;
 
   fam_data.resize(num_rigid_shapes + num_fluid_bodies);
-  //individual shapes arent active/inactive the entire body is
+  // individual shapes arent active/inactive the entire body is
   obj_active.resize(num_rigid_bodies + num_fluid_bodies);
   obj_data_id.resize(num_rigid_shapes + num_fluid_bodies);
-  //set fluid family to the default
+  // set fluid family to the default
   thrust::fill(fam_data.begin() + num_rigid_shapes, fam_data.end(), S2(1, 0x7FFF));
-  //individual shapes arent active/inactive the entire body is
+  // individual shapes arent active/inactive the entire body is
   thrust::fill(obj_active.begin() + num_rigid_bodies, obj_active.end(), 1);
   // obj data id's go from 0->num_rigid_bodies->num_fluid so start at num_rigid_bodies
   thrust::sequence(obj_data_id.begin() + num_rigid_shapes, obj_data_id.end(), num_rigid_bodies);
@@ -107,14 +107,11 @@ void ChCBroadphase::DetectPossibleCollisions() {
   ComputeTopLevelResolution();
   FillStateData();
 
-  if(!data_manager->settings.collision.use_two_level){
+  if (!data_manager->settings.collision.use_two_level) {
     OneLevelBroadphase();
-  }else{
+  } else {
     TwoLevelBroadphase();
   }
-
-
-
   SplitContacts();
 
   return;
@@ -185,10 +182,13 @@ void ChCBroadphase::OneLevelBroadphase() {
     f_OL_Store_AABB_AABB_Intersection(index, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index,
                                       num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
   }
-
-  thrust::stable_sort(contact_pairs.begin(), contact_pairs.end());
+  LOG(TRACE) << "Thrust_Sort(contact_pairs);: ";
+  Thrust_Sort(contact_pairs);
+  LOG(TRACE) << "Thrust_Unique(contact_pairs);: ";
   number_of_contacts_possible = Thrust_Unique(contact_pairs);
   contact_pairs.resize(number_of_contacts_possible);
+  LOG(TRACE) << "Number of unique collisions: " << number_of_contacts_possible;
+
 }
 //======
 void ChCBroadphase::TwoLevelBroadphase() {
@@ -307,12 +307,15 @@ void ChCBroadphase::TwoLevelBroadphase() {
   contact_pairs.resize(number_of_contacts_possible);
 }
 void ChCBroadphase::SplitContacts() {
+  LOG(TRACE) << "ChCBroadphase::SplitContacts(): ";
+
   // Split Contacts into three lists
 
   const uint num_rigid_shapes = data_manager->num_rigid_shapes;
   const uint num_fluid_bodies = data_manager->num_fluid_bodies;
   host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
-  host_vector<short> contact_type(number_of_contacts_possible);
+  LOG(TRACE) << "number_of_contacts_possible: "<<number_of_contacts_possible;
+  host_vector<int> contact_type(number_of_contacts_possible);
 #pragma omp parallel for
   for (int i = 0; i < number_of_contacts_possible; i++) {
     int2 pair = I2(int(contact_pairs[i] >> 32), int(contact_pairs[i] & 0xffffffff));
@@ -327,9 +330,9 @@ void ChCBroadphase::SplitContacts() {
       contact_type[i] = 3;
     }
   }
-
+  LOG(TRACE) << "Thrust_Sort_By_Key(contact_type, contact_pairs);";
   Thrust_Sort_By_Key(contact_type, contact_pairs);
-
+  LOG(TRACE) << "Thrust_Count(contact_type,...)";
   data_manager->num_rigid_contacts = Thrust_Count(contact_type, 0);
   data_manager->num_rigid_fluid_contacts = Thrust_Count(contact_type, 1);
   data_manager->num_fluid_contacts = Thrust_Count(contact_type, 2);
