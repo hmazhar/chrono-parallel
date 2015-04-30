@@ -42,6 +42,8 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
 
   void Density_Fluid();
   void Normalize_Density_Fluid();
+  void ArtificialPressure();
+
  protected:
   host_vector<int> fluid_contact_idA, fluid_contact_idA_start;
   host_vector<int> fluid_contact_idB, fluid_start_index;

@@ -415,4 +415,32 @@ void ChConstraintFluidFluid::DetermineNeighbors() {
   fluid_start_index[last_body] = 0;
   Thrust_Exclusive_Scan(fluid_start_index);
 }
+void ChConstraintFluidFluid::ArtificialPressure() {
+  if (data_manager->settings.fluid.artificial_pressure == false) {
+    return;
+  }
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    host_vector<real3>& pos = data_manager->host_data.pos_fluid;
+    real mass_fluid = data_manager->settings.fluid.mass;
+    real h = data_manager->settings.fluid.kernel_radius;
+    real k = 0.1;
+    real dq = 0;  // 0.3 * h;
+    real n = 4;
+#pragma omp parallel for
+    for (int i = 0; i < last_body; i++) {
+      uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
+      int2 bid;
+      bid.x = fluid_contact_idA_start[i];
+      real corr = 0;
+      for (int index = start; index < end; index++) {
+        bid.y = fluid_contact_idB[index];
+        real3 xij = (pos[bid.x] - pos[bid.y]);
+        real dist = length(xij);
+        corr += k * pow(KERNEL(dist, 2 * h) / KERNEL(dq, h), n);
+      }
+      // std::cout << gamma[index_offset + bid.x] << " " << corr << std::endl;
+      data_manager->host_data.gamma[index_offset + bid.x] += corr;
+    }
+  }
+}
 }
