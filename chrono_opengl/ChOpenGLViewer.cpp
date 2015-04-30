@@ -217,7 +217,7 @@ void ChOpenGLViewer::Render() {
           (*iter).second.Draw(projection, view);
         }
       }
-      fluid.AttachShader(&sphere_shader);
+      fluid.AttachShader(&dot_shader);
 
     } else {
       cloud_data.resize(physics_system->Get_bodylist()->size());
@@ -228,7 +228,7 @@ void ChOpenGLViewer::Render() {
         cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
 
-      fluid.AttachShader(&dot_shader);
+      fluid.AttachShader(&cloud_shader);
     }
 
     if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
@@ -238,7 +238,7 @@ void ChOpenGLViewer::Render() {
         real3 pos = parallel_system->data_manager->host_data.pos_fluid[i];
         fluid_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
-      fluid.SetPointSize(parallel_system->GetSettings()->fluid.kernel_radius*2);
+      fluid.SetPointSize(parallel_system->GetSettings()->fluid.kernel_radius*1.5);
       fluid.Update(fluid_data);
       glm::mat4 model(1);
       fluid.Draw(projection, view * model);
