@@ -54,6 +54,7 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
   int last_body;
 
   host_vector<real3> den_con;
+  host_vector<real4> den_vec;
 
   //
   host_vector<M33> shear_tensor;

@@ -53,11 +53,7 @@ void ChConstraintFluidFluid::Density_Fluid() {
   host_vector<real3>& vel = data_manager->host_data.vel_fluid;
   host_vector<real3>& pos = data_manager->host_data.pos_fluid;
   host_vector<real>& density = data_manager->host_data.den_fluid;
-  // density of the particle itself
-  density.resize(num_fluid_bodies);
-  real k = 0.1;
-  real dq = 0.2 * h;
-  real n = 4;
+// density of the particle itself
 
 #pragma omp parallel for
   for (int i = 0; i < last_body; i++) {
@@ -65,14 +61,16 @@ void ChConstraintFluidFluid::Density_Fluid() {
     int2 bid;
     bid.x = fluid_contact_idA_start[i];
     real dens = 0;
+    real corr = 0;
     for (int index = start; index < end; index++) {
       bid.y = fluid_contact_idB[index];
       real3 xij = (pos[bid.x] - pos[bid.y]);
       real dist = length(xij);
-      dens += mass_fluid * KERNEL(dist, 2 * h) + -k * pow(KERNEL(dist, 2 * h) / KERNEL(dq, 2 * h), n);
+      dens += mass_fluid * KERNEL(dist, h);
+      // corr += k * pow(KERNEL(dist, 2 * h) / KERNEL(dq, 2 * h), n);
     }
     density[bid.x] = dens;
-    // std::cout << dens + single_density << std::endl;
+    // std::cout << dens << " " << corr << std::endl;
   }
 }
 
@@ -96,7 +94,7 @@ void ChConstraintFluidFluid::Normalize_Density_Fluid() {
         continue;
       }
       real dist = length(pos[bid.x] - pos[bid.y]);
-      dens += (mass_fluid / density[bid.y]) * KERNEL(dist, 2 * h);
+      dens += (mass_fluid / density[bid.y]) * KERNEL(dist, h);
     }
     density[bid.x] = density[bid.x] / (dens);
   }
@@ -125,33 +123,54 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
   // shear_tensor.resize(num_fluid_bodies);
 
   //=======COMPUTE DENSITY OF FLUID
-  Density_Fluid();
+  density.resize(num_fluid_bodies);
+  // Density_Fluid();
   // Normalize_Density_Fluid();
-
   den_con.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+  //  den_vec.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+  //#pragma omp parallel for
+  //  for (int i = 0; i < fluid_contact_idB.size(); i++) {
+  //    int2 bid;
+  //    bid.x = fluid_contact_idA[i];
+  //    bid.y = fluid_contact_idB[i];
+  //    real3 xij = (pos[bid.x] - pos[bid.y]);
+  //    real dist = length(xij);
+  //    den_vec[i] = R4(dist, xij.x, xij.y, xij.z);
+  //  }
+  //
+  //  real spiky(const real& dist, const real& h) {
+  //    return (dist <= h) * 15.0 / (F_PI * pow(h, 6)) * pow(h - dist, 3);
+  //  }
+  //  real3 grad_spiky(const real3& dist, const real d, const real& h) {
+  //    return (d <= h) * -45.0 / (F_PI * pow(h, 6)) * pow(h - d, 2) * dist;
+  //  }
+  const real inv_f_pi_h_6 = 1.0 / (F_PI * pow(h, 6));
+  const real h_3 = h * h * h;
 #pragma omp parallel for
   for (int i = 0; i < last_body; i++) {
     int2 bid;
     uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
     bid.x = fluid_contact_idA_start[i];
+    real3 posa = pos[bid.x];
     real3 diag = 0;
     int diag_index = 0;
+    real dens = 0;
     for (int index = start; index < end; index++) {
       bid.y = fluid_contact_idB[index];
       if (bid.x == bid.y) {
         diag_index = index;
+        dens += mass_fluid * KERNEL(0, h);
         continue;
       }
-      real3 xij = (pos[bid.x] - pos[bid.y]);
+      real3 xij = (posa - pos[bid.y]);
       real dist = length(xij);
-      real3 grad_kernel = GRAD_KERNEL(xij, dist, 2 * h);
-      real3 off_diag = (mass_over_density)*grad_kernel;
+      real3 off_diag = mass_over_density * -45.0 * inv_f_pi_h_6 * pow(h - dist, 2) * xij;
       den_con[index] = off_diag;
       diag += off_diag;
-      //      std::cout << xij.x << " " << xij.y << " " << xij.z << " " << dist << " " << h  << " " << grad_kernel.x
-      //                << " " << grad_kernel.y << " " << grad_kernel.z << "\n";
+      dens += mass_fluid * KERNEL(dist, h);
     }
     den_con[diag_index] = -diag;
+    density[bid.x] = dens;
     // std::cout<<diag.x<<" "<<diag.y<<" "<<diag.z<<"\n";
   }
 
@@ -219,9 +238,9 @@ void ChConstraintFluidFluid::Build_b() {
     real epsilon = data_manager->settings.fluid.epsilon;
     real tau = data_manager->settings.fluid.tau;
     real h = data_manager->settings.fluid.kernel_radius;
-    real zeta = 1.0 / (1.0 + 4.0 * tau / step_size);
+    real zeta = 1.0 / (1.0 + 4.0 * tau / h);
 
-    //#pragma omp parallel for
+#pragma omp parallel for
     for (int index = 0; index < num_fluid_bodies; index++) {
       // if not normalized
       // g[index] = (density[index] - density_fluid) / density_fluid;
@@ -229,11 +248,11 @@ void ChConstraintFluidFluid::Build_b() {
       // if normalized:
       // g[index] = (density[index] - 1) / 1;
 
-      std::cout << g[index] << " " << density[index] << std::endl;
+      // std::cout << g[index] << " " << density[index] << std::endl;
     }
-    // b_sub = -4.0 / h * zeta * g + zeta * D_T_sub * v_sub;
-    // b_sub = -g + D_T_sub * v_sub;
-    b_sub = -g;  // + D_T_sub * v_sub;
+    //b_sub = -4.0 / step_size * zeta * g + zeta * D_T_sub * v_sub;
+    // b_sub = -g + zeta * D_T_sub * v_sub;
+     b_sub = -g;  // + D_T_sub * v_sub;
   } else {
     SubVectorType b_sub = blaze::subvector(data_manager->host_data.b, index_offset, num_fluid_contacts);
     custom_vector<real3>& pos = data_manager->host_data.pos_fluid;
@@ -411,7 +430,7 @@ void ChConstraintFluidFluid::DetermineNeighbors() {
   fluid_start_index.resize(num_fluid_bodies);
 
   last_body = Thrust_Reduce_By_Key(fluid_contact_idA, fluid_contact_idA_start, fluid_start_index);
-  fluid_start_index.resize(last_body+1);
+  fluid_start_index.resize(last_body + 1);
   fluid_start_index[last_body] = 0;
   Thrust_Exclusive_Scan(fluid_start_index);
 }
@@ -423,9 +442,9 @@ void ChConstraintFluidFluid::ArtificialPressure() {
     host_vector<real3>& pos = data_manager->host_data.pos_fluid;
     real mass_fluid = data_manager->settings.fluid.mass;
     real h = data_manager->settings.fluid.kernel_radius;
-    real k = 0.1;
-    real dq = 0;  // 0.3 * h;
-    real n = 4;
+    real k = data_manager->settings.fluid.artificial_pressure_k;
+    real dq = data_manager->settings.fluid.artificial_pressure_dq;
+    real n = data_manager->settings.fluid.artificial_pressure_n;
 #pragma omp parallel for
     for (int i = 0; i < last_body; i++) {
       uint start = fluid_start_index[i], end = fluid_start_index[i + 1];

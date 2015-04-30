@@ -85,15 +85,16 @@ struct collision_settings {
 // Currently only one phase is supported
 struct fluid_settings {
   fluid_settings() {
-    kernel_radius = 1;
+    kernel_radius = .04;
     volume = 4.0 / 3.0 * 3.14159265359 * pow(kernel_radius, 3);
     compliance = 0;
     epsilon = 10e-3;
     tau = 4 * .01;
+    tau_density = 4 * .01;
     cohesion = 0;
     mu = 0;
     density = 1000;
-    mass = 1;
+    mass = 0.037037;
     fluid_is_rigid = true;
     max_velocity = 3;
     viscosity = 0;
@@ -101,12 +102,16 @@ struct fluid_settings {
     collision_envelope = 0;
     contact_recovery_speed = 1;
     artificial_pressure = false;
+    artificial_pressure_k = 0.1;
+    artificial_pressure_dq = .2 * kernel_radius;
+    artificial_pressure_n = 4;
   }
   real kernel_radius;
   real volume;
   real compliance;
   real epsilon;  // Regularization parameter
   real tau;      // Constraint relaxation time
+  real tau_density;
   real cohesion;
   real mu;  // friction
   real density;
@@ -114,10 +119,13 @@ struct fluid_settings {
   real viscosity;
   real collision_envelope;
   bool fluid_is_rigid;
-  real max_velocity;     // limit on the maximum speed the fluid can move at
-  int max_interactions;  // maximum neighbors supported, increase as needed
-  real contact_recovery_speed;
-  bool artificial_pressure;
+  real max_velocity;            // limit on the maximum speed the fluid can move at
+  int max_interactions;         // maximum neighbors supported, increase as needed
+  real contact_recovery_speed;  // The speed at which 'rigid' fluid  bodies resolve contact
+  bool artificial_pressure;     // Enable artificial pressure term
+  real artificial_pressure_k;
+  real artificial_pressure_n;
+  real artificial_pressure_dq;
 };
 
 // solver_settings, like the name implies is the structure that contains all
