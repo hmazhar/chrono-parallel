@@ -438,6 +438,37 @@ void Generator::createObjectsCylinderZ(SamplingType sType,
   createObjects(points, vel);
 }
 
+void Generator::createObjectsSphere(SamplingType sType,
+                                    double dist,
+                                    const ChVector<>& pos,
+                                    const double& radius,
+                                    const ChVector<>& vel) {
+  // Normalize the mixture ratios
+  normalizeMixture();
+
+  // Generate the object locations
+  if (m_sysType == SEQUENTIAL_DEM || m_sysType == PARALLEL_DEM)
+    dist = calcMinSeparation(dist);
+
+  PointVector points;
+  switch (sType) {
+    case REGULAR_GRID: {
+      GridSampler<> sampler(dist);
+      points = sampler.SampleSphere(pos, radius);
+    } break;
+    case POISSON_DISK: {
+      PDSampler<> sampler(dist);
+      points = sampler.SampleSphere(pos, radius);
+    } break;
+    case HCP_PACK: {
+      HCPSampler<> sampler(dist);
+      points = sampler.SampleSphere(pos, radius);
+    } break;
+  }
+
+  createObjects(points, vel);
+}
+
 // Normalize the mixture ratios (so that their sum is 1) and calculate
 // the exclusive scan of these ratios.
 void Generator::normalizeMixture() {

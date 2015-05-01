@@ -216,6 +216,16 @@ class CH_UTILS_API Generator {
                               float halfHeight,
                               const ChVector<>& vel = ChVector<>(0, 0, 0));
 
+  // Create bodies, according to the current mixture setup, with initial
+  // positions given by the specified sampler in the sphere domain specified by
+  // 'pos' and 'radius'. Optionally, a constant inital linear velocity can be set
+  // for all created bodies.
+  void createObjectsSphere(SamplingType sType,
+                           double dist,
+                           const ChVector<>& pos,
+                           const double& radius,
+                           const ChVector<>& vel = ChVector<>(0, 0, 0));
+
   // Write information about the bodies created so far to the specified file
   // (CSV format)
   void writeObjectInfo(const std::string& filename);
