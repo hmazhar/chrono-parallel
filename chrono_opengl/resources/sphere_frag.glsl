@@ -2,19 +2,32 @@
 
 layout(location = 0) out vec4 FragColor;
 uniform vec4 color;
+in vec3 pos;
+uniform float point_size;
+uniform mat4 projection_matrix;
+uniform mat4 view_matrix;
+const vec3 lightPos = vec3(500, 500, 500);
+const vec3 lightDir = normalize(lightPos);
+
 
 void main() {
-  const vec3 lightDir = vec3(0.577, 0.577, 0.577);
-  vec3 N;
-  N.xy = gl_PointCoord.xy - 0.5;
-
-  float mag = dot(gl_PointCoord - 0.5, gl_PointCoord - 0.5);
-
-  if (mag > 0.25) {
+  //calculate normal
+  vec3 normal;
+  normal.xy = gl_PointCoord * 2.0 - 1.0;
+  float r2 = dot(normal.xy, normal.xy);
+  
+  if (r2 > 1.0) {
     discard;
-  } else {
-    N.z = sqrt(1.0 - mag * 4);
-    float diffuse = max(0.0, dot(lightDir, N));
-    FragColor = vec4(color.xyz * diffuse, 1);
   }
+ 
+  normal.z = sqrt(1.0 - r2);
+
+  float diffuse = max(.3, dot(lightDir, normal));
+  FragColor = vec4(color.xyz *diffuse, 1);
+
+  //calculate depth
+  vec4 pixelPos = vec4(pos + normal * point_size, 1.0);
+  vec4 clipSpacePos = projection_matrix * pixelPos;
+  
+  gl_FragDepth = (clipSpacePos.z / clipSpacePos.w) * 0.5f + 0.5f;
 }
