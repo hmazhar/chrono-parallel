@@ -50,11 +50,16 @@ void ChSolverParallel::ShurProduct(const DynamicVector<real>& x, DynamicVector<r
   const CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
   const CompressedMatrix<real>& D = data_manager->host_data.D;
   const CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
+  const CompressedMatrix<real>& Nshur = data_manager->host_data.Nshur;
 
   if (data_manager->settings.solver.local_solver_mode == data_manager->settings.solver.solver_mode) {
-    output = D_T * M_invD * x + E * x;
-  } else {
+    if (data_manager->settings.solver.compute_N) {
+      output = Nshur * x + E * x;
+    } else {
+      output = D_T * M_invD * x + E * x;
+    }
 
+  } else {
     const SubMatrixType& D_n_T = _DNT_;
     const SubMatrixType& D_b_T = _DBT_;
     const SubMatrixType& M_invD_n = _MINVDN_;

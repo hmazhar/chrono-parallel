@@ -71,7 +71,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   ComputeD();
   ComputeE();
   ComputeR();
-  // ComputeN();
+  ComputeN();
 
   // PreSolve();
 
@@ -257,6 +257,17 @@ void ChLcpSolverParallelDVI::ComputeR() {
 }
 
 void ChLcpSolverParallelDVI::ComputeN() {
+  if (data_manager->settings.solver.compute_N == false) {
+    return;
+  }
+
+  LOG(INFO) << "ChLcpSolverParallelDVI::ComputeN";
+  data_manager->system_timer.start("ChLcpSolverParallel_N");
+  const CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
+  CompressedMatrix<real>& Nshur = data_manager->host_data.Nshur;
+  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
+  Nshur = D_T * M_invD;
+  data_manager->system_timer.stop("ChLcpSolverParallel_N");
 }
 
 void ChLcpSolverParallelDVI::SetR() {
