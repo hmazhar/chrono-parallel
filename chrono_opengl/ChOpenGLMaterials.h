@@ -49,6 +49,9 @@ static ChOpenGLMaterial slate(glm::vec3(85.0f, 98.0f, 112.0f) / 255.0f * ambient
 static ChOpenGLMaterial pacifica(glm::vec3(78.0f, 205.0f, 196.0f) / 255.0f * ambient,
                                  glm::vec3(78.0f, 205.0f, 196.0f) / 255.0f,
                                  glm::vec3(1, 1, 1));
+
+static ChOpenGLMaterial blue_jeans(ColorConverter(0x5D9CEC) * ambient, ColorConverter(0x5D9CEC), glm::vec3(1, 1, 1));
+
 static ChOpenGLMaterial apple(glm::vec3(199.0f, 244.0f, 100.0f) / 255.0f * ambient,
                               glm::vec3(199.0f, 244.0f, 100.0f) / 255.0f,
                               glm::vec3(1, 1, 1));

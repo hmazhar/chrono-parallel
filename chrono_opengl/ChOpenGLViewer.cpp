@@ -133,7 +133,7 @@ bool ChOpenGLViewer::Initialize() {
   grid_data.push_back(glm::vec3(0, 0, 0));
 
   cloud.Initialize(cloud_data, white, &cloud_shader);
-  fluid.Initialize(cloud_data, pacifica, &sphere_shader);
+  fluid.Initialize(cloud_data, blue_jeans, &sphere_shader);
   grid.Initialize(grid_data, darkriver, &cloud_shader);
 
   contact_renderer.Initialize(darkred, &cloud_shader);
@@ -217,7 +217,7 @@ void ChOpenGLViewer::Render() {
           (*iter).second.Draw(projection, view);
         }
       }
-      fluid.AttachShader(&dot_shader);
+      fluid.AttachShader(&sphere_shader);
 
     } else {
       cloud_data.resize(physics_system->Get_bodylist()->size());
@@ -228,7 +228,7 @@ void ChOpenGLViewer::Render() {
         cloud_data[i] = glm::vec3(pos.x, pos.y, pos.z);
       }
 
-      fluid.AttachShader(&cloud_shader);
+      fluid.AttachShader(&dot_shader);
     }
 
     if (ChSystemParallel* parallel_system = dynamic_cast<ChSystemParallel*>(physics_system)) {
