@@ -409,6 +409,11 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
   LOG(TRACE) << "fill contact_rigid_fluid_active: ";
   thrust::fill(contact_rigid_fluid_active.begin(), contact_rigid_fluid_active.end(), false);
 
+  real scale = 1.0;
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    scale = 0.5;
+  }
+
 #pragma omp parallel for
   for (int i = 0; i < num_potential_rigid_fluid_contacts; i++) {
     long long pair = contact_pairs[i + num_potential_rigid_contacts];
@@ -431,7 +436,7 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
 
     shapeB.type = SPHERE;
     shapeB.A = fluid_pos;
-    shapeB.B = R3(fluid_radius*.5, 0, 0);
+    shapeB.B = R3(fluid_radius * scale, 0, 0);
     shapeB.C = R3(0);
     shapeB.R = R4(1, 0, 0, 0);
     shapeB.convex = convex_data;
@@ -504,29 +509,24 @@ void ChCNarrowphaseDispatch::DispatchRigidFluid() {
   bids_rigid_fluid.resize(num_rigid_fluid_contacts);
 }
 
-bool Check_Sphere(real3 pos_a, real3 pos_b, real radius) {
-  real3 delta = pos_b - pos_a;
-  real dist2 = dot(delta, delta);
-  real radSum = radius ;//+ radius;
-  if (dist2 >= radSum * radSum || dist2 < 1e-12) {
-    return false;
-  }
-  return true;
-}
-
 void ChCNarrowphaseDispatch::DispatchFluid() {
+  LOG(TRACE) << "ChCNarrowphaseDispatch::DispatchFluid(): ";
+
   const host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
   const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
   host_vector<int2>& bids_fluid_fluid = data_manager->host_data.bids_fluid_fluid;
-  const uint num_aabb_rigid = data_manager->num_rigid_shapes;
-  const real fluid_radius = data_manager->settings.fluid.kernel_radius;
 
+  const uint num_aabb_rigid = data_manager->num_rigid_shapes;
+  const real fluid_radius =
+      data_manager->settings.fluid.kernel_radius + data_manager->settings.fluid.collision_envelope;
   bids_fluid_fluid.resize(num_potential_fluid_contacts);
-  LOG(TRACE) << "resize bids_fluid_fluid: ";
   contact_fluid_active.resize(num_potential_fluid_contacts);
   thrust::fill(contact_fluid_active.begin(), contact_fluid_active.end(), false);
-  LOG(TRACE) << "fill contact_fluid_active: ";
 
+  real scale = 1.0;
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    scale = 0.5;
+  }
 #pragma omp parallel for
   for (int i = 0; i < num_potential_fluid_contacts; i++) {
     long long pair = contact_pairs[i + num_potential_rigid_contacts + num_potential_rigid_fluid_contacts];
@@ -536,8 +536,12 @@ void ChCNarrowphaseDispatch::DispatchFluid() {
     uint fluid_B = pair2.y;
     real3 fluid_posA = pos_fluid[fluid_A - num_aabb_rigid];
     real3 fluid_posB = pos_fluid[fluid_B - num_aabb_rigid];
+    real3 delta = fluid_posB - fluid_posA;
 
-    if (Check_Sphere(fluid_posA, fluid_posB, fluid_radius + data_manager->settings.fluid.collision_envelope)) {
+    real dist2 = dot(delta, delta);
+    real radSum = (fluid_radius + fluid_radius) * scale;
+    if (dist2 >= radSum * radSum || dist2 < 1e-12) {
+    } else {
       contact_fluid_active[i] = true;
       bids_fluid_fluid[i] = I2(fluid_A - num_aabb_rigid, fluid_B - num_aabb_rigid);
     }

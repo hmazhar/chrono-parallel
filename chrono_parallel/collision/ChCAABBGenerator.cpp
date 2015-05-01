@@ -160,10 +160,16 @@ void ChCAABBGenerator::GenerateAABB() {
   const host_vector<real3>& pos_fluid = data_manager->host_data.pos_fluid;
   const real fluid_radius = data_manager->settings.fluid.kernel_radius;
   real fluid_envelope = data_manager->settings.fluid.collision_envelope;
+
+  real scale = 1.0;
+  if (data_manager->settings.fluid.fluid_is_rigid == false) {
+    scale = 0.5;
+  }
+
 #pragma omp parallel for
   for (int index = 0; index < num_fluid_bodies; index++) {
-    aabb_min[index + num_rigid_shapes] = pos_fluid[index] - R3(fluid_radius*.5) - fluid_envelope;
-    aabb_max[index + num_rigid_shapes] = pos_fluid[index] + R3(fluid_radius*.5) + fluid_envelope;
+    aabb_min[index + num_rigid_shapes] = pos_fluid[index] - R3(fluid_radius * scale) - fluid_envelope;
+    aabb_max[index + num_rigid_shapes] = pos_fluid[index] + R3(fluid_radius * scale) + fluid_envelope;
   }
 
   LOG(TRACE) << "AABB END";
