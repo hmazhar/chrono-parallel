@@ -61,13 +61,11 @@ void ChConstraintFluidFluid::Density_Fluid() {
     int2 bid;
     bid.x = fluid_contact_idA_start[i];
     real dens = 0;
-    real corr = 0;
     for (int index = start; index < end; index++) {
       bid.y = fluid_contact_idB[index];
       real3 xij = (pos[bid.x] - pos[bid.y]);
       real dist = length(xij);
       dens += mass_fluid * KERNEL(dist, h);
-      // corr += k * pow(KERNEL(dist, 2 * h) / KERNEL(dq, 2 * h), n);
     }
     density[bid.x] = dens;
     // std::cout << dens << " " << corr << std::endl;
@@ -144,8 +142,11 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
   //  real3 grad_spiky(const real3& dist, const real d, const real& h) {
   //    return (d <= h) * -45.0 / (F_PI * pow(h, 6)) * pow(h - d, 2) * dist;
   //  }
-  const real inv_f_pi_h_6 = 1.0 / (F_PI * pow(h, 6));
   const real h_3 = h * h * h;
+  const real h_6 = h_3 * h_3;
+  const real h_9 = h_3 * h_3 * h_3;
+  const real inv_f_pi_h_6 = 1.0 / (F_PI * h_6);
+  const real inv_f_pi_h_9 = 1.0 / (64.0 * F_PI * h_9);
 #pragma omp parallel for
   for (int i = 0; i < last_body; i++) {
     int2 bid;
@@ -159,7 +160,6 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
       bid.y = fluid_contact_idB[index];
       if (bid.x == bid.y) {
         diag_index = index;
-        dens += mass_fluid * KERNEL(0, h);
         continue;
       }
       real3 xij = (posa - pos[bid.y]);
@@ -167,11 +167,10 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
       real3 off_diag = mass_over_density * -45.0 * inv_f_pi_h_6 * pow(h - dist, 2) * xij;
       den_con[index] = off_diag;
       diag += off_diag;
-      dens += mass_fluid * KERNEL(dist, h);
+      dens += mass_fluid * 315.0 * inv_f_pi_h_9 * pow((h * h - dist * dist), 3);
     }
     den_con[diag_index] = -diag;
-    density[bid.x] = dens;
-    // std::cout<<diag.x<<" "<<diag.y<<" "<<diag.z<<"\n";
+    density[bid.x] = dens +  mass_fluid * 315.0 * inv_f_pi_h_9 * h_6;
   }
 
   LOG(INFO) << "ChConstraintFluidFluid::JACOBIAN OF FLUID";
@@ -242,17 +241,13 @@ void ChConstraintFluidFluid::Build_b() {
 
 #pragma omp parallel for
     for (int index = 0; index < num_fluid_bodies; index++) {
-      // if not normalized
-      // g[index] = (density[index] - density_fluid) / density_fluid;
-      g[index] = density[index] / density_fluid - 1.0;
-      // if normalized:
-      // g[index] = (density[index] - 1) / 1;
-
+      // g[index] = density[index] / density_fluid - 1.0;
+      b_sub[index] = -(density[index] / density_fluid - 1.0);
       // std::cout << g[index] << " " << density[index] << std::endl;
     }
-    //b_sub = -4.0 / step_size * zeta * g + zeta * D_T_sub * v_sub;
+    // b_sub = -4.0 / step_size * zeta * g + zeta * D_T_sub * v_sub;
     // b_sub = -g + zeta * D_T_sub * v_sub;
-     b_sub = -g;  // + D_T_sub * v_sub;
+    // b_sub = -g;  // + D_T_sub * v_sub;
   } else {
     SubVectorType b_sub = blaze::subvector(data_manager->host_data.b, index_offset, num_fluid_contacts);
     custom_vector<real3>& pos = data_manager->host_data.pos_fluid;
@@ -423,15 +418,17 @@ void ChConstraintFluidFluid::DetermineNeighbors() {
     fluid_contact_idB[index + num_fluid_bodies] = body_id.y;
     fluid_contact_idB[index + num_fluid_bodies + num_fluid_contacts] = body_id.x;
   }
+  LOG(INFO) << "ChConstraintFluidFluid::Thrust_Sort_By_Key";
 
   Thrust_Sort_By_Key(fluid_contact_idB, fluid_contact_idA);
   Thrust_Sort_By_Key(fluid_contact_idA, fluid_contact_idB);
 
   fluid_start_index.resize(num_fluid_bodies);
-
+  LOG(INFO) << "ChConstraintFluidFluid::Thrust_Reduce_By_Key";
   last_body = Thrust_Reduce_By_Key(fluid_contact_idA, fluid_contact_idA_start, fluid_start_index);
   fluid_start_index.resize(last_body + 1);
   fluid_start_index[last_body] = 0;
+  LOG(INFO) << "ChConstraintFluidFluid::Thrust_Exclusive_Scan";
   Thrust_Exclusive_Scan(fluid_start_index);
 }
 void ChConstraintFluidFluid::ArtificialPressure() {
@@ -455,7 +452,7 @@ void ChConstraintFluidFluid::ArtificialPressure() {
         bid.y = fluid_contact_idB[index];
         real3 xij = (pos[bid.x] - pos[bid.y]);
         real dist = length(xij);
-        corr += k * pow(KERNEL(dist, 2 * h) / KERNEL(dq, h), n);
+        corr += k * pow(KERNEL(dist, h) / KERNEL(dq, h), n);
       }
       // std::cout << gamma[index_offset + bid.x] << " " << corr << std::endl;
       data_manager->host_data.gamma[index_offset + bid.x] += corr;
