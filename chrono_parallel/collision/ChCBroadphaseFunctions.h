@@ -27,39 +27,6 @@ namespace collision {
 
 // TWO LEVEL FUNCTIONS==========================================================
 
-// Count the number of intersections between AABBs and the bins=============================================
-void f_TL_Count_AABB_Bin_Intersection(const uint index,
-                                      const real3& inv_bin_size,
-                                      const host_vector<real3>& aabb_min,
-                                      const host_vector<real3>& aabb_max,
-                                      host_vector<uint>& bins_intersected) {
-  int3 gmin = HashMin(aabb_min[index], inv_bin_size);
-  int3 gmax = HashMax(aabb_max[index], inv_bin_size);
-  bins_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
-}
-// Store the intersections between AABBs and bins===========================================================
-void f_TL_Store_AABB_Bin_Intersection(const uint index,
-                                      const real3& inv_bin_size,
-                                      const int3& bins_per_axis,
-                                      const host_vector<real3>& aabb_min,
-                                      const host_vector<real3>& aabb_max,
-                                      const host_vector<uint>& bins_intersected,
-                                      host_vector<uint>& bin_number,
-                                      host_vector<uint>& shape_number) {
-  int count = 0, i, j, k;
-  int3 gmin = HashMin(aabb_min[index], inv_bin_size);
-  int3 gmax = HashMax(aabb_max[index], inv_bin_size);
-  uint mInd = bins_intersected[index];
-  for (i = gmin.x; i <= gmax.x; i++) {
-    for (j = gmin.y; j <= gmax.y; j++) {
-      for (k = gmin.z; k <= gmax.z; k++) {
-        bin_number[mInd + count] = Hash_Index(I3(i, j, k), bins_per_axis);
-        shape_number[mInd + count] = index;
-        count++;
-      }
-    }
-  }
-}
 // For each bin determine the grid size and store it========================================================
 void f_TL_Count_Leaves(const uint index,
                        const real density,
@@ -172,130 +139,29 @@ void f_TL_Write_AABB_Leaf_Intersection(const uint& index,
     }
   }
 }
-// Count the number of AABB AABB intersections for each leaf================================================
-void f_TL_Count_AABB_AABB_Intersection(const uint& index,
-                                       const host_vector<real3>& aabb_min,
-                                       const host_vector<real3>& aabb_max,
-                                       const host_vector<uint>& leaf_number,
-                                       const host_vector<uint>& leaf_shape_number,
-                                       const host_vector<uint>& leaf_start_index,
-                                       const host_vector<short2>& fam_data,
-                                       const host_vector<bool>& body_active,
-                                       const host_vector<uint>& body_id,
-                                       host_vector<uint>& num_contact) {
-  uint start = leaf_start_index[index];
-  uint end = leaf_start_index[index + 1];
-  uint count = 0;
 
-  if (end - start == 1) {
-    num_contact[index] = 0;
-    return;
-  }
-  for (uint i = start; i < end; i++) {
-    uint shapeA = leaf_shape_number[i];
-    real3 Amin = aabb_min[shapeA];
-    real3 Amax = aabb_max[shapeA];
-    short2 famA = fam_data[shapeA];
-    uint bodyA = body_id[shapeA];
-
-    for (uint k = i + 1; k < end; k++) {
-      uint shapeB = leaf_shape_number[k];
-      uint bodyB = body_id[shapeB];
-      if (shapeA == shapeB)
-        continue;
-      if (bodyA == bodyB)
-        continue;
-      if (!body_active[bodyA] && !body_active[bodyB])
-        continue;
-      if (!collide(famA, fam_data[shapeB]))
-        continue;
-      if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
-        continue;
-
-      count++;
-    }
-  }
-
-  num_contact[index] = count;
-}
-// Store the AABB AABB intersections for each leaf in each bin===============================================
-inline void f_TL_Store_AABB_AABB_Intersection(const uint index,
-                                              const host_vector<real3>& aabb_min,
-                                              const host_vector<real3>& aabb_max,
-                                              const host_vector<uint>& leaf_number,
-                                              const host_vector<uint>& leaf_shape_number,
-                                              const host_vector<uint>& leaf_start_index,
-                                              const host_vector<uint>& num_contact,
-                                              const host_vector<short2>& fam_data,
-                                              const host_vector<bool>& body_active,
-                                              const host_vector<uint>& body_id,
-                                              host_vector<long long>& potential_contacts) {
-  uint start = leaf_start_index[index];
-  uint end = leaf_start_index[index + 1];
-
-  if (end - start == 1)
-    return;
-
-  uint Bin = leaf_number[index];
-  uint offset = num_contact[index];
-  uint count = 0;
-
-  for (uint i = start; i < end; i++) {
-    uint shapeA = leaf_shape_number[i];
-    real3 Amin = aabb_min[shapeA];
-    real3 Amax = aabb_max[shapeA];
-    short2 famA = fam_data[shapeA];
-    uint bodyA = body_id[shapeA];
-
-    for (int k = i + 1; k < end; k++) {
-      uint shapeB = leaf_shape_number[k];
-      uint bodyB = body_id[shapeB];
-
-      if (shapeA == shapeB)
-        continue;
-      if (bodyA == bodyB)
-        continue;
-      if (!body_active[bodyA] && !body_active[bodyB])
-        continue;
-      if (!collide(famA, fam_data[shapeB]))
-        continue;
-      if (!overlap(Amin, Amax, aabb_min[shapeB], aabb_max[shapeB]))
-        continue;
-
-      if (shapeB < shapeA) {
-        uint t = shapeA;
-        shapeA = shapeB;
-        shapeB = t;
-      }
-      // the two indicies of the shapes that make up the contact
-      potential_contacts[offset + count] = ((long long)shapeA << 32 | (long long)shapeB);
-      count++;
-    }
-  }
-}
-
-// ONE LEVEL FUNCTIONS==========================================================
+// ONE AND TWO LEVEL FUNCTIONS==========================================================
 
 // Function to Count AABB Bin intersections=================================================================
-inline void f_OL_Count_AABB_BIN_Intersection(const uint index,
-                                             const real3& inv_bin_size,
-                                             const host_vector<real3>& aabb_min_data,
-                                             const host_vector<real3>& aabb_max_data,
-                                             host_vector<uint>& bins_intersected) {
-  int3 gmin = HashMin(aabb_min_data[index], inv_bin_size);
-  int3 gmax = HashMax(aabb_max_data[index], inv_bin_size);
+inline void f_Count_AABB_BIN_Intersection(const uint index,
+                                          const real3& inv_bin_size,
+                                          const host_vector<real3>& aabb_min,
+                                          const host_vector<real3>& aabb_max,
+                                          host_vector<uint>& bins_intersected) {
+  int3 gmin = HashMin(aabb_min[index], inv_bin_size);
+  int3 gmax = HashMax(aabb_max[index], inv_bin_size);
   bins_intersected[index] = (gmax.x - gmin.x + 1) * (gmax.y - gmin.y + 1) * (gmax.z - gmin.z + 1);
 }
 
 // Function to Store AABB Bin Intersections=================================================================
-inline void f_OL_Store_AABB_BIN_Intersection(const uint index,
-                                             const int3& bins_per_axis,
-                                             const real3& inv_bin_size,
-                                             const host_vector<real3>& aabb_min_data,
-                                             const host_vector<real3>& aabb_max_data,
-                                             const host_vector<uint>& bins_intersected,
-                                             host_vector<uint>& bin_number,
-                                             host_vector<uint>& aabb_number) {
+inline void f_Store_AABB_BIN_Intersection(const uint index,
+                                          const int3& bins_per_axis,
+                                          const real3& inv_bin_size,
+                                          const host_vector<real3>& aabb_min_data,
+                                          const host_vector<real3>& aabb_max_data,
+                                          const host_vector<uint>& bins_intersected,
+                                          host_vector<uint>& bin_number,
+                                          host_vector<uint>& aabb_number) {
   uint count = 0, i, j, k;
   int3 gmin = HashMin(aabb_min_data[index], inv_bin_size);
   int3 gmax = HashMax(aabb_max_data[index], inv_bin_size);
@@ -312,16 +178,16 @@ inline void f_OL_Store_AABB_BIN_Intersection(const uint index,
 }
 
 // Function to count AABB AABB intersection=================================================================
-inline void f_OL_Count_AABB_AABB_Intersection(const uint index,
-                                              const host_vector<real3>& aabb_min_data,
-                                              const host_vector<real3>& aabb_max_data,
-                                              const host_vector<uint>& bin_number,
-                                              const host_vector<uint>& aabb_number,
-                                              const host_vector<uint>& bin_start_index,
-                                              const host_vector<short2>& fam_data,
-                                              const host_vector<bool>& body_active,
-                                              const host_vector<uint>& body_id,
-                                              host_vector<uint>& num_contact) {
+inline void f_Count_AABB_AABB_Intersection(const uint index,
+                                           const host_vector<real3>& aabb_min_data,
+                                           const host_vector<real3>& aabb_max_data,
+                                           const host_vector<uint>& bin_number,
+                                           const host_vector<uint>& aabb_number,
+                                           const host_vector<uint>& bin_start_index,
+                                           const host_vector<short2>& fam_data,
+                                           const host_vector<bool>& body_active,
+                                           const host_vector<uint>& body_id,
+                                           host_vector<uint>& num_contact) {
   uint start = bin_start_index[index];
   uint end = bin_start_index[index + 1];
   uint count = 0;
@@ -359,7 +225,7 @@ inline void f_OL_Count_AABB_AABB_Intersection(const uint index,
 }
 
 // Function to store AABB-AABB intersections================================================================
-inline void f_OL_Store_AABB_AABB_Intersection(const uint index,
+inline void f_Store_AABB_AABB_Intersection(const uint index,
                                               const host_vector<real3>& aabb_min_data,
                                               const host_vector<real3>& aabb_max_data,
                                               const host_vector<uint>& bin_number,

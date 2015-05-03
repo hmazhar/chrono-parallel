@@ -128,7 +128,7 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    f_OL_Count_AABB_BIN_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
+    f_Count_AABB_BIN_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
   }
 
   Thrust_Exclusive_Scan(bins_intersected);
@@ -142,8 +142,8 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    f_OL_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size, aabb_min, aabb_max, bins_intersected, bin_number,
-                                     bin_aabb_number);
+    f_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size, aabb_min, aabb_max, bins_intersected, bin_number,
+                                  bin_aabb_number);
   }
 
   LOG(TRACE) << "Completed (device_Store_AABB_BIN_Intersection)";
@@ -168,8 +168,8 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_bins_active; i++) {
-    f_OL_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index, fam_data,
-                                      obj_active, obj_data_id, num_contact);
+    f_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index, fam_data,
+                                   obj_active, obj_data_id, num_contact);
   }
 
   thrust::exclusive_scan(num_contact.begin(), num_contact.end(), num_contact.begin());
@@ -179,7 +179,7 @@ void ChCBroadphase::OneLevelBroadphase() {
 
 #pragma omp parallel for
   for (int index = 0; index < num_bins_active; index++) {
-    f_OL_Store_AABB_AABB_Intersection(index, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index,
+    f_Store_AABB_AABB_Intersection(index, aabb_min, aabb_max, bin_number, bin_aabb_number, bin_start_index,
                                       num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
   }
   LOG(TRACE) << "Thrust_Sort(contact_pairs);: ";
@@ -188,7 +188,6 @@ void ChCBroadphase::OneLevelBroadphase() {
   number_of_contacts_possible = Thrust_Unique(contact_pairs);
   contact_pairs.resize(number_of_contacts_possible);
   LOG(TRACE) << "Number of unique collisions: " << number_of_contacts_possible;
-
 }
 //======
 void ChCBroadphase::TwoLevelBroadphase() {
@@ -205,7 +204,7 @@ void ChCBroadphase::TwoLevelBroadphase() {
 // Determine AABB to top level bin count
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    f_TL_Count_AABB_Bin_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
+    f_Count_AABB_BIN_Intersection(i, inv_bin_size, aabb_min, aabb_max, bins_intersected);
   }
   Thrust_Exclusive_Scan(bins_intersected);
 
@@ -219,8 +218,8 @@ void ChCBroadphase::TwoLevelBroadphase() {
 // Store the bin intersections================================================================================
 #pragma omp parallel for
   for (int i = 0; i < num_shapes; i++) {
-    f_TL_Store_AABB_Bin_Intersection(i, inv_bin_size, bins_per_axis, aabb_min, aabb_max, bins_intersected, bin_number,
-                                     bin_aabb_number);
+    f_Store_AABB_BIN_Intersection(i, bins_per_axis, inv_bin_size, aabb_min, aabb_max, bins_intersected, bin_number,
+                                  bin_aabb_number);
   }
 
   // Get sorted top level intersections=======================================================================
@@ -283,8 +282,8 @@ void ChCBroadphase::TwoLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
-    f_TL_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index, fam_data,
-                                      obj_active, obj_data_id, num_contact);
+    f_Count_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index, fam_data,
+                                   obj_active, obj_data_id, num_contact);
   }
   Thrust_Exclusive_Scan(num_contact);
   host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
@@ -297,7 +296,7 @@ void ChCBroadphase::TwoLevelBroadphase() {
 
 #pragma omp parallel for
   for (int i = 0; i < num_active_leaves; i++) {
-    f_TL_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
+    f_Store_AABB_AABB_Intersection(i, aabb_min, aabb_max, leaf_number, leaf_aabb_number, leaf_start_index,
                                       num_contact, fam_data, obj_active, obj_data_id, contact_pairs);
   }
 
@@ -314,7 +313,7 @@ void ChCBroadphase::SplitContacts() {
   const uint num_rigid_shapes = data_manager->num_rigid_shapes;
   const uint num_fluid_bodies = data_manager->num_fluid_bodies;
   host_vector<long long>& contact_pairs = data_manager->host_data.contact_pairs;
-  LOG(TRACE) << "number_of_contacts_possible: "<<number_of_contacts_possible;
+  LOG(TRACE) << "number_of_contacts_possible: " << number_of_contacts_possible;
   host_vector<int> contact_type(number_of_contacts_possible);
 #pragma omp parallel for
   for (int i = 0; i < number_of_contacts_possible; i++) {
