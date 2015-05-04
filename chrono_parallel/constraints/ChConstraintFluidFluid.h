@@ -47,7 +47,7 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
  protected:
   host_vector<int> fluid_contact_idA, fluid_contact_idA_start;
   host_vector<int> fluid_contact_idB, fluid_start_index;
-  //  custom_vector<long long> fluid_contact_pair;
+  host_vector<real> dist_temp;
   //  custom_vector<real> contact_density;
   //  custom_vector<int> reduced_index_A;
   //  custom_vector<real3> off_diagonal;

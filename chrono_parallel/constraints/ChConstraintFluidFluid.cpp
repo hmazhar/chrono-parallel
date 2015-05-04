@@ -122,31 +122,16 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
 
   //=======COMPUTE DENSITY OF FLUID
   density.resize(num_fluid_bodies);
-  // Density_Fluid();
-  // Normalize_Density_Fluid();
   den_con.resize(num_fluid_contacts * 2 + num_fluid_bodies);
-  //  den_vec.resize(num_fluid_contacts * 2 + num_fluid_bodies);
-  //#pragma omp parallel for
-  //  for (int i = 0; i < fluid_contact_idB.size(); i++) {
-  //    int2 bid;
-  //    bid.x = fluid_contact_idA[i];
-  //    bid.y = fluid_contact_idB[i];
-  //    real3 xij = (pos[bid.x] - pos[bid.y]);
-  //    real dist = length(xij);
-  //    den_vec[i] = R4(dist, xij.x, xij.y, xij.z);
-  //  }
-  //
-  //  real spiky(const real& dist, const real& h) {
-  //    return (dist <= h) * 15.0 / (F_PI * pow(h, 6)) * pow(h - dist, 3);
-  //  }
-  //  real3 grad_spiky(const real3& dist, const real d, const real& h) {
-  //    return (d <= h) * -45.0 / (F_PI * pow(h, 6)) * pow(h - d, 2) * dist;
-  //  }
+
   const real h_3 = h * h * h;
   const real h_6 = h_3 * h_3;
   const real h_9 = h_3 * h_3 * h_3;
-  const real inv_f_pi_h_6 = 1.0 / (F_PI * h_6);
-  const real inv_f_pi_h_9 = 1.0 / (64.0 * F_PI * h_9);
+  const real KPOLY6 = -45.0 / (F_PI * h_6);
+  const real KGSPIKY = 315.0 / (64.0 * F_PI * h_9);
+
+  host_vector<real> dist_temp(fluid_contact_idB.size());
+
 #pragma omp parallel for
   for (int i = 0; i < last_body; i++) {
     int2 bid;
@@ -156,22 +141,42 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
     real3 diag = 0;
     int diag_index = 0;
     real dens = 0;
+
     for (int index = start; index < end; index++) {
       bid.y = fluid_contact_idB[index];
       if (bid.x == bid.y) {
         diag_index = index;
+        // dens += mass_fluid * KGSPIKY * h_6;
         continue;
       }
       real3 xij = (posa - pos[bid.y]);
       real dist = length(xij);
-      real3 off_diag = mass_over_density * -45.0 * inv_f_pi_h_6 * pow(h - dist, 2) * xij;
+      dist_temp[index] = dist;
+      real3 off_diag = mass_over_density * KPOLY6 * pow(h - dist, 2) * xij;
       den_con[index] = off_diag;
       diag += off_diag;
-      dens += mass_fluid * 315.0 * inv_f_pi_h_9 * pow((h * h - dist * dist), 3);
+
+      real den = mass_fluid * KGSPIKY * pow((h * h - dist * dist), 3);
+
+      dens += den;
     }
     den_con[diag_index] = -diag;
-    density[bid.x] = dens +  mass_fluid * 315.0 * inv_f_pi_h_9 * h_6;
+
+    real norm_dens = 0;
+    for (int index = start; index < end; index++) {
+      bid.y = fluid_contact_idB[index];
+      if (bid.x == bid.y) {
+        // norm_dens += mass_fluid * KGSPIKY * h_6 / dens;
+        continue;
+      }
+      real dist = dist_temp[index];
+      norm_dens += mass_fluid * KGSPIKY * pow((h * h - dist * dist), 3) / dens;
+    }
+
+    density[bid.x] = norm_dens;
   }
+
+  // m*w/(sum(m*w/rho))
 
   LOG(INFO) << "ChConstraintFluidFluid::JACOBIAN OF FLUID";
   for (int i = 0; i < last_body; i++) {
@@ -242,7 +247,7 @@ void ChConstraintFluidFluid::Build_b() {
 #pragma omp parallel for
     for (int index = 0; index < num_fluid_bodies; index++) {
       // g[index] = density[index] / density_fluid - 1.0;
-      b_sub[index] = -(density[index] / density_fluid - 1.0);
+      b_sub[index] = -(density[index] / 1.0 - 1.0);
       // std::cout << g[index] << " " << density[index] << std::endl;
     }
     // b_sub = -4.0 / step_size * zeta * g + zeta * D_T_sub * v_sub;
@@ -399,15 +404,19 @@ void ChConstraintFluidFluid::DetermineNeighbors() {
   LOG(INFO) << "ChConstraintFluidFluid::DetermineNeighbors";
   // get a reference to the contact body ID data
   host_vector<int2>& bids = data_manager->host_data.bids_fluid_fluid;
+  // host_vector<real>& dist_fluid_fluid = data_manager->host_data.dist_fluid_fluid;
+
   fluid_contact_idA.resize(num_fluid_contacts * 2 + num_fluid_bodies);
   fluid_contact_idB.resize(num_fluid_contacts * 2 + num_fluid_bodies);
   fluid_contact_idA_start.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+// dist_fluid_fluid.resize(num_fluid_contacts * 2 + num_fluid_bodies);
 
 // For each contact in the list that is a fluid contact
 #pragma omp parallel for
   for (int index = 0; index < num_fluid_bodies; index++) {
     fluid_contact_idA[index] = index;
     fluid_contact_idB[index] = index;
+    // dist_fluid_fluid[index] = 0;
   }
 #pragma omp parallel for
   for (int index = 0; index < num_fluid_contacts; index++) {
