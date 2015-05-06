@@ -105,6 +105,7 @@ struct fluid_settings {
     artificial_pressure_k = 0.1;
     artificial_pressure_dq = .2 * kernel_radius;
     artificial_pressure_n = 4;
+    enable_viscosity = false;
   }
   real kernel_radius;
   real volume;
@@ -126,6 +127,7 @@ struct fluid_settings {
   real artificial_pressure_k;
   real artificial_pressure_n;
   real artificial_pressure_dq;
+  bool enable_viscosity;
 };
 
 // solver_settings, like the name implies is the structure that contains all

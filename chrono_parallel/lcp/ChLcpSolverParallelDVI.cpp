@@ -38,7 +38,10 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
   uint num_fluid_fluid = data_manager->num_fluid_contacts * 3;
 
   if (data_manager->settings.fluid.fluid_is_rigid == false) {
-    num_fluid_fluid = data_manager->num_fluid_bodies;  // + data_manager->num_fluid_bodies * 3;
+    num_fluid_fluid = data_manager->num_fluid_bodies;  // + ;
+    if (data_manager->settings.fluid.enable_viscosity) {
+      num_fluid_fluid += data_manager->num_fluid_bodies * 3;
+    }
   }
 
   // This is the total number of constraints
@@ -163,6 +166,11 @@ void ChLcpSolverParallelDVI::ComputeD() {
     int max_interactions = data_manager->settings.fluid.max_interactions;
     nnz_fluid_fluid = num_fluid_bodies * 6 * max_interactions;  // + num_fluid_bodies * 18 * max_interactions;
     num_fluid_fluid = num_fluid_bodies;                         // + num_fluid_bodies * 3;
+
+    if (data_manager->settings.fluid.enable_viscosity) {
+      nnz_fluid_fluid += data_manager->num_fluid_bodies * 18 * max_interactions;
+      num_fluid_fluid += num_fluid_bodies * 3;
+    }
   }
 
   CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
@@ -265,7 +273,8 @@ void ChLcpSolverParallelDVI::ComputeN() {
   data_manager->system_timer.start("ChLcpSolverParallel_N");
   const CompressedMatrix<real>& D_T = data_manager->host_data.D_T;
   CompressedMatrix<real>& Nshur = data_manager->host_data.Nshur;
-  CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
+  const CompressedMatrix<real>& M_invD = data_manager->host_data.M_invD;
+  const CompressedMatrix<real>& M_inv = data_manager->host_data.M_inv;
   Nshur = D_T * M_invD;
   data_manager->system_timer.stop("ChLcpSolverParallel_N");
 }
