@@ -59,6 +59,7 @@ class CH_PARALLEL_API ChConstraintFluidFluid {
 
   //
   host_vector<M33> shear_tensor;
+  host_vector<real> shear_trace;
   // Pointer to the system's data manager
   ChParallelDataManager* data_manager;
 

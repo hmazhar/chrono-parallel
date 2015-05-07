@@ -46,13 +46,16 @@ void ChConstraintFluidFluid::Build_D_Rigid() {
   }
 }
 
-M33 ComputeShearTensor(const real& mrho, const real3& grad, const real3& vij) {
-  //    real3 U = -.5 * R3(2 * SS(x) * TT(x), (SS(y) * TT(x) + SS(x) * TT(y)), (SS(z) * TT(x) + SS(x) * TT(z)));
-  //    real3 V = -.5 * R3((SS(x) * TT(y) + SS(y) * TT(x)), 2 * SS(y) * TT(y), (SS(z) * TT(y) + SS(y) * TT(z)));
-  //    real3 W = -.5 * R3((SS(x) * TT(z) + SS(z) * TT(x)), (SS(y) * TT(z) + SS(z) * TT(y)), 2 * SS(z) * TT(z));
-  //    return M33(U, V, W);
+#define SS(alpha) mrho* vij.alpha
+#define TT(beta) grad.beta
 
-  return (Transpose(VectorxVector(mrho * vij, grad)) + Transpose(VectorxVector(grad, mrho * vij))) * -.5;
+M33 ComputeShearTensor(const real& mrho, const real3& grad, const real3& vij) {
+  real3 U = -.5 * R3(2 * SS(x) * TT(x), (SS(y) * TT(x) + SS(x) * TT(y)), (SS(z) * TT(x) + SS(x) * TT(z)));
+  real3 V = -.5 * R3((SS(x) * TT(y) + SS(y) * TT(x)), 2 * SS(y) * TT(y), (SS(z) * TT(y) + SS(y) * TT(z)));
+  real3 W = -.5 * R3((SS(x) * TT(z) + SS(z) * TT(x)), (SS(y) * TT(z) + SS(z) * TT(y)), 2 * SS(z) * TT(z));
+  return M33(U, V, W);
+
+  //  return (Transpose(VectorxVector(mrho * vij, grad)) + Transpose(VectorxVector(grad, mrho * vij))) * -.5;
 }
 
 void ChConstraintFluidFluid::Density_Fluid() {
@@ -214,8 +217,10 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
     viscosity_matrix.clear();
     viscosity_matrix.resize(num_fluid_contacts * 2 + num_fluid_bodies);
 
-    shear_tensor.clear();
-    shear_tensor.resize(num_fluid_bodies);
+    // shear_tensor.clear();
+    // shear_tensor.resize(num_fluid_bodies);
+    shear_trace.clear();
+    shear_trace.resize(num_fluid_bodies);
 
 #pragma omp parallel for
     for (int i = 0; i < last_body; i++) {
@@ -229,16 +234,17 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
         if (bid.x != bid.y) {
           real3 xij = (pos[bid.x] - pos[bid.y]);
           real dist = length(xij);
-          real spline_kernel = KERNEL(dist, h);
           real3 vij = (vel[bid.x] - vel[bid.y]);
           real3 grad_kernel = GRAD_KERNEL(xij, dist, h);
           tensor = tensor + ComputeShearTensor(mass / density[bid.y], grad_kernel, vij);
         }
       }
-      shear_tensor[bid.x] = tensor;
+      real norm = Norm(tensor);
+      shear_trace[bid.x] = norm;
+      // std::cout << norm << std::endl;
     }
 
-#pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < last_body; i++) {
       uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
       int body_a = fluid_contact_idA_start[i];
@@ -256,19 +262,18 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
         real density_a = density[body_a];
         real density_b = density[body_b];
 
-        //        real ta = Trace(shear_tensor[body_a]);
-        //        real tb = Trace(shear_tensor[body_b]);
-        //
-        //        real norm_shear_a = sqrt(ta * ta);
-        //        real norm_shear_b = sqrt(tb * tb);
-        //        real mu_b = 29.8;
-        //        real tau_b = 34.0;
-        //        real corr = 1e-5;
-        //        visca = (mu_b + tau_b / (corr + norm_shear_a));
-        //        viscb = (mu_b + tau_b / (corr + norm_shear_b));
+        real norm_shear_a = shear_trace[body_a];
+        real norm_shear_b = shear_trace[body_b];
+        real mu_b = 29.8;
+        real tau_b = 374.0;
+        real corr = 1e-5;
+        visca = (mu_b + tau_b / (corr + norm_shear_a));
+        viscb = (mu_b + tau_b / (corr + norm_shear_b));
 
-        real part_a = (8.0 / (density[body_a] + density[body_b]));
-        real part_b = (visca / density[body_a] + viscb / density[body_b]);  // /
+        std::cout << norm_shear_a << " " << norm_shear_b << " " << visca << " " << viscb << std::endl;
+
+        real part_a = (8.0 / (density_a + density_b));
+        real part_b = (visca / density_a + viscb / density_b);  // /
         real part_c = 1.0 / (h * ((dist * dist) / h_2 + eta_2));
         real scalar = -mass_2 * part_a * part_b * part_c;
 
@@ -356,7 +361,7 @@ void ChConstraintFluidFluid::Build_b() {
 #pragma omp parallel for
     for (int index = 0; index < num_fluid_bodies; index++) {
       // g[index] = density[index] / density_fluid - 1.0;
-      b_sub[index] = -(density[index] / data_manager->settings.fluid.density - 1.0)*10;
+      b_sub[index] = -(density[index] / data_manager->settings.fluid.density - 1.0);
       // std::cout << g[index] << " " << density[index] << std::endl;
     }
     // b_sub = -4.0 / step_size * zeta * g + zeta * D_T_sub * v_sub;

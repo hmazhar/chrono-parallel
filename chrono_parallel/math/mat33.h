@@ -297,6 +297,10 @@ static inline real4 GetQuat(M33 A) {
 static real Trace(const M33& A) {
   return A.U.x + A.V.y + A.W.z;
 }
+// double dot product of a matrix
+static real Norm(const M33& A) {
+  return sqrt(Trace(A * A));
+}
 
 // Multiply a 3x1 by a 1x3 to get a 3x3
 static M33 VectorxVector(const real3& A, const real3& B) {
