@@ -55,8 +55,21 @@ M33 ComputeShearTensor(const real& mrho, const real3& grad, const real3& vij) {
   real3 W = -.5 * R3((SS(x) * TT(z) + SS(z) * TT(x)), (SS(y) * TT(z) + SS(z) * TT(y)), 2 * SS(z) * TT(z));
   return M33(U, V, W);
 
-  //  return (Transpose(VectorxVector(mrho * vij, grad)) + Transpose(VectorxVector(grad, mrho * vij))) * -.5;
+  //  return (VectorxVector(mrho * vij, grad) + VectorxVector(grad, mrho * vij)) * -.5;
 }
+//// Compute ||T||  = sqrt((1/2*Trace((shear*Transpose(shear)))))
+// real ComputeShearTensorNorm(const real& mrho, const real3& grad, const real3& vij) {
+//  real t1 = SS(x) * SS(x);
+//  real t2 = TT(x) * TT(x);
+//  real t5 = TT(y) * TT(y);
+//  real t11 = SS(y) * SS(y);
+//  real t13 = TT(z) * TT(z);
+//  real t19 = SS(z) * SS(z);
+//  real t31 = 2 * t2 * t1 + t5 * t1 + 2 * SS(x) * TT(y) * SS(y) * TT(x) + t2 * t11 + t13 * t1 +
+//             2 * SS(x) * TT(z) * SS(z) * TT(x) + t2 * t19 + 2 * t5 * t11 + t13 * t11 +
+//             2 * SS(y) * TT(z) * SS(z) * TT(y) + t5 * t19 + 2 * t13 * t19;
+//  return sqrt(t31) * 0.5;
+//}
 
 void ChConstraintFluidFluid::Density_Fluid() {
   LOG(INFO) << "ChConstraintFluidFluid::Density_Fluid";
@@ -214,37 +227,43 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
     den_con[diag_index] = -diag;
   }
   if (data_manager->settings.fluid.enable_viscosity) {
-    viscosity_matrix.clear();
-    viscosity_matrix.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+    viscosity_row_1.clear();
+    viscosity_row_2.clear();
+    viscosity_row_3.clear();
+    viscosity_row_1.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+    viscosity_row_2.resize(num_fluid_contacts * 2 + num_fluid_bodies);
+    viscosity_row_3.resize(num_fluid_contacts * 2 + num_fluid_bodies);
 
-    // shear_tensor.clear();
-    // shear_tensor.resize(num_fluid_bodies);
-    shear_trace.clear();
-    shear_trace.resize(num_fluid_bodies);
+// shear_tensor.clear();
+// shear_tensor.resize(num_fluid_bodies);
+//    shear_trace.clear();
+//    shear_trace.resize(num_fluid_bodies);
+
+//#pragma omp parallel for
+//    for (int i = 0; i < last_body; i++) {
+//      uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
+//      int2 bid;
+//      bid.x = fluid_contact_idA_start[i];
+//      M33 tensor;
+//      real dens;
+//      for (int index = start; index < end; index++) {
+//        bid.y = fluid_contact_idB[index];
+//        if (bid.x != bid.y) {
+//          real3 xij = (pos[bid.x] - pos[bid.y]);
+//          real dist = length(xij);
+//          real3 vij = (vel[bid.x] - vel[bid.y]);
+//          real3 grad_kernel = GRAD_KERNEL(xij, dist, h);
+//          tensor = tensor + ComputeShearTensor(mass / density[bid.y], grad_kernel, vij);
+//        }
+//      }
+//      // look at the jop reference for how to do a norm of the tensor
+//      //||T|| = (0.5*Tij*Tij)^0.5
+//      real norm = sqrt(0.5 * Trace(tensor * Transpose(tensor)));
+//      shear_trace[bid.x] = norm;
+//      // std::cout << norm << std::endl;
+//    }
 
 #pragma omp parallel for
-    for (int i = 0; i < last_body; i++) {
-      uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
-      int2 bid;
-      bid.x = fluid_contact_idA_start[i];
-      M33 tensor;
-      real dens;
-      for (int index = start; index < end; index++) {
-        bid.y = fluid_contact_idB[index];
-        if (bid.x != bid.y) {
-          real3 xij = (pos[bid.x] - pos[bid.y]);
-          real dist = length(xij);
-          real3 vij = (vel[bid.x] - vel[bid.y]);
-          real3 grad_kernel = GRAD_KERNEL(xij, dist, h);
-          tensor = tensor + ComputeShearTensor(mass / density[bid.y], grad_kernel, vij);
-        }
-      }
-      real norm = Norm(tensor);
-      shear_trace[bid.x] = norm;
-      // std::cout << norm << std::endl;
-    }
-
-    //#pragma omp parallel for
     for (int i = 0; i < last_body; i++) {
       uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
       int body_a = fluid_contact_idA_start[i];
@@ -262,15 +281,15 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
         real density_a = density[body_a];
         real density_b = density[body_b];
 
-        real norm_shear_a = shear_trace[body_a];
-        real norm_shear_b = shear_trace[body_b];
-        real mu_b = 29.8;
-        real tau_b = 374.0;
-        real corr = 1e-5;
-        visca = (mu_b + tau_b / (corr + norm_shear_a));
-        viscb = (mu_b + tau_b / (corr + norm_shear_b));
-
-        std::cout << norm_shear_a << " " << norm_shear_b << " " << visca << " " << viscb << std::endl;
+        //        real norm_shear_a = shear_trace[body_a];
+        //        real norm_shear_b = shear_trace[body_b];
+        //        real mu_b = 290.8;
+        //        real tau_b = 374.0;
+        //        real corr = 1e-5;
+        //        visca = (mu_b + tau_b / (corr + norm_shear_a));
+        //        viscb = (mu_b + tau_b / (corr + norm_shear_b));
+        //
+        //        std::cout << norm_shear_a << " " << norm_shear_b << " " << visca << " " << viscb << std::endl;
 
         real part_a = (8.0 / (density_a + density_b));
         real part_b = (visca / density_a + viscb / density_b);  // /
@@ -278,10 +297,17 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
         real scalar = -mass_2 * part_a * part_b * part_c;
 
         M33 matrix = VectorxVector(xij, KGSPIKY * pow(h - dist, 2) * xij) * scalar;
-        viscosity_matrix[index] = matrix;
+
+        viscosity_row_1[index] = R3(matrix.U.x, matrix.V.x, matrix.W.x);
+        viscosity_row_2[index] = R3(matrix.U.y, matrix.V.y, matrix.W.y);
+        viscosity_row_3[index] = R3(matrix.U.z, matrix.V.z, matrix.W.z);
+
         visc_mat = visc_mat + matrix;
       }
-      viscosity_matrix[diag_index] = visc_mat * -1;
+
+      viscosity_row_1[diag_index] = R3(visc_mat.U.x, visc_mat.V.x, visc_mat.W.x) * -1;
+      viscosity_row_2[diag_index] = R3(visc_mat.U.y, visc_mat.V.y, visc_mat.W.y) * -1;
+      viscosity_row_3[diag_index] = R3(visc_mat.U.z, visc_mat.V.z, visc_mat.W.z) * -1;
     }
   }
   LOG(INFO) << "ChConstraintFluidFluid::JACOBIAN OF FLUID";
@@ -305,29 +331,29 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
       int body_a = fluid_contact_idA_start[i];
       for (int index = start; index < end; index++) {
         int body_b = fluid_contact_idB[index];
-        M33 matrix = viscosity_matrix[index];
+        real3 row_1 = viscosity_row_1[index];
 
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 0, matrix.U.x);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 1, matrix.V.x);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 2, matrix.W.x);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 0, row_1.x);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 1, row_1.y);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 0, body_offset + body_b * 3 + 2, row_1.z);
       }
       D_T.finalize(index_offset + num_fluid_bodies + body_a * 3 + 0);
       for (int index = start; index < end; index++) {
         int body_b = fluid_contact_idB[index];
-        M33 matrix = viscosity_matrix[index];
+        real3 row_2 = viscosity_row_2[index];
 
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 0, matrix.U.y);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 1, matrix.V.y);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 2, matrix.W.y);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 0, row_2.x);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 1, row_2.y);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 1, body_offset + body_b * 3 + 2, row_2.z);
       }
       D_T.finalize(index_offset + num_fluid_bodies + body_a * 3 + 1);
       for (int index = start; index < end; index++) {
         int body_b = fluid_contact_idB[index];
-        M33 matrix = viscosity_matrix[index];
+        real3 row_3 = viscosity_row_3[index];
 
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 0, matrix.U.z);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 1, matrix.V.z);
-        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 2, matrix.W.z);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 0, row_3.x);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 1, row_3.y);
+        D_T.append(index_offset + num_fluid_bodies + body_a * 3 + 2, body_offset + body_b * 3 + 2, row_3.z);
       }
       D_T.finalize(index_offset + num_fluid_bodies + body_a * 3 + 2);
     }
