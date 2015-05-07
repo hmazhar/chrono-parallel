@@ -299,7 +299,7 @@ static real Trace(const M33& A) {
 }
 // double dot product of a matrix
 static real Norm(const M33& A) {
-  return sqrt(Trace(A * A));
+  return sqrt(Trace(A * Transpose(A)));
 }
 
 // Multiply a 3x1 by a 1x3 to get a 3x3
