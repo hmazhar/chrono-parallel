@@ -3,7 +3,9 @@
 #include <thrust/iterator/constant_iterator.h>
 
 namespace chrono {
-
+// Perform projection on the constraints associated with the fluid==========================================
+// Do a standard frictionless conic projection for granular material
+// No projection for constraint fluids
 void ChConstraintFluidFluid::Project(real* gamma) {
   if (data_manager->settings.fluid.fluid_is_rigid == false) {
   } else {
@@ -17,6 +19,7 @@ void ChConstraintFluidFluid::Project(real* gamma) {
     }
   }
 }
+// Compute the jacobians for rigid "fluid" bodies===========================================================
 
 void ChConstraintFluidFluid::Build_D_Rigid() {
   LOG(INFO) << "ChConstraintFluidFluid::Build_D_Rigid";
@@ -33,9 +36,7 @@ void ChConstraintFluidFluid::Build_D_Rigid() {
 #pragma omp paralle for
   for (int index = 0; index < num_fluid_contacts; index++) {
     int2 bid = bids[index];
-    real3 n = (pos_fluid[bid.y] - pos_fluid[bid.x]);
-    real dist = length(n);
-    n = n / dist;
+    real3 n = normalize(pos_fluid[bid.y] - pos_fluid[bid.x]);
     D_T(index_offset + index, body_offset + bid.x * 3 + 0) = -n.x;
     D_T(index_offset + index, body_offset + bid.x * 3 + 1) = -n.y;
     D_T(index_offset + index, body_offset + bid.x * 3 + 2) = -n.z;
@@ -46,30 +47,10 @@ void ChConstraintFluidFluid::Build_D_Rigid() {
   }
 }
 
-#define SS(alpha) mrho* vij.alpha
-#define TT(beta) grad.beta
+// =========================================================================================================
+//FLUID CODE:
 
-M33 ComputeShearTensor(const real& mrho, const real3& grad, const real3& vij) {
-  real3 U = -.5 * R3(2 * SS(x) * TT(x), (SS(y) * TT(x) + SS(x) * TT(y)), (SS(z) * TT(x) + SS(x) * TT(z)));
-  real3 V = -.5 * R3((SS(x) * TT(y) + SS(y) * TT(x)), 2 * SS(y) * TT(y), (SS(z) * TT(y) + SS(y) * TT(z)));
-  real3 W = -.5 * R3((SS(x) * TT(z) + SS(z) * TT(x)), (SS(y) * TT(z) + SS(z) * TT(y)), 2 * SS(z) * TT(z));
-  return M33(U, V, W);
-
-  //  return (VectorxVector(mrho * vij, grad) + VectorxVector(grad, mrho * vij)) * -.5;
-}
-//// Compute ||T||  = sqrt((1/2*Trace((shear*Transpose(shear)))))
-// real ComputeShearTensorNorm(const real& mrho, const real3& grad, const real3& vij) {
-//  real t1 = SS(x) * SS(x);
-//  real t2 = TT(x) * TT(x);
-//  real t5 = TT(y) * TT(y);
-//  real t11 = SS(y) * SS(y);
-//  real t13 = TT(z) * TT(z);
-//  real t19 = SS(z) * SS(z);
-//  real t31 = 2 * t2 * t1 + t5 * t1 + 2 * SS(x) * TT(y) * SS(y) * TT(x) + t2 * t11 + t13 * t1 +
-//             2 * SS(x) * TT(z) * SS(z) * TT(x) + t2 * t19 + 2 * t5 * t11 + t13 * t11 +
-//             2 * SS(y) * TT(z) * SS(z) * TT(y) + t5 * t19 + 2 * t13 * t19;
-//  return sqrt(t31) * 0.5;
-//}
+// Compute the fluid density================================================================================
 
 void ChConstraintFluidFluid::Density_Fluid() {
   LOG(INFO) << "ChConstraintFluidFluid::Density_Fluid";
@@ -78,11 +59,12 @@ void ChConstraintFluidFluid::Density_Fluid() {
   host_vector<real3>& vel = data_manager->host_data.vel_fluid;
   host_vector<real3>& pos = data_manager->host_data.pos_fluid;
   host_vector<real>& density = data_manager->host_data.den_fluid;
-  // density of the particle itself
+
   const real h_3 = h * h * h;
   const real h_6 = h_3 * h_3;
   const real h_9 = h_3 * h_3 * h_3;
   const real KGSPIKY = 315.0 / (64.0 * F_PI * h_9);
+
 #pragma omp parallel for
   for (int i = 0; i < last_body; i++) {
     uint start = fluid_start_index[i], end = fluid_start_index[i + 1];
@@ -99,9 +81,6 @@ void ChConstraintFluidFluid::Density_Fluid() {
       real dist = length(xij);
       dens += mass_fluid * KGSPIKY * pow((h * h - dist * dist), 3);
     }
-    //    if (dens == 0) {
-    //      dens += mass_fluid * KGSPIKY * h_6;
-    //    }
     density[bid.x] = dens;
   }
 }

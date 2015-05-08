@@ -77,6 +77,34 @@ real grad2_poly6(const real& dist, const real& h) {
   }
   return 945.0 / (32.0 * F_PI * pow(h, 9)) * (h * h - dist * dist) * (7 * dist * dist - 3 * h * h);
 }
+
+#define SS(alpha) mrho* vij.alpha
+#define TT(beta) grad.beta
+
+M33 ComputeShearTensor(const real& mrho, const real3& grad, const real3& vij) {
+  real3 U = -.5 * R3(2 * SS(x) * TT(x), (SS(y) * TT(x) + SS(x) * TT(y)), (SS(z) * TT(x) + SS(x) * TT(z)));
+  real3 V = -.5 * R3((SS(x) * TT(y) + SS(y) * TT(x)), 2 * SS(y) * TT(y), (SS(z) * TT(y) + SS(y) * TT(z)));
+  real3 W = -.5 * R3((SS(x) * TT(z) + SS(z) * TT(x)), (SS(y) * TT(z) + SS(z) * TT(y)), 2 * SS(z) * TT(z));
+  return M33(U, V, W);
+
+  //  return (VectorxVector(mrho * vij, grad) + VectorxVector(grad, mrho * vij)) * -.5;
+}
+
+
+//// Compute ||T||  = sqrt((1/2*Trace((shear*Transpose(shear)))))
+// real ComputeShearTensorNorm(const real& mrho, const real3& grad, const real3& vij) {
+//  real t1 = SS(x) * SS(x);
+//  real t2 = TT(x) * TT(x);
+//  real t5 = TT(y) * TT(y);
+//  real t11 = SS(y) * SS(y);
+//  real t13 = TT(z) * TT(z);
+//  real t19 = SS(z) * SS(z);
+//  real t31 = 2 * t2 * t1 + t5 * t1 + 2 * SS(x) * TT(y) * SS(y) * TT(x) + t2 * t11 + t13 * t1 +
+//             2 * SS(x) * TT(z) * SS(z) * TT(x) + t2 * t19 + 2 * t5 * t11 + t13 * t11 +
+//             2 * SS(y) * TT(z) * SS(z) * TT(y) + t5 * t19 + 2 * t13 * t19;
+//  return sqrt(t31) * 0.5;
+//}
+
 }
 
 #endif
