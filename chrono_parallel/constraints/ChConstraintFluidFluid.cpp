@@ -48,7 +48,7 @@ void ChConstraintFluidFluid::Build_D_Rigid() {
 }
 
 // =========================================================================================================
-//FLUID CODE:
+// FLUID CODE:
 
 // Compute the fluid density================================================================================
 
@@ -271,11 +271,12 @@ void ChConstraintFluidFluid::Build_D_Fluid() {
         //        std::cout << norm_shear_a << " " << norm_shear_b << " " << visca << " " << viscb << std::endl;
 
         real part_a = (8.0 / (density_a + density_b));
-        real part_b = (visca / density_a + viscb / density_b);  // /
-        real part_c = 1.0 / (h * ((dist * dist) / h_2 + eta_2));
+        real part_b = visca + viscb;  //(visca / density_a + viscb / density_b);  // /
+        real part_c = 1.0 / (h * ((dist * dist / h_2) + eta_2));
         real scalar = -mass_2 * part_a * part_b * part_c;
-
-        M33 matrix = VectorxVector(xij, KGSPIKY * pow(h - dist, 2) * xij) * scalar;
+        real kernel = KGSPIKY * pow(h - dist, 2);
+        // kernel = 45.0 / (F_PI * h_6) * (h - dist);;
+        M33 matrix = VectorxVector(xij, kernel * xij) * scalar;
 
         viscosity_row_1[index] = R3(matrix.U.x, matrix.V.x, matrix.W.x);
         viscosity_row_2[index] = R3(matrix.U.y, matrix.V.y, matrix.W.y);
