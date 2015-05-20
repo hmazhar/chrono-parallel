@@ -113,11 +113,12 @@ class CH_PARALLEL_API ChSystemParallel : public ChSystem {
   ChFluidContainer* fluid_container;
   void AddFluid(ChFluidContainer* fluid);
 
+  int current_threads;
+
  protected:
   double old_timer, old_timer_cd;
   bool detect_optimal_threads;
 
-  int current_threads;
   int detect_optimal_bins;
   std::vector<double> timer_accumulator, cd_accumulator;
   uint frame_threads, frame_bins, counter;
