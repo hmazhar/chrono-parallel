@@ -12,6 +12,7 @@ SET(ChronoEngine_Utils_SOURCES
     ChUtilsCreators.cpp
     ChUtilsGenerators.cpp
     ChUtilsInputOutput.cpp
+    ../chrono_opengl/shapes/obj/tiny_obj_loader.cc
     )
 
 SET(ChronoEngine_Utils_HEADERS

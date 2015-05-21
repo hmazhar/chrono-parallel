@@ -230,6 +230,15 @@ void LoadConvexMesh(const std::string& file_name,
                     double hacd_smallclusterthreshold = 0.0,
                     double hacd_fusetolerance = 1e-6);
 
+// Given a file containing an obj, this function will load the obj file into a
+// mesh with each sub object used as a convex hull
+CH_UTILS_API
+void LoadConvexHull(const std::string& file_name,
+                    geometry::ChTriangleMeshConnected& convex_mesh,
+                    std::vector<std::vector<ChVector<double> > >& convex_hulls,
+                    const ChVector<>& pos = ChVector<>(0, 0, 0),
+                    const ChQuaternion<>& rot = ChQuaternion<>(1, 0, 0, 0));
+
 // Given a convex mesh and it's decomposition add it to a ChBody
 // use_original_asset can be used to specify if the mesh or the convex decomp
 // should be used for visualization

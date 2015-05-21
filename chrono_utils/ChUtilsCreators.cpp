@@ -16,6 +16,8 @@
 
 #include "chrono_utils/ChUtilsCreators.h"
 #include "collision/ChCConvexDecomposition.h"
+#include "chrono_opengl/shapes/obj/tiny_obj_loader.h"
+
 namespace chrono {
 using namespace geometry;
 using namespace collision;
@@ -592,6 +594,47 @@ void LoadConvexMesh(const std::string& file_name,
 
 // -----------------------------------------------------------------------------
 
+void LoadConvexHull(const std::string& file_name,
+                    geometry::ChTriangleMeshConnected& convex_mesh,
+                    std::vector<std::vector<ChVector<double> > >& convex_hulls,
+                    const ChVector<>& pos,
+                    const ChQuaternion<>& rot) {
+  convex_mesh.LoadWavefrontMesh(file_name, true, false);
+
+  std::ifstream ifs(file_name);
+
+  std::ifstream in(file_name.c_str(), std::ios::in);
+  if (!in) {
+    std::cout << "Cannot open file [" << file_name << "]" << std::endl;
+  }
+  std::string contents;
+  in.seekg(0, std::ios::end);
+  contents.resize(in.tellg());
+  in.seekg(0, std::ios::beg);
+  in.read(&contents[0], contents.size());
+  in.close();
+
+  std::vector<tinyobj::shape_t> shapes;
+  std::string err = tinyobj::LoadObj(shapes, contents.c_str());
+
+  convex_hulls.resize(shapes.size());
+  std::cout<<"NUM HULLS: "<<shapes.size()<<std::endl;
+  for (int i = 0; i < shapes.size(); i++) {
+
+    convex_hulls[i].resize(shapes[i].mesh.positions.size());
+    std::cout<<"HULL: "<<i<<" "<<shapes[i].mesh.positions.size()/3<<std::endl;
+    for (int j = 0; j < shapes[i].mesh.positions.size()/3; j++) {
+
+      ChVector<double> pos(shapes[i].mesh.positions[j * 3 + 0], shapes[i].mesh.positions[j * 3 + 1],
+                           shapes[i].mesh.positions[j * 3 + 2]);
+
+      convex_hulls[i][j] = pos;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+
 void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
                              ChTriangleMeshConnected& convex_mesh,
                              ChConvexDecompositionHACDv2& convex_shape,
@@ -632,7 +675,7 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
     body->GetAssets().push_back(trimesh_shape);
   }
 }
-//Add convex collision models from a set of points
+// Add convex collision models from a set of points
 void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
                              ChTriangleMeshConnected& convex_mesh,
                              std::vector<std::vector<ChVector<double> > >& convex_hulls,
@@ -645,8 +688,8 @@ void AddConvexCollisionModel(ChSharedPtr<ChBody> body,
   ChSharedPtr<ChTriangleMeshShape> trimesh_shape(new ChTriangleMeshShape);
   trimesh_shape->SetMesh(convex_mesh);
   trimesh_shape->SetName(convex_mesh.GetFileName());
-  trimesh_shape->Pos = VNULL;
-  trimesh_shape->Rot = QUNIT;
+  trimesh_shape->Pos = pos;
+  trimesh_shape->Rot = rot;
   body->GetAssets().push_back(trimesh_shape);
 }
 }  // namespace utils
