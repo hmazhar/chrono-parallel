@@ -187,6 +187,21 @@ ENDIF()
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
    SET(BOOST_DIR ""  CACHE PATH   "Where is Boost located?")
 ENDIF()
+
+# ------------------------------------------------------------------------------
+# Enable the mosek solver
+# ------------------------------------------------------------------------------
+OPTION(MOSEK_SOLVER "Enable the MOSEK solver (must be installed to use)" OFF)
+
+IF(MOSEK_SOLVER)
+  # User specified path to Mosek Header
+  SET(MOSEK_INC_PATH           ""    CACHE   PATH    "Where is mosek.h located")
+  # User specified path to Mosek Libraries
+  SET(MOSEK_LIB_PATH           ""   CACHE    PATH    "Where is Mosek Lib located")
+  FIND_LIBRARY(MOSEK_LIB NAMES mosek64 PATHS ${MOSEK_LIB_PATH} REQUIRED)
+  INCLUDE_DIRECTORIES(${MOSEK_INC_PATH} )
+ENDIF()
+
 # ------------------------------------------------------------------------------
 # Find the ChronoEngine library
 # ------------------------------------------------------------------------------

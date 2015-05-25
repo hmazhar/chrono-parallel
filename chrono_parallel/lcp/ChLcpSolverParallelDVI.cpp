@@ -13,6 +13,7 @@
 #include "chrono_parallel/solver/ChSolverPGS.h"
 #include "chrono_parallel/solver/ChSolverJacobi.h"
 #include "chrono_parallel/solver/ChSolverPDIP.h"
+#include "chrono_parallel/solver/ChSolverMosek.h"
 using namespace chrono;
 
 #define CLEAR_RESERVE_RESIZE(M, nnz, rows, cols) \
@@ -405,6 +406,9 @@ void ChLcpSolverParallelDVI::ChangeSolverType(SOLVERTYPE type) {
       break;
     case PDIP:
       solver = new ChSolverPDIP();
+      break;
+    case MOSEK:
+      solver = new ChSolverMosek();
       break;
   }
 }
