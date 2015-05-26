@@ -1,11 +1,21 @@
 #include "chrono_parallel/solver/ChSolverMosek.h"
 #include <blaze/math/CompressedVector.h>
-#include "mosek.h"
+
 using namespace chrono;
 
 ChSolverMosek::ChSolverMosek() : ChSolverParallel() {
+  env = NULL;
+  task = NULL;
+
+  // Create the Mosek environment
+  res_code = MSK_makeenv(&env, NULL);
 }
 
+ChSolverMosek::~ChSolverMosek() {
+  if (res_code == MSK_RES_OK) {
+    MSK_deleteenv(&env);
+  }
+}
 static void MSKAPI printstr(void* handle, MSKCONST char str[]) {
   printf("%s", str);
 } /* printstr */
@@ -65,8 +75,6 @@ uint ChSolverMosek::SolveMosek(const uint max_iter,
 
   ConvertCOO(N, obj_row, obj_col, obj_val);
 
-  MSKrescodee res_code;  // Variable for holding the error code
-
   const MSKint32t num_variables = num_constraints;
   const MSKint32t num_constr = num_contacts + num_bilaterals;
 
@@ -80,21 +88,17 @@ uint ChSolverMosek::SolveMosek(const uint max_iter,
   //
   //  std::vector<MSKint32t> cone_index(num_contacts * 3);
 
-  MSKenv_t env = NULL;    // Mosek Environment variable
-  MSKtask_t task = NULL;  // Task that mosek will perform
   MSKint32t csub[3];
   blaze::DynamicVector<real> rhs_neg = -rhs;
-
-  // Create the Mosek environment
-  res_code = MSK_makeenv(&env, NULL);
 
   // Create the optimization task.
   if (res_code == MSK_RES_OK) {
     res_code = MSK_maketask(env, num_constr, num_variables, &task);
   }
+
   if (res_code == MSK_RES_OK) {
     // Connects a user-defined function to a task stream.
-    res_code = MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
+     //res_code = MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr);
 
     // Append 'numcon' empty constraints. The constraints will initially have no bounds.
     if (res_code == MSK_RES_OK) {
@@ -126,7 +130,7 @@ uint ChSolverMosek::SolveMosek(const uint max_iter,
       res_code = MSK_appendcone(task, MSK_CT_QUAD, 0.0, 3, csub);
     }
   }
-
+  data_manager->system_timer.start("ChSolverParallel_Solve");
   // Model created, lets solve!
   if (res_code == MSK_RES_OK) {
     MSKrescodee trmcode;
@@ -147,19 +151,21 @@ uint ChSolverMosek::SolveMosek(const uint max_iter,
     if (res_code == MSK_RES_OK) {
       MSK_getxxslice(task, MSK_SOL_ITR, 0, num_variables, gamma.data());
     }
-  }
+    MSKrealt primalobj ;
 
+    res_code = MSK_getprimalobj(task, MSK_SOL_ITR, &primalobj);
+    std::cout<<primalobj<<std::endl;
+  }
+  data_manager->system_timer.stop("ChSolverParallel_Solve");
   if (!res_code) {
-    res_code = MSK_solutionsummary(task, MSK_STREAM_MSG);
+    // res_code = MSK_solutionsummary(task, MSK_STREAM_MSG);
   }
 
   // Cleanup
   if (res_code == MSK_RES_OK) {
     res_code = MSK_deletetask(&task);
   }
-  if (res_code == MSK_RES_OK) {
-    MSK_deleteenv(&env);
-  }
+
   // Usually exit when saving model so that it does not get overwritten
   //  exit(1);
   return current_iteration;

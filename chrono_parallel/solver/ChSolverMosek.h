@@ -22,23 +22,22 @@
 #define CHSOLVERMOSEK_H
 
 #include "chrono_parallel/solver/ChSolverParallel.h"
+#include "mosek.h"
 
 namespace chrono {
 
 class CH_PARALLEL_API ChSolverMosek : public ChSolverParallel {
  public:
   ChSolverMosek();
-  ~ChSolverMosek() {}
+  ~ChSolverMosek();
 
   void Solve() {
     if (data_manager->num_constraints == 0) {
       return;
     }
-    data_manager->system_timer.start("ChSolverParallel_Solve");
 
     data_manager->measures.solver.total_iteration += SolveMosek(
         max_iteration, data_manager->num_constraints, data_manager->host_data.R, data_manager->host_data.gamma);
-    data_manager->system_timer.stop("ChSolverParallel_Solve");
   }
 
   // Solve using the primal-dual interior point method
@@ -47,8 +46,10 @@ class CH_PARALLEL_API ChSolverMosek : public ChSolverParallel {
                   const blaze::DynamicVector<real>& b,  // Rhs vector
                   blaze::DynamicVector<real>& x         // The vector of unknowns
                   );
-
-
+  //
+  MSKenv_t env;          // Mosek Environment variable
+  MSKtask_t task;        // Task that mosek will perform
+  MSKrescodee res_code;  // Variable for holding the error code
 };
 }
 
