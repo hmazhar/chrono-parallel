@@ -151,10 +151,10 @@ uint ChSolverMosek::SolveMosek(const uint max_iter,
     if (res_code == MSK_RES_OK) {
       MSK_getxxslice(task, MSK_SOL_ITR, 0, num_variables, gamma.data());
     }
-    MSKrealt primalobj ;
-
-    res_code = MSK_getprimalobj(task, MSK_SOL_ITR, &primalobj);
-    std::cout<<primalobj<<std::endl;
+//    MSKrealt primalobj ;
+//
+//    res_code = MSK_getprimalobj(task, MSK_SOL_ITR, &primalobj);
+//    std::cout<<primalobj<<std::endl;
   }
   data_manager->system_timer.stop("ChSolverParallel_Solve");
   if (!res_code) {

@@ -50,6 +50,7 @@ void ChLcpSolverParallelDVI::RunTimeStep() {
       data_manager->num_unilaterals + data_manager->num_bilaterals + num_rigid_fluid + num_fluid_fluid;
 
   // Generate the mass matrix and compute M_inv_k
+  ComputeInvMassMatrix();
   ComputeMassMatrix();
 
   data_manager->host_data.gamma.resize(data_manager->num_constraints);

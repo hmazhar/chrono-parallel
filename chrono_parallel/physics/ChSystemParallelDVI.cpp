@@ -80,6 +80,18 @@ real3 ChSystemParallelDVI::GetBodyContactTorque(uint body_id) const {
             data_manager->host_data.Fc[body_id * 6 + 5]);
 }
 
+real ChSystemParallelDVI::CalculateKineticEnergy() {
+//  ((ChLcpSolverParallelDVI*)(LCP_solver_speed))->ComputeMassMatrix();
+  return 0.5 * (data_manager->host_data.v, data_manager->host_data.M * data_manager->host_data.v) +
+         (data_manager->host_data.hf, data_manager->host_data.v);
+}
+
+real ChSystemParallelDVI::CalculateDualObjective() {
+//  ((ChLcpSolverParallelDVI*)(LCP_solver_speed))->ComputeMassMatrix();
+  return 0.5 * (data_manager->host_data.gamma, data_manager->host_data.D_T*data_manager->host_data.M_invD * data_manager->host_data.gamma) -
+         (data_manager->host_data.R, data_manager->host_data.gamma);
+}
+
 static inline chrono::ChVector<real> ToChVector(const real3& a) {
   return chrono::ChVector<real>(a.x, a.y, a.z);
 }

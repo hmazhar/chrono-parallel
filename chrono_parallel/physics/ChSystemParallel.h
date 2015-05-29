@@ -144,6 +144,8 @@ class CH_PARALLEL_API ChSystemParallelDVI : public ChSystemParallel {
   virtual void UpdateMaterialSurfaceData(int index, ChBody* body);
 
   void CalculateContactForces();
+  real CalculateKineticEnergy();
+  real CalculateDualObjective();
 
   virtual real3 GetBodyContactForce(uint body_id) const;
   virtual real3 GetBodyContactTorque(uint body_id) const;

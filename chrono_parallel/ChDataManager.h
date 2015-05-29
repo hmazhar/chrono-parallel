@@ -199,7 +199,7 @@ struct host_container {
   CompressedMatrix<real> D_T;
   // M_inv is the inverse mass matrix, This matrix, if holding the full inertia
   // tensor is block diagonal
-  CompressedMatrix<real> M_inv;
+  CompressedMatrix<real> M_inv, M;
   // Minv_D holds M_inv multiplied by D, this is done as a preprocessing step
   // so that later, when the full matrix vector product is needed it can be
   // performed in two steps, first R = Minv_D*x, and then D_T*R where R is just

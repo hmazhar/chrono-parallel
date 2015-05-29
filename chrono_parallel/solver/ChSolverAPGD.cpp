@@ -45,6 +45,8 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
                              DynamicVector<real>& gamma) {
   real& residual = data_manager->measures.solver.residual;
   real& objective_value = data_manager->measures.solver.objective_value;
+  real& old_objective_value = data_manager->measures.solver.old_objective_value;
+  old_objective_value = LARGE_REAL;
   LOG(TRACE) << "APGD START";
   DynamicVector<real> one(size, 1.0);
   data_manager->system_timer.start("ChSolverParallel_Solve");
@@ -159,21 +161,23 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
       gamma_hat = gamma_new;
     }
 
-    // Compute the objective value
-    temp = 0.5 * N_gamma_new - r;
-    objective_value = (gamma_new, temp);
-
     AtIterationEnd(residual, objective_value);
     LOG(TRACE) << "APGD ITER COMPLETE  " << residual << " " << objective_value;
     if (data_manager->settings.solver.test_objective) {
-      if (objective_value <= data_manager->settings.solver.tolerance_objective) {
+      // Compute the objective value
+      temp = 0.5 * N_gamma_new - r;
+      objective_value = (gamma_new, temp);
+
+      if (fabs(objective_value-old_objective_value) <= data_manager->settings.solver.tolerance_objective) {
         break;
       }
+      old_objective_value = objective_value;
     } else {
       if (residual < data_manager->settings.solver.tol_speed) {
         break;
       }
     }
+
 
     if (dot_g_temp > 0) {
       y = gamma_new;

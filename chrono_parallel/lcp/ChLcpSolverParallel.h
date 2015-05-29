@@ -44,6 +44,8 @@ class CH_PARALLEL_API ChLcpSolverParallel : public ChLcpIterativeSolver {
   virtual void ComputeImpulses() = 0;
 
   // Compute the inverse mass matrix and the term v+M_inv*hf
+  void ComputeInvMassMatrix();
+  // Compute the mass matrix
   void ComputeMassMatrix();
   // Solves just the bilaterals so that they can be warm started
   void PerformStabilization();
