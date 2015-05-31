@@ -47,7 +47,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   real& objective_value = data_manager->measures.solver.objective_value;
   real& old_objective_value = data_manager->measures.solver.old_objective_value;
   old_objective_value = LARGE_REAL;
-  LOG(TRACE) << "APGD START";
+  // LOG(TRACE) << "APGD START";
   DynamicVector<real> one(size, 1.0);
   data_manager->system_timer.start("ChSolverParallel_Solve");
   gamma_hat.resize(size);
@@ -105,7 +105,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   // make sure that gamma_hat has something inside of it. Otherwise gamma will be
   // overwritten with a vector of zero size
   gamma_hat = gamma;
-  LOG(TRACE) << "APGD INIT COMPLETE";
+  // LOG(TRACE) << "APGD INIT COMPLETE";
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     ShurProduct(y, g);
     g = g - r;
@@ -122,11 +122,11 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     temp = gamma_new - y;
     dot_g_temp = (g, temp);
     norm_ms = (temp, temp);
-    while (obj1 > obj2 + dot_g_temp + 0.5 * L * norm_ms) {
+    real lip = obj2 + dot_g_temp + 0.5 * L * norm_ms;
+
+    while (obj1 > lip) {
       L = 2.0 * L;
       t = 1.0 / L;
-
-      LOG(TRACE) << "APGD SHRINK " << current_iteration << " " << L;
 
       gamma_new = y - t * g;
       Project(gamma_new.data());
@@ -135,6 +135,17 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
       temp = gamma_new - y;
       dot_g_temp = (g, temp);
       norm_ms = (temp, temp);
+      lip = obj2 + dot_g_temp + 0.5 * L * norm_ms;
+
+      real pdiff = fabs(obj1 - lip) / ((obj1 + lip) * 0.5) * 100;
+
+     // LOG(TRACE) << "APGD SHRINK " << current_iteration << " " << L << " " << obj1 << " " << lip << " " << obj1 - lip
+      //           << " " << pdiff;
+
+      if (fabs(pdiff) < data_manager->settings.solver.tolerance) {
+        //LOG(TRACE) << "Break SHRINK";
+        break;
+      }
     }
     theta_new = (-pow(theta, 2.0) + theta * sqrt(pow(theta, 2.0) + 4.0)) / 2.0;
     beta_new = theta * (1.0 - theta) / (pow(theta, 2.0) + theta_new);
@@ -142,47 +153,57 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     temp = gamma_new - gamma;
     y = beta_new * temp + gamma_new;
     dot_g_temp = (g, temp);
+    if (current_iteration % data_manager->settings.solver.skip_tolerance_check == 0) {
+      // Compute the residual
+      temp = gamma_new - g_diff * (N_gamma_new - r);
+      // real temp_dota = (real)(temp, temp);
+      // ಠ_ಠ THIS PROJECTION IS IMPORTANT! (╯°□°)╯︵ ┻━┻
+      // If turned off the residual will be very incorrect! Turning it off can cause the solver to effectively use the
+      // solution found in the first step because the residual never get's smaller. (You can convince yourself of this
+      // by
+      // looking at the objective function value and watch it decrease while the residual and the current solution
+      // remain
+      // the same.)
+      Project(temp.data());
+      temp = (1.0 / g_diff) * (gamma_new - temp);
+      real temp_dotb = (real)(temp, temp);
+      real res = sqrt(temp_dotb);
 
-    // Compute the residual
-    temp = gamma_new - g_diff * (N_gamma_new - r);
-    real temp_dota = (real)(temp, temp);
-    // ಠ_ಠ THIS PROJECTION IS IMPORTANT! (╯°□°)╯︵ ┻━┻
-    // If turned off the residual will be very incorrect! Turning it off can cause the solver to effectively use the
-    // solution found in the first step because the residual never get's smaller. (You can convince yourself of this by
-    // looking at the objective function value and watch it decrease while the residual and the current solution remain
-    // the same.)
-    Project(temp.data());
-    temp = (1.0 / g_diff) * (gamma_new - temp);
-    real temp_dotb = (real)(temp, temp);
-    real res = sqrt(temp_dotb);
-
-    if (res < residual) {
-      residual = res;
-      gamma_hat = gamma_new;
-    }
-
-    AtIterationEnd(residual, objective_value);
-    LOG(TRACE) << "APGD ITER COMPLETE  " << residual << " " << objective_value;
-    if (data_manager->settings.solver.test_objective) {
-      // Compute the objective value
-      temp = 0.5 * N_gamma_new - r;
-      objective_value = (gamma_new, temp);
-
-      if (fabs(objective_value-old_objective_value) <= data_manager->settings.solver.tolerance_objective) {
-        break;
+      if (res < residual) {
+        residual = res;
+        gamma_hat = gamma_new;
       }
-      old_objective_value = objective_value;
+
+      AtIterationEnd(residual, objective_value);
+      // LOG(TRACE) << "APGD ITER COMPLETE  " << residual << " " << objective_value;
+      if (data_manager->settings.solver.test_objective) {
+        // Compute the objective value
+        temp = 0.5 * N_gamma_new - r;
+        objective_value = (gamma_new, temp);
+
+        if (fabs(objective_value - old_objective_value) <= data_manager->settings.solver.tolerance_objective) {
+          break;
+        }
+        old_objective_value = objective_value;
+
+        if (residual < data_manager->settings.solver.tol_speed) {
+          break;
+        }
+
+      } else {
+        if (residual < data_manager->settings.solver.tol_speed) {
+          break;
+        }
+      }
     } else {
-      if (residual < data_manager->settings.solver.tol_speed) {
-        break;
-      }
+      AtIterationEnd(residual, objective_value);
+      // gamma_hat = gamma_new;
     }
-
 
     if (dot_g_temp > 0) {
       y = gamma_new;
       theta_new = 1.0;
-      LOG(TRACE) << "APGD RESET " << current_iteration;
+      // LOG(TRACE) << "APGD RESET " << current_iteration;
     }
 
     L = 0.9 * L;
@@ -190,11 +211,11 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     theta = theta_new;
     gamma = gamma_new;
 
-    if (data_manager->settings.solver.update_rhs) {
-      UpdateR();
-    }
+    //    if (data_manager->settings.solver.update_rhs) {
+    //      UpdateR();
+    //    }
   }
-  LOG(TRACE) << "APGD SOLVE COMPLETE";
+  // LOG(TRACE) << "APGD SOLVE COMPLETE";
   gamma = gamma_hat;
 
   data_manager->system_timer.stop("ChSolverParallel_Solve");

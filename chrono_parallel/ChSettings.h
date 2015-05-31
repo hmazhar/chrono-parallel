@@ -168,6 +168,7 @@ struct solver_settings {
     characteristic_vel = 1;
     min_slip_vel = 1e-4;
     cache_step_length = false;
+    skip_tolerance_check = 4;
   }
 
   // The solver type variable defines name of the solver that will be used to
@@ -253,6 +254,7 @@ struct solver_settings {
   // This variable defines the tolerance if the solver is using the objective
   // termination condition
   real tolerance_objective;
+  int skip_tolerance_check;
 };
 
 struct settings_container {
