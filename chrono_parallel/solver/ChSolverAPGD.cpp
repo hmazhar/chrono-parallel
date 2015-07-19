@@ -183,7 +183,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
         gamma_hat = gamma_new;
       }
 
-      AtIterationEnd(residual, objective_value);
+      AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
       // LOG(TRACE) << "APGD ITER COMPLETE  " << residual << " " << objective_value;
       if (data_manager->settings.solver.test_objective) {
         temp = 0.5 * N_gamma_new - r;
@@ -203,7 +203,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
         }
       }
     } else {
-      AtIterationEnd(residual, objective_value);
+      AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
     }
     //    if (data_manager->settings.solver.update_rhs) {
     //      UpdateR();
