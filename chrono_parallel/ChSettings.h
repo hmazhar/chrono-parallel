@@ -299,6 +299,7 @@ struct settings_container {
   // The timestep of the simulation. This value is copied from chrono currently,
   // setting it has no effect.
   real step_size;
+
   // The system type defines if the system is solving the DVI frictional contact
   // problem or a DEM penalty based
   SYSTEMTYPE system_type;

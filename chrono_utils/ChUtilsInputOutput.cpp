@@ -586,6 +586,9 @@ void ReadConvexShapes(const std::string& obj_filename, std::vector<std::vector<C
     }
     convex_hulls[c] = convexhull;
   }
+  if(ifile.fail()){
+    std::cout<<"FILE FAIL"<<std::endl;
+  }
   ifile.close();
 }
 

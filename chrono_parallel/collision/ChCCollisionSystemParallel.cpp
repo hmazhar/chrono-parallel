@@ -37,9 +37,10 @@ void ChCollisionSystemParallel::Add(ChCollisionModel* model) {
     // the convex data list
     int convex_data_offset = data_manager->host_data.convex_data.size();
     // Insert the points into the global convex list
-    data_manager->host_data.convex_data.insert(data_manager->host_data.convex_data.end(),
-                                               pmodel->local_convex_data.begin(), pmodel->local_convex_data.end());
-
+    if (pmodel->local_convex_data.size() > 0) {
+      data_manager->host_data.convex_data.insert(data_manager->host_data.convex_data.end(),
+                                                 pmodel->local_convex_data.begin(), pmodel->local_convex_data.end());
+    }
     for (int j = 0; j < pmodel->GetNObjects(); j++) {
       real3 obB = pmodel->mData[j].B;
 

@@ -94,6 +94,7 @@ static void ComputeAABBConvex(const real3* convex_points,
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ChCAABBGenerator::ChCAABBGenerator() {
+  data_manager=0;
 }
 
 void ChCAABBGenerator::GenerateAABB() {
