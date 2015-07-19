@@ -53,6 +53,10 @@ struct solver_measures {
 
   // These three variables are used to store the convergence history of the solver
   custom_vector<real> maxd_hist, maxdeltalambda_hist, time;
+  custom_vector<real> apgd_beta;
+  custom_vector<real> apgd_step;
+  custom_vector<real> apgd_step_time;
+
 };
 
 struct measures_container {

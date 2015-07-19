@@ -143,6 +143,7 @@ struct solver_settings {
     test_objective = false;
 
     alpha = .2;
+    omega = .5;
     contact_recovery_speed = .6;
     bilateral_clamp_speed = .6;
     cohesion_epsilon = 0;
@@ -169,6 +170,8 @@ struct solver_settings {
     min_slip_vel = 1e-4;
     cache_step_length = false;
     skip_tolerance_check = 4;
+    apgd_adaptive_step = true;
+    apgd_step_size = 1.0;
   }
 
   // The solver type variable defines name of the solver that will be used to
@@ -255,6 +258,10 @@ struct solver_settings {
   // termination condition
   real tolerance_objective;
   int skip_tolerance_check;
+  //for jacobi and pgs solvers
+  real omega;
+  bool apgd_adaptive_step;
+  real apgd_step_size;
 };
 
 struct settings_container {

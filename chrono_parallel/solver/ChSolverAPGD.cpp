@@ -75,30 +75,35 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   data_manager->system_timer.start("ChSolverParallel_Solve");
   temp = gamma - one;
   real norm_temp = sqrt((real)(temp, temp));
-  if (data_manager->settings.solver.cache_step_length == false) {
-    // If gamma is one temp should be zero, in that case set L to one
-    // We cannot divide by 0
-    if (norm_temp == 0) {
-      L = 1.0;
+  if (data_manager->settings.solver.apgd_adaptive_step) {
+    if (data_manager->settings.solver.cache_step_length == false) {
+      // If gamma is one temp should be zero, in that case set L to one
+      // We cannot divide by 0
+      if (norm_temp == 0) {
+        L = 1.0;
+      } else {
+        // If the N matrix is zero for some reason, temp will be zero
+        ShurProduct(temp, temp);
+        // If temp is zero then L will be zero
+        L = sqrt((real)(temp, temp)) / norm_temp;
+      }
+      // When L is zero the step length can't be computed, in this case just return
+      // If the N is indeed zero then solving doesn't make sense
+      if (L == 0) {
+        // For certain simulations returning here will not perform any iterations
+        // even when there are contacts that aren't resolved. Changed it from return 0
+        // to L=t=1;
+        // return 0;
+        L = t = 1;
+      } else {
+        // Compute the step size
+        t = 1.0 / L;
+      }
     } else {
-      // If the N matrix is zero for some reason, temp will be zero
-      ShurProduct(temp, temp);
-      // If temp is zero then L will be zero
-      L = sqrt((real)(temp, temp)) / norm_temp;
-    }
-    // When L is zero the step length can't be computed, in this case just return
-    // If the N is indeed zero then solving doesn't make sense
-    if (L == 0) {
-      // For certain simulations returning here will not perform any iterations
-      // even when there are contacts that aren't resolved. Changed it from return 0
-      // to L=t=1;
-      // return 0;
-      L = t = 1;
-    } else {
-      // Compute the step size
-      t = 1.0 / L;
     }
   } else {
+    L = data_manager->settings.solver.apgd_step_size;
+    t = 1.0 / L;
   }
   y = gamma;
   // If no iterations are performed or the residual is NAN (which is shouldn't be) make sure that gamma_hat has
@@ -107,7 +112,7 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   // LOG(TRACE) << "APGD INIT COMPLETE";
   data_manager->system_timer.stop("ChSolverParallel_Solve");
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
-	  data_manager->system_timer.start("ChSolverParallel_Solve");
+    data_manager->system_timer.start("ChSolverParallel_Solve");
     ShurProduct(y, g);
     g = g - r;
     gamma_new = y - t * g;
@@ -125,32 +130,38 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     norm_ms = (temp, temp);
     real lip = obj2 + dot_g_temp + 0.5 * L * norm_ms;
 
-    while (obj1 > lip) {
-      L = 2.0 * L;
-      t = 1.0 / L;
+    if (data_manager->settings.solver.apgd_adaptive_step) {
+      data_manager->system_timer.start("ChSolverParallel_APGD_AdaptiveStep");
+      while (obj1 > lip) {
+        L = 2.0 * L;
+        t = 1.0 / L;
 
-      gamma_new = y - t * g;
-      Project(gamma_new.data());
-      ShurProduct(gamma_new, N_gamma_new);
-      obj1 = 0.5 * (gamma_new, N_gamma_new) - (gamma_new, r);
-      temp = gamma_new - y;
-      dot_g_temp = (g, temp);
-      norm_ms = (temp, temp);
-      lip = obj2 + dot_g_temp + 0.5 * L * norm_ms;
+        gamma_new = y - t * g;
+        Project(gamma_new.data());
+        ShurProduct(gamma_new, N_gamma_new);
+        obj1 = 0.5 * (gamma_new, N_gamma_new) - (gamma_new, r);
+        temp = gamma_new - y;
+        dot_g_temp = (g, temp);
+        norm_ms = (temp, temp);
+        lip = obj2 + dot_g_temp + 0.5 * L * norm_ms;
 
-      real pdiff = fabs(obj1 - lip) / ((obj1 + lip) * 0.5) * 100;
+        // real pdiff = fabs(obj1 - lip) / ((obj1 + lip) * 0.5) * 100;
 
-      // LOG(TRACE) << "APGD SHRINK " << current_iteration << " " << L << " " << obj1 << " " << lip << " " << obj1 -
-      // lip<< " " << pdiff;
+        // LOG(TRACE) << "APGD SHRINK " << current_iteration << " " << L << " " << obj1 << " " << lip << " " << obj1 -
+        // lip<< " " << pdiff;
 
-      if (fabs(pdiff) < data_manager->settings.solver.tolerance) {
-        // LOG(TRACE) << "Break SHRINK";
-        break;
+        //      if (fabs(pdiff) < data_manager->settings.solver.tolerance) {
+        //        // LOG(TRACE) << "Break SHRINK";
+        //        break;
+        //      }
       }
+      data_manager->system_timer.stop("ChSolverParallel_APGD_AdaptiveStep");
+    } else {
+      L = data_manager->settings.solver.apgd_step_size;
+      t = 1.0 / L;
     }
     theta_new = (-pow(theta, 2.0) + theta * sqrt(pow(theta, 2.0) + 4.0)) / 2.0;
     beta_new = theta * (1.0 - theta) / (pow(theta, 2.0) + theta_new);
-
     temp = gamma_new - gamma;
     y = beta_new * temp + gamma_new;
     dot_g_temp = (g, temp);
@@ -159,8 +170,10 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
       y = gamma_new;
       theta_new = 1.0;
     }
-    L = 0.9 * L;
-    t = 1.0 / L;
+    if (data_manager->settings.solver.apgd_adaptive_step) {
+      L = 0.9 * L;
+      t = 1.0 / L;
+    }
     theta = theta_new;
     gamma = gamma_new;
     data_manager->system_timer.stop("ChSolverParallel_Solve");
@@ -205,6 +218,11 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     } else {
       AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
     }
+    data_manager->measures.solver.apgd_beta.push_back(beta_new);
+    data_manager->measures.solver.apgd_step.push_back(L);
+    data_manager->measures.solver.apgd_step_time.push_back(
+        data_manager->system_timer.GetTime("ChSolverParallel_APGD_AdaptiveStep"));
+
     //    if (data_manager->settings.solver.update_rhs) {
     //      UpdateR();
     //    }

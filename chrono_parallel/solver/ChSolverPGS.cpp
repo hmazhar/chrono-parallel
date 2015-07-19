@@ -16,7 +16,7 @@ uint ChSolverPGS::SolvePGS(const uint max_iter,
 
     diagonal.resize(num_contacts, false);
     real g_diff = 1.0 / pow(size, 2.0);
-    real omega = 1.0;
+    real omega = data_manager->settings.solver.omega;
     data_manager->system_timer.start("ChSolverParallel_Solve");
     #pragma omp parallel for
     for (size_t i = 0; i < num_contacts; ++i) {

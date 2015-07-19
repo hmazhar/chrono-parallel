@@ -37,7 +37,7 @@ uint ChSolverJacobi::SolveJacobi(const uint max_iter, const uint size,
 	//
 	for (current_iteration = 0; current_iteration < max_iter;current_iteration++) {
 		 data_manager->system_timer.start("ChSolverParallel_Solve");
-		real omega = 0.48;
+		real omega = data_manager->settings.solver.omega;
 		N_gamma_old = Nshur * ml_old - mb;
 #pragma omp parallel for
 		for (int i = 0; i < num_contacts; ++i) {
