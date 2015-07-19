@@ -31,10 +31,9 @@ class CH_PARALLEL_API ChSolverPGS : public ChSolverParallel {
     if (data_manager->num_constraints == 0) {
       return;
     }
-    data_manager->system_timer.start("ChSolverParallel_Solve");
+
     data_manager->measures.solver.total_iteration += SolvePGS(
         max_iteration, data_manager->num_constraints, data_manager->host_data.R, data_manager->host_data.gamma);
-    data_manager->system_timer.stop("ChSolverParallel_Solve");
   }
 
   // Solve using an iterative projected gradient method
@@ -44,7 +43,7 @@ class CH_PARALLEL_API ChSolverPGS : public ChSolverParallel {
                 DynamicVector<real>& x   // The vector of unknowns
                 );
 
-  DynamicVector<real> diagonal;
+  DynamicVector<real> diagonal, N_gamma_new, temp;
 };
 }
 

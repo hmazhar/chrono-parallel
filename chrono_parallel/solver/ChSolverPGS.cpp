@@ -7,40 +7,54 @@ uint ChSolverPGS::SolvePGS(const uint max_iter,
                            const uint size,
                            DynamicVector<real>& mb,
                            DynamicVector<real>& ml) {
-  //  real& residual = data_manager->measures.solver.residual;
-  //  real& objective_value = data_manager->measures.solver.objective_value;
-  //  custom_vector<real>& iter_hist = data_manager->measures.solver.iter_hist;
-  //
-  //  real rmax = 0, flimit, aux;
-  //  diagonal.resize(size, false);
-  //
-  //  for (size_t i = 0; i < size; ++i) {
-  //    const real tmp(data_manager->host_data.Nshur(i, i));
-  //    diagonal[i] = real(1) / tmp;
-  //  }
-  //
-  //  Project(ml.data());
-  //
-  //  for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
-  //    const size_t N(size / 3);
-  //    size_t j;
-  //    real omega = 1.0;
-  //
-  //    for (size_t i = 0; i < data_manager->num_contacts; ++i) {
-  //      j = i * 3;
-  //      real Dinv = 1.0 / (diagonal[j + 0] + diagonal[j + 1] + diagonal[j + 2]);
-  //
-  //      ml[j + 0] = ml[j + 0] - omega * Dinv * ((row(data_manager->host_data.Nshur, j + 0), ml) - mb[j + 0]);
-  //      ml[j + 1] = ml[j + 1] - omega * Dinv * ((row(data_manager->host_data.Nshur, j + 1), ml) - mb[j + 1]);
-  //      ml[j + 2] = ml[j + 2] - omega * Dinv * ((row(data_manager->host_data.Nshur, j + 2), ml) - mb[j + 2]);
-  //
-  //      Project_Single(i, ml.data());
-  //    }
-  //    residual = Res4Blaze(ml, mb);
-  //    objective_value = GetObjective(ml, mb);
-  //    AtIterationEnd(residual, objective_value);
-  //  }
-  //
-  //  return current_iteration;
+    real& residual = data_manager->measures.solver.residual;
+    real& objective_value = data_manager->measures.solver.objective_value;
+    uint num_contacts = data_manager->num_rigid_contacts;
+    CompressedMatrix<real>&  Nshur = data_manager->host_data.Nshur;
+    N_gamma_new.resize(size);
+    temp.resize(size);
+
+    diagonal.resize(num_contacts, false);
+    real g_diff = 1.0 / pow(size, 2.0);
+    real omega = 1.0;
+    data_manager->system_timer.start("ChSolverParallel_Solve");
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_contacts; ++i) {
+        diagonal[i] = 3.0/(
+        		Nshur(i, i) +
+				Nshur(num_contacts + i * 2 + 0, num_contacts + i * 2 + 0) +
+				Nshur(num_contacts + i * 2 + 1,num_contacts + i * 2 + 1)
+				);
+      }
+    data_manager->system_timer.stop("ChSolverParallel_Solve");
+
+    for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
+    	data_manager->system_timer.start("ChSolverParallel_Solve");
+    	for (size_t i = 0; i < num_contacts; ++i) {
+          int a = i * 1 + 0;
+          int b = num_contacts + i * 2 + 0;
+          int c = num_contacts + i * 2 + 1;
+          real Dinv = diagonal [i];
+          ml[a] = ml[a] - omega * Dinv * ((row(Nshur, a), ml) - mb[a]);
+          ml[b] = ml[b] - omega * Dinv * ((row(Nshur, b), ml) - mb[b]);
+          ml[c] = ml[c] - omega * Dinv * ((row(Nshur, c), ml) - mb[c]);
+
+        Project_Single(i, ml.data());
+      }
+      data_manager->system_timer.stop("ChSolverParallel_Solve");
+
+      ShurProduct(ml, N_gamma_new);
+      temp = ml - g_diff * (N_gamma_new - mb);
+      Project(temp.data());
+      temp = (1.0 / g_diff) * (ml - temp);
+      real temp_dotb = (real)(temp, temp);
+      real residual = sqrt(temp_dotb);
+
+
+      objective_value = GetObjective(ml, mb);
+      AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
+    }
+
+    return current_iteration;
   return 0;
 }
