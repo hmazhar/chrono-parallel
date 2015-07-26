@@ -37,10 +37,10 @@ int ChParallelDataManager::OutputBlazeMatrix(CompressedMatrix<real> src, std::st
   ChStreamOutAsciiFile stream(filename.c_str());
   stream.SetNumFormat(numformat);
 
-  stream << src.rows() << " " << src.columns() << "\n";
+  //stream << src.rows() << " " << src.columns() << "\n";
   for (int i = 0; i < src.rows(); ++i) {
     for (CompressedMatrix<real>::Iterator it = src.begin(i); it != src.end(i); ++it) {
-      stream << i << " " << it->index() << " " << it->value() << "\n";
+      stream << i+1 << " " << it->index()+1 << " " << it->value() << "\n";
     }
   }
 
@@ -67,8 +67,17 @@ int ChParallelDataManager::ExportCurrentSystem(std::string output_dir) {
     }
   }
 
+  // output v
+  std::string filename = output_dir + "dump_v.dat";
+  OutputBlazeVector(host_data.v, filename);
+
+
+  // output f
+  filename = output_dir + "dump_hf.dat";
+  OutputBlazeVector(host_data.hf, filename);
+
   // output r
-  std::string filename = output_dir + "dump_r.dat";
+  filename = output_dir + "dump_r.dat";
   OutputBlazeVector(host_data.R, filename);
 
   // output b

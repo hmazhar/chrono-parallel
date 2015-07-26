@@ -43,7 +43,7 @@ class CH_PARALLEL_API ChSolverPGS : public ChSolverParallel {
                 DynamicVector<real>& x   // The vector of unknowns
                 );
 
-  DynamicVector<real> diagonal, N_gamma_new, temp, ml_new;
+  DynamicVector<real> diagonal, N_gamma_new, temp, ml_new, mb_new;
 };
 }
 

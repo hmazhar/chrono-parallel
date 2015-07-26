@@ -85,8 +85,7 @@ uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DynamicVector<r
   N_gamma_new.resize(size);
   temp.resize(size);
   ml_new.resize(size);
-
-  real sor = 1;
+  mb_new.resize(size);
   diagonal.resize(num_contacts, false);
   real g_diff = 1.0 / pow(size, 2.0);
   real omega = data_manager->settings.solver.omega;
@@ -95,27 +94,6 @@ uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DynamicVector<r
   D_T_temp.reserve(D_T.capacity());
 
   DynamicVector<real> N_gamma_old = Nshur * ml - mb;
-  //#pragma omp parallel for
-  //    for (size_t i = 0; i < num_contacts; ++i) {
-  //        diagonal[i] = 3.0/(
-  //        		Nshur(i, i) +
-  //				Nshur(num_contacts + i * 2 + 0, num_contacts + i * 2 + 0) +
-  //				Nshur(num_contacts + i * 2 + 1,num_contacts + i * 2 + 1)
-  //				);
-  //      }
-  //#pragma omp parallel for
-  //  for (int i = 0; i < num_contacts; ++i) {
-  //    int a = i * 1 + 0;
-  //    int b = num_contacts + i * 2 + 0;
-  //    int c = num_contacts + i * 2 + 1;
-  //
-  //    // real Dinv = 3.0 / (diagonal[a] + diagonal[b] + diagonal[c]);
-  //    real Dinv = diagonal[i];
-  //    ml[a] = ml[a] - .4 * Dinv * (N_gamma_old[a]);
-  //    ml[b] = ml[b] - .4 * Dinv * (N_gamma_old[b]);
-  //    ml[c] = ml[c] - .4 * Dinv * (N_gamma_old[c]);
-  //  }
-  //  Project(ml.data());
 
   for (size_t i = 0; i < num_contacts; ++i) {
     int a = i * 1 + 0;
@@ -129,6 +107,10 @@ uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DynamicVector<r
     ml_new[i * 3 + 0] = ml[a];
     ml_new[i * 3 + 1] = ml[b];
     ml_new[i * 3 + 2] = ml[c];
+
+    mb_new[i * 3 + 0] = mb[a];
+    mb_new[i * 3 + 1] = mb[b];
+    mb_new[i * 3 + 2] = mb[c];
   }
   CompressedMatrix<real> AA = trans(D_T_temp);
   CompressedMatrix<real> N_temp = (D_T_temp * (data_manager->host_data.M_inv * AA));
@@ -143,14 +125,12 @@ uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DynamicVector<r
   for (current_iteration = 0; current_iteration < max_iter; current_iteration++) {
     data_manager->system_timer.start("ChSolverParallel_Solve");
     for (size_t i = 0; i < num_contacts; ++i) {
-      int a = i * 1 + 0;
-      int b = num_contacts + i * 2 + 0;
-      int c = num_contacts + i * 2 + 1;
       real Dinv = diagonal[i];
 
-      ml_new[i * 3 + 0] = ml_new[i * 3 + 0] - omega * Dinv * ((row(N_temp, i * 3 + 0), ml_new) - mb[a]);
-      ml_new[i * 3 + 1] = ml_new[i * 3 + 1] - omega * Dinv * ((row(N_temp, i * 3 + 1), ml_new) - mb[b]);
-      ml_new[i * 3 + 2] = ml_new[i * 3 + 2] - omega * Dinv * ((row(N_temp, i * 3 + 2), ml_new) - mb[c]);
+      ml_new[i * 3 + 0] = ml_new[i * 3 + 0] - omega * Dinv * ((row(N_temp, i * 3 + 0), ml_new) - mb_new[i * 3 + 0]);
+      ml_new[i * 3 + 1] = ml_new[i * 3 + 1] - omega * Dinv * ((row(N_temp, i * 3 + 1), ml_new) - mb_new[i * 3 + 1]);
+      ml_new[i * 3 + 2] = ml_new[i * 3 + 2] - omega * Dinv * ((row(N_temp, i * 3 + 2), ml_new) - mb_new[i * 3 + 2]);
+
       real3 delta = real3(ml_new[i * 3 + 0], ml_new[i * 3 + 1], ml_new[i * 3 + 2]);
 
       proj(friction[i].x, cohesion[i], delta, data_manager->settings.solver.local_solver_mode,
