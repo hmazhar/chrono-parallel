@@ -77,14 +77,11 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
   real norm_temp = sqrt((real)(temp, temp));
   if (data_manager->settings.solver.apgd_adaptive_step) {
     if (data_manager->settings.solver.cache_step_length == false) {
-      // If gamma is one temp should be zero, in that case set L to one. We cannot divide by 0
-      if (norm_temp == 0) {
-        L = 1.0;
-      } else {
-        // If the N matrix is zero for some reason, temp will be zero
+      if (norm_temp == 0) {  // If gamma is one temp should be zero, in that case set L to one. We cannot divide by 0
+        L = 5.0;
+      } else {  // If the N matrix is zero for some reason, temp will be zero
         ShurProduct(temp, temp);
-        // If temp is zero then L will be zero
-        L = sqrt((real)(temp, temp)) / norm_temp;
+        L = sqrt((real)(temp, temp)) / norm_temp;  // If temp is zero then L will be zero
       }
       // When L is zero the step length can't be computed, in this case just return
       // If the N is indeed zero then solving doesn't make sense
@@ -92,7 +89,8 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
         // For certain simulations returning here will not perform any iterations even when there are contacts that
         // aren't resolved. Changed it from return 0 to L=t=1;
         // return 0;
-        L = t = 1;
+        L = 5.0;
+        t = 1.0/L;
       } else {
         t = 1.0 / L;  // Compute the step size
       }
