@@ -56,6 +56,7 @@ struct solver_measures {
   custom_vector<real> apgd_beta;
   custom_vector<real> apgd_step;
   custom_vector<real> apgd_step_time;
+  custom_vector<real> violation;
 
 };
 

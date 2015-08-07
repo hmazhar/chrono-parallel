@@ -195,6 +195,9 @@ uint ChSolverAPGD::SolveAPGD(const uint max_iter,
     AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
     data_manager->measures.solver.apgd_beta.push_back(beta_new);
     data_manager->measures.solver.apgd_step.push_back(L);
+    temp = N_gamma_new - r;
+    real dott = (temp,temp);
+    data_manager->measures.solver.violation.push_back(dott);
     //    if (data_manager->settings.solver.update_rhs) {
     //      UpdateR();
     //    }
