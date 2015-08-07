@@ -160,6 +160,9 @@ uint ChSolverPGS::SolvePGS(const uint max_iter, const uint size, DynamicVector<r
     real residual = sqrt(temp_dotb);
     objective_value = GetObjective(ml, mb);
     AtIterationEnd(residual, objective_value, data_manager->system_timer.GetTime("ChSolverParallel_Solve"));
+    temp = N_gamma_new - mb;
+    real dott = sqrt((real)(temp,temp));
+    data_manager->measures.solver.violation.push_back(dott);
   }
 
   return current_iteration;
